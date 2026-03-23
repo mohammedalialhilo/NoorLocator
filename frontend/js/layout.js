@@ -14,7 +14,7 @@ window.NoorLocatorLayout = (() => {
         const authMarkup = user
             ? `
                 <div class="utility-row">
-                    <span class="card__meta">${user.name} · ${user.role}</span>
+                    <span class="card__meta">${user.name} | ${user.role}</span>
                     <button class="button button--ghost" type="button" data-logout-button>Logout</button>
                 </div>
             `
@@ -57,7 +57,7 @@ window.NoorLocatorLayout = (() => {
             <footer class="site-footer">
                 <div class="site-footer__inner">
                     <p class="site-footer__credit">Driven by موكب خدام اهل البيت (عليهم السلام), Copenhagen, Denmark.</p>
-                    <p>NoorLocator helps guests discover nearby centers and upcoming majalis through real API-backed public search.</p>
+                    <p>NoorLocator helps guests discover nearby centers and lets authenticated users submit moderated contributions through real API-backed workflows.</p>
                 </div>
             </footer>
         `;

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NoorLocator.Application.Authentication.Interfaces;
 using NoorLocator.Application.Common.Configuration;
 using NoorLocator.Application.Centers.Interfaces;
+using NoorLocator.Application.Languages.Interfaces;
 using NoorLocator.Application.Majalis.Interfaces;
 using NoorLocator.Application.Management.Interfaces;
 using NoorLocator.Application.Suggestions.Interfaces;
@@ -16,6 +17,7 @@ using NoorLocator.Infrastructure.Services.Centers;
 using NoorLocator.Infrastructure.Services.Majalis;
 using NoorLocator.Infrastructure.Services.Management;
 using NoorLocator.Infrastructure.Services.Suggestions;
+using NoorLocator.Infrastructure.Services.Languages;
 
 namespace NoorLocator.Infrastructure;
 
@@ -44,6 +46,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ICenterService, CenterService>();
         services.AddScoped<ICenterRequestService, CenterRequestService>();
+        services.AddScoped<ILanguageService, LanguageService>();
         services.AddScoped<IMajlisService, MajlisService>();
         services.AddScoped<IManagerService, ManagerService>();
         services.AddScoped<ISuggestionService, SuggestionService>();

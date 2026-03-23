@@ -12,6 +12,14 @@ namespace NoorLocator.Api.Controllers;
 public class CenterRequestsController(ICenterRequestService centerRequestService) : ControllerBase
 {
     [Authorize(Roles = "User,Manager,Admin")]
+    [HttpGet("my")]
+    public async Task<IActionResult> GetMine(CancellationToken cancellationToken)
+    {
+        var result = await centerRequestService.GetMineAsync(User.GetRequiredUserId(), cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    [Authorize(Roles = "User,Manager,Admin")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCenterRequestDto request, CancellationToken cancellationToken)
     {

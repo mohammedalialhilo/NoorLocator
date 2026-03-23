@@ -5,23 +5,38 @@ using NoorLocator.Application.Suggestions.Interfaces;
 using NoorLocator.Domain.Entities;
 using NoorLocator.Domain.Enums;
 using NoorLocator.Infrastructure.Persistence;
+using NoorLocator.Infrastructure.Services.Audit;
 
 namespace NoorLocator.Infrastructure.Services.Suggestions;
 
-public class SuggestionService(NoorLocatorDbContext dbContext) : ISuggestionService
+public class SuggestionService(NoorLocatorDbContext dbContext, AuditLogger auditLogger) : ISuggestionService
 {
     public async Task<OperationResult> CreateAsync(CreateSuggestionDto request, int userId, CancellationToken cancellationToken = default)
     {
-        dbContext.Suggestions.Add(new Suggestion
+        var suggestion = new Suggestion
         {
             UserId = userId,
             Message = request.Message.Trim(),
             Type = request.Type,
             Status = SuggestionReviewStatus.Pending,
             CreatedAt = DateTime.UtcNow
-        });
+        };
 
+        dbContext.Suggestions.Add(suggestion);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        await auditLogger.WriteAsync(
+            action: "SuggestionSubmitted",
+            entityName: nameof(Suggestion),
+            entityId: suggestion.Id.ToString(),
+            userId: userId,
+            metadata: new
+            {
+                suggestion.Type,
+                suggestion.Status
+            },
+            cancellationToken: cancellationToken);
+
         return OperationResult.Accepted("Suggestion submitted for admin review.");
     }
 

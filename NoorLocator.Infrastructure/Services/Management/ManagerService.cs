@@ -6,10 +6,11 @@ using NoorLocator.Application.Management.Interfaces;
 using NoorLocator.Domain.Entities;
 using NoorLocator.Domain.Enums;
 using NoorLocator.Infrastructure.Persistence;
+using NoorLocator.Infrastructure.Services.Audit;
 
 namespace NoorLocator.Infrastructure.Services.Management;
 
-public class ManagerService(NoorLocatorDbContext dbContext) : IManagerService
+public class ManagerService(NoorLocatorDbContext dbContext, AuditLogger auditLogger) : IManagerService
 {
     public async Task<OperationResult> ApproveCenterLanguageSuggestionAsync(ApproveLanguageSuggestionDto request, CancellationToken cancellationToken = default)
     {
@@ -120,15 +121,29 @@ public class ManagerService(NoorLocatorDbContext dbContext) : IManagerService
             return OperationResult.Failure("A pending manager request already exists for this center.", 409);
         }
 
-        dbContext.ManagerRequests.Add(new ManagerRequest
+        var managerRequest = new ManagerRequest
         {
             UserId = userId,
             CenterId = request.CenterId,
             Status = ModerationStatus.Pending,
             CreatedAt = DateTime.UtcNow
-        });
+        };
 
+        dbContext.ManagerRequests.Add(managerRequest);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        await auditLogger.WriteAsync(
+            action: "ManagerRequestSubmitted",
+            entityName: nameof(ManagerRequest),
+            entityId: managerRequest.Id.ToString(),
+            userId: userId,
+            metadata: new
+            {
+                managerRequest.CenterId,
+                managerRequest.Status
+            },
+            cancellationToken: cancellationToken);
+
         return OperationResult.Accepted("Manager request submitted for admin review.");
     }
 
@@ -158,7 +173,6 @@ public class ManagerService(NoorLocatorDbContext dbContext) : IManagerService
         var pendingSuggestionExists = await dbContext.CenterLanguageSuggestions.AnyAsync(
             suggestion => suggestion.CenterId == request.CenterId &&
                           suggestion.LanguageId == request.LanguageId &&
-                          suggestion.SuggestedByUserId == userId &&
                           suggestion.Status == ModerationStatus.Pending,
             cancellationToken);
 
@@ -167,15 +181,30 @@ public class ManagerService(NoorLocatorDbContext dbContext) : IManagerService
             return OperationResult.Failure("A pending suggestion for this language already exists.", 409);
         }
 
-        dbContext.CenterLanguageSuggestions.Add(new CenterLanguageSuggestion
+        var suggestion = new CenterLanguageSuggestion
         {
             CenterId = request.CenterId,
             LanguageId = request.LanguageId,
             SuggestedByUserId = userId,
             Status = ModerationStatus.Pending
-        });
+        };
 
+        dbContext.CenterLanguageSuggestions.Add(suggestion);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        await auditLogger.WriteAsync(
+            action: "CenterLanguageSuggestionSubmitted",
+            entityName: nameof(CenterLanguageSuggestion),
+            entityId: suggestion.Id.ToString(),
+            userId: userId,
+            metadata: new
+            {
+                suggestion.CenterId,
+                suggestion.LanguageId,
+                suggestion.Status
+            },
+            cancellationToken: cancellationToken);
+
         return OperationResult.Accepted("Language suggestion submitted for admin review.");
     }
 }

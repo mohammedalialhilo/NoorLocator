@@ -1,21 +1,18 @@
 # NoorLocator
 
-NoorLocator is a location-based web platform for discovering Shia Islamic centers, publishing majalis through verified center managers, and protecting data integrity through moderated workflows.
+NoorLocator is a moderated web platform for discovering Shia Islamic centers, browsing published majalis, and submitting authenticated community contributions for review.
 
 Driven by موكب خدام اهل البيت (عليهم السلام), Copenhagen, Denmark.
 
-## Phase 2 Summary
+## Current Scope
 
-Phase 2 builds on the existing scaffold and adds:
+The project currently includes:
 
-- persisted EF Core models and MySQL schema
-- JWT authentication and role-based authorization
-- secure password hashing
-- `/api/auth/register`, `/api/auth/login`, and `/api/auth/me`
-- seeded demo accounts, languages, centers, and manager assignment
-- audit logging for authentication-critical events
-- frontend token storage, authenticated API calls, and role-aware navbar behavior
-- initial EF Core migration files
+- public center discovery with search, filtering, nearest-center lookup, and server-side distance calculation
+- JWT authentication with `Guest`, `User`, `Manager`, and `Admin` roles
+- MySQL persistence through EF Core and Pomelo
+- seeded users, languages, demo centers, and sample manager assignment
+- moderation-first contribution workflows for authenticated users
 
 ## Architecture
 
@@ -28,123 +25,102 @@ NoorLocator.sln
 |-- frontend
 ```
 
-- `NoorLocator.Api`: HTTP endpoints, JWT middleware, Swagger, static frontend hosting, and startup migration/seed execution.
-- `NoorLocator.Application`: DTOs, service interfaces, validation contracts, shared response models, and auth configuration contracts.
-- `NoorLocator.Domain`: core entities and enums from the specification, plus Phase 2 traceability/auth entities.
-- `NoorLocator.Infrastructure`: EF Core `DbContext`, Pomelo MySQL provider configuration, entity configurations, migrations, seeding, password hashing, JWT token generation, auditing, and concrete services.
-- `frontend`: static HTML/CSS/JS pages with login/register flows, local token storage, and navbar auth state handling.
+- `NoorLocator.Api`: controllers, auth middleware, Swagger, static frontend hosting, startup migration, and seed execution
+- `NoorLocator.Application`: DTOs, service interfaces, validation contracts, and shared response models
+- `NoorLocator.Domain`: entities and enums for centers, users, majalis, moderation, and audit data
+- `NoorLocator.Infrastructure`: EF Core `DbContext`, MySQL provider setup, migrations, seeding, auth services, auditing, and concrete business services
+- `frontend`: branded HTML, CSS, and JavaScript pages that consume only the live API
 
-## Implemented Models
+## Implemented Workflows
 
-Required models:
+### Public discovery
 
-- `User`
-- `Center`
-- `CenterRequest`
-- `CenterManager`
-- `Majlis`
-- `Language`
-- `MajlisLanguage`
-- `CenterLanguage`
-- `CenterLanguageSuggestion`
-- `Suggestion`
+- `GET /api/centers`
+- `GET /api/centers/{id}`
+- `GET /api/centers/nearest?lat={lat}&lng={lng}`
+- `GET /api/centers/search?query=&city=&country=&languageCode=`
+- `GET /api/centers/{id}/majalis`
+- `GET /api/centers/{id}/languages`
+- `GET /api/languages`
 
-Additional Phase 2 models:
+### Authentication
 
-- `ManagerRequest`
-- `AuditLog`
-- `RefreshToken`
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/auth/me`
+
+### Authenticated user contributions
+
+- `POST /api/center-requests`
+- `GET /api/center-requests/my`
+- `POST /api/suggestions`
+- `POST /api/center-language-suggestions`
+- `POST /api/manager/request`
+
+All contribution endpoints require authentication. User submissions do not write directly to public center data. Center requests and center language suggestions are stored as `Pending`, manager access requests are approval-based, and suggestions are tracked by type and review status. Audit entries are written for submission and auth-critical events.
+
+## Seeded Accounts
+
+- Admin: `admin@noorlocator.local` / `Admin123!Pass`
+- Manager: `manager@noorlocator.local` / `Manager123!Pass`
+- User: `user@noorlocator.local` / `User123!Pass`
 
 ## Seeded Data
 
-The app seeds these accounts on startup through [NoorLocatorDbInitializer.cs](/c:/Users/alhil/Desktop/NoorLocator/NoorLocator/NoorLocator.Infrastructure/Seeding/NoorLocatorDbInitializer.cs):
-
-- Admin
-  - Email: `admin@noorlocator.local`
-  - Password: `Admin123!Pass`
-- Manager
-  - Email: `manager@noorlocator.local`
-  - Password: `Manager123!Pass`
-- User
-  - Email: `user@noorlocator.local`
-  - Password: `User123!Pass`
-
-Seeded reference/content data:
-
 - Languages: Arabic, Swedish, English, Farsi, Urdu
-- 3 demo centers in Copenhagen, Stockholm, and Helsinki
-- 1 approved manager assignment for the seeded manager account
-- 1 sample majlis linked to the Copenhagen demo center
+- Demo centers in Copenhagen, Stockholm, and Helsinki
+- One approved manager assignment for the seeded manager account
+- One sample majlis linked to the Copenhagen demo center
 
-## Auth and Authorization
+## Database Setup
 
-- Guests are anonymous users and can access read-only public endpoints.
-- Registered users are created only through `/api/auth/register` and always receive the `User` role.
-- Manager access is approval-based and backed by `ManagerRequests` and `CenterManagers`.
-- Admin access is seeded and not available through self-registration.
-- Passwords are stored using PBKDF2 with per-password salt.
-- JWT access tokens are returned from register/login.
-- Refresh token records are persisted for future token lifecycle work.
-- Audit logs are written for login and registration success/failure events.
+The app is configured for MySQL.
 
-## Setup
+Default development target:
 
-1. Open the repo root:
+```text
+Server=127.0.0.1;Port=3306;Database=Noorlocator
+```
 
-   ```powershell
-   cd C:\Users\alhil\Desktop\NoorLocator\NoorLocator
-   ```
+Update these files if needed:
 
-2. Update the MySQL connection string, username, password, and JWT settings if needed:
-   - [appsettings.json](/c:/Users/alhil/Desktop/NoorLocator/NoorLocator/NoorLocator.Api/appsettings.json)
-   - [appsettings.Development.json](/c:/Users/alhil/Desktop/NoorLocator/NoorLocator/NoorLocator.Api/appsettings.Development.json)
+- `NoorLocator.Api/appsettings.json`
+- `NoorLocator.Api/appsettings.Development.json`
 
-   The default development database target is:
+Make sure the MySQL username, password, and `MySql:ServerVersion` value match your local server.
 
-   ```text
-   Server=127.0.0.1;Port=3306;Database=Noorlocator
-   ```
+## Running The App
 
-3. Restore and build:
+From the repo root:
 
-   ```powershell
-   dotnet restore
-   dotnet build NoorLocator.sln
-   ```
+```powershell
+cd C:\Users\alhil\Desktop\NoorLocator\NoorLocator
+dotnet restore
+dotnet build NoorLocator.sln
+dotnet ef database update --project .\NoorLocator.Infrastructure\NoorLocator.Infrastructure.csproj --startup-project .\NoorLocator.Api\NoorLocator.Api.csproj
+dotnet run --project .\NoorLocator.Api\NoorLocator.Api.csproj
+```
 
-4. Apply migrations manually if you want to do it ahead of startup:
-
-   ```powershell
-   dotnet ef database update --project .\NoorLocator.Infrastructure\NoorLocator.Infrastructure.csproj --startup-project .\NoorLocator.Api\NoorLocator.Api.csproj
-   ```
-
-5. Run the app:
-
-   ```powershell
-   dotnet run --project .\NoorLocator.Api\NoorLocator.Api.csproj
-   ```
-
-The API also attempts to apply migrations and seed data automatically during startup.
-
-## Default URLs
+Default URLs:
 
 - App: `https://localhost:7132/`
 - HTTP fallback: `http://localhost:5141/`
 - Swagger: `https://localhost:7132/swagger`
 - Health: `https://localhost:7132/api/health`
 
+## Frontend Notes
+
+- The frontend stores auth state in `localStorage`
+- The navbar reflects logged-in and role-aware state
+- The dashboard now supports center requests, user suggestions, center language suggestions, manager access requests, and request-status tracking
+- Browser geolocation is used for public nearby-center discovery, with search fallback when location is unavailable
+
 ## Migrations
 
-Initial migration files are located in:
+Migration files live under:
 
-- [20260323192750_InitialCreate.cs](/c:/Users/alhil/Desktop/NoorLocator/NoorLocator/NoorLocator.Infrastructure/Persistence/Migrations/20260323192750_InitialCreate.cs)
-- [NoorLocatorDbContextModelSnapshot.cs](/c:/Users/alhil/Desktop/NoorLocator/NoorLocator/NoorLocator.Infrastructure/Persistence/Migrations/NoorLocatorDbContextModelSnapshot.cs)
+- `NoorLocator.Infrastructure/Persistence/Migrations`
 
-## Notes
+## Attribution
 
-- The Phase 2 frontend stores auth state in `localStorage`.
-- The navbar changes based on the stored authenticated user role.
-- Center and majlis read endpoints now return seeded database content instead of placeholder responses.
-- The project now targets MySQL through Pomelo's EF Core provider.
-- The design-time provider uses a configurable MySQL server version value in `MySql:ServerVersion` so migrations can be generated without database auto-detection.
-- Update the MySQL username and password in the development connection string before running migrations or startup seeding.
+Driven by موكب خدام اهل البيت (عليهم السلام), Copenhagen, Denmark.

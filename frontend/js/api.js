@@ -76,6 +76,36 @@ window.NoorLocatorApi = (() => {
         getCenterLanguages(id) {
             return request(`/api/centers/${id}/languages`);
         },
+        getLanguages() {
+            return request("/api/languages");
+        },
+        createCenterRequest(payload) {
+            return request("/api/center-requests", {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+        },
+        getMyCenterRequests() {
+            return request("/api/center-requests/my");
+        },
+        createSuggestion(payload) {
+            return request("/api/suggestions", {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+        },
+        createCenterLanguageSuggestion(payload) {
+            return request("/api/center-language-suggestions", {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+        },
+        requestManagerAccess(payload) {
+            return request("/api/manager/request", {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+        },
         getMajalis(centerId) {
             const query = centerId ? `?centerId=${encodeURIComponent(centerId)}` : "";
             return request(`/api/majalis${query}`);
