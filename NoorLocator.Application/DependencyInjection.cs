@@ -20,6 +20,9 @@ public static class DependencyInjection
         services.AddScoped<IValidator<RegisterRequestDto>, RegisterRequestValidator>();
         services.AddScoped<IValidator<LoginRequestDto>, LoginRequestValidator>();
         services.AddScoped<IValidator<CreateCenterRequestDto>, CreateCenterRequestValidator>();
+        services.AddScoped<IValidator<CenterLocationQueryDto>, CenterLocationQueryValidator>();
+        services.AddScoped<IValidator<NearestCentersQueryDto>, NearestCentersQueryValidator>();
+        services.AddScoped<IValidator<CenterSearchQueryDto>, CenterSearchQueryValidator>();
         services.AddScoped<IValidator<CreateMajlisDto>, CreateMajlisValidator>();
         services.AddScoped<IValidator<ManagerRequestDto>, ManagerRequestValidator>();
         services.AddScoped<IValidator<CreateSuggestionDto>, CreateSuggestionValidator>();

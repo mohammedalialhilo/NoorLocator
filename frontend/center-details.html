@@ -11,26 +11,37 @@
     <div data-site-header></div>
 
     <main class="page-shell">
-        <section class="page-hero">
-            <span class="eyebrow">Center profile</span>
-            <h1 id="center-title">Center details</h1>
-            <div id="center-meta" class="detail-meta"></div>
-            <p id="center-description">Approved center information, supported languages, and published majalis will appear here.</p>
+        <section class="page-hero page-hero--split">
+            <div class="page-hero__content">
+                <span class="eyebrow">Center profile</span>
+                <h1 id="center-title">Loading center details...</h1>
+                <div id="center-meta" class="detail-meta"></div>
+                <p id="center-description">Fetching this center profile, languages, and upcoming majalis from the public NoorLocator API.</p>
+                <div class="hero__actions">
+                    <a id="center-map-link" class="button button--secondary" href="#" target="_blank" rel="noreferrer noopener">Open map</a>
+                    <a class="button button--ghost" href="centers.html">Back to centers</a>
+                </div>
+                <p id="center-detail-message" class="message"></p>
+            </div>
+            <aside class="hero__panel hero__panel--stack">
+                <img class="hero__logo hero__logo--detail" src="assets/logo.svg" alt="NoorLocator logo">
+                <div id="center-info-grid" class="info-grid"></div>
+            </aside>
         </section>
 
         <section class="section">
-            <div class="detail-grid">
+            <div class="detail-grid detail-grid--public">
                 <article class="panel">
                     <h3>Supported languages</h3>
-                    <ul id="center-languages" class="list">
-                        <li class="list__item">Waiting for language associations from the API.</li>
-                    </ul>
+                    <div id="center-languages" class="chip-list">
+                        <span class="empty-state">Loading supported languages...</span>
+                    </div>
                 </article>
                 <article class="panel">
                     <h3>Upcoming majalis</h3>
-                    <ul id="center-majalis" class="list">
-                        <li class="list__item">Waiting for majalis data from the API.</li>
-                    </ul>
+                    <div id="center-majalis" class="stack-list">
+                        <div class="empty-state">Loading upcoming majalis...</div>
+                    </div>
                 </article>
             </div>
         </section>

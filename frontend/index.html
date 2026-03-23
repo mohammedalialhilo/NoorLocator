@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>NoorLocator | Phase 1</title>
+    <title>NoorLocator | Discover Nearby Centers</title>
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -11,66 +11,72 @@
     <div data-site-header></div>
 
     <main class="site-shell">
-        <section class="hero">
+        <section class="hero hero--discovery">
             <div class="hero__content">
-                <span class="eyebrow">Location-based community platform</span>
-                <h1>Find nearby Shia centers with a clean, moderated digital foundation.</h1>
-                <p>NoorLocator Phase 1 establishes the API, architecture, and branded web experience for center discovery, majalis management, and role-based moderation.</p>
+                <span class="eyebrow">Public center discovery</span>
+                <h1>Find nearby Shia centers, languages, and upcoming majalis with confidence.</h1>
+                <p>NoorLocator helps guests discover community centers through a clean public experience backed by moderated data, verified locations, and live API search.</p>
                 <div class="hero__actions">
-                    <a class="button button--primary" href="centers.html">Browse centers</a>
-                    <a class="button button--secondary" href="register.html">Create account</a>
-                    <a class="button button--ghost" href="/swagger">Open API docs</a>
+                    <a class="button button--primary" href="centers.html?locate=1">Find nearest centers</a>
+                    <a class="button button--secondary" href="centers.html">Browse all centers</a>
+                    <a class="button button--ghost" href="login.html">Sign in</a>
                 </div>
+                <p id="home-status" class="message">Connecting to the live NoorLocator directory...</p>
             </div>
-            <aside class="hero__panel">
+            <aside class="hero__panel hero__panel--stack">
                 <img class="hero__logo" src="assets/logo.svg" alt="NoorLocator logo">
+                <div class="mini-stat-grid">
+                    <article class="mini-stat">
+                        <span class="card__meta">Live directory</span>
+                        <strong id="home-center-count">--</strong>
+                        <p>Published centers currently available through the API.</p>
+                    </article>
+                    <article class="mini-stat">
+                        <span class="card__meta">Moderated data</span>
+                        <strong>Guest-ready</strong>
+                        <p>Public search is backed by the approved NoorLocator data model and location logic.</p>
+                    </article>
+                </div>
             </aside>
         </section>
 
         <section class="section">
             <div class="section__heading">
                 <div class="section__copy">
-                    <span class="eyebrow">Phase 1 scope</span>
-                    <h2>Scaffold first, business workflows next.</h2>
-                    <p>The stack is ready for ASP.NET Core, EF Core, MySQL, JWT, and static HTML/CSS/JS pages without hard-coding future business behavior.</p>
+                    <span class="eyebrow">How NoorLocator works</span>
+                    <h2>Built for clarity, location, and trusted community discovery.</h2>
+                    <p>The public experience is centered on real center data, server-side nearest-center logic, and direct access to languages and upcoming majalis.</p>
                 </div>
             </div>
             <div class="card-grid">
                 <article class="card">
-                    <span class="card__meta">Architecture</span>
-                    <h3>Clean separation</h3>
-                    <p>API, application, domain, and infrastructure projects are separated so moderation rules and location logic can grow without front-end rewrites.</p>
+                    <span class="card__meta">Locate</span>
+                    <h3>Nearest center search</h3>
+                    <p>Use your browser location to retrieve nearby centers ranked by distance through the backend Haversine calculation.</p>
                 </article>
                 <article class="card">
-                    <span class="card__meta">Moderation-ready</span>
-                    <h3>Role-aware routes</h3>
-                    <p>Guest, user, manager, and admin flows are mapped to placeholder endpoints using JWT and role-based authorization hooks.</p>
+                    <span class="card__meta">Explore</span>
+                    <h3>Filter by place and language</h3>
+                    <p>Browse by city, country, free-text query, or predefined language code to narrow the public center list.</p>
                 </article>
                 <article class="card">
-                    <span class="card__meta">Frontend</span>
-                    <h3>Brand system</h3>
-                    <p>The shared design system uses the approved NoorLocator palette and integrates the provided logo direction in navigation, hero, and favicon assets.</p>
+                    <span class="card__meta">Plan</span>
+                    <h3>Open a full center profile</h3>
+                    <p>Each detail page brings together description, address, map link, supported languages, and upcoming majalis.</p>
                 </article>
             </div>
         </section>
 
         <section class="section">
-            <div class="detail-grid">
-                <article class="status-card">
-                    <span id="health-badge" class="status-pill">Checking</span>
-                    <h3>API health</h3>
-                    <p id="health-message" class="message">Waiting for the backend health endpoint.</p>
-                </article>
-                <article class="panel">
-                    <span class="card__meta">Next phases</span>
-                    <h3>What comes after this scaffold</h3>
-                    <ul class="list">
-                        <li class="list__item">Persist moderated center requests instead of placeholder responses.</li>
-                        <li class="list__item">Add real JWT issuance and role-based authentication flows.</li>
-                        <li class="list__item">Implement nearest-center search and center-specific majalis retrieval.</li>
-                    </ul>
-                </article>
+            <div class="section__heading">
+                <div class="section__copy">
+                    <span class="eyebrow">Live preview</span>
+                    <h2>Centers coming directly from the API.</h2>
+                    <p>The cards below are rendered from the live public center endpoints, not from hardcoded content.</p>
+                </div>
+                <a class="button button--secondary" href="centers.html">Open center directory</a>
             </div>
+            <div id="featured-centers" class="card-grid"></div>
         </section>
     </main>
 

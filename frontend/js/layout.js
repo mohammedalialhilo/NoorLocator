@@ -26,7 +26,7 @@ window.NoorLocatorLayout = (() => {
                     <a class="brand" href="index.html" aria-label="NoorLocator home">
                         <img class="brand__mark" src="assets/logo.svg" alt="NoorLocator logo">
                         <span>
-                            <span class="brand__eyebrow">Phase 2 Foundation</span>
+                            <span class="brand__eyebrow">Public Discovery</span>
                             <span class="brand__title">NoorLocator</span>
                         </span>
                     </a>
@@ -57,7 +57,7 @@ window.NoorLocatorLayout = (() => {
             <footer class="site-footer">
                 <div class="site-footer__inner">
                     <p class="site-footer__credit">Driven by موكب خدام اهل البيت (عليهم السلام), Copenhagen, Denmark.</p>
-                    <p>NoorLocator Phase 2 adds persisted authentication, role-based access, seeded data, and real API-backed center discovery.</p>
+                    <p>NoorLocator helps guests discover nearby centers and upcoming majalis through real API-backed public search.</p>
                 </div>
             </footer>
         `;

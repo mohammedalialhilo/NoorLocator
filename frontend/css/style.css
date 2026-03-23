@@ -215,7 +215,8 @@ select {
 
 h1,
 h2,
-h3 {
+h3,
+h4 {
     margin: 0 0 0.8rem;
     font-family: "Palatino Linotype", "Book Antiqua", Georgia, serif;
     line-height: 1.08;
@@ -428,6 +429,27 @@ textarea.form__control {
     padding: 3rem 0 1rem;
 }
 
+.page-hero--split {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+    gap: 1.2rem;
+    align-items: stretch;
+}
+
+.page-hero__content,
+.page-hero__aside,
+.mini-stat,
+.info-card {
+    background: rgba(255, 253, 248, 0.92);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+}
+
+.page-hero__content {
+    padding: 2rem;
+}
+
 .detail-meta {
     display: flex;
     flex-wrap: wrap;
@@ -464,6 +486,174 @@ textarea.form__control {
     align-items: center;
 }
 
+.utility-row--wrap {
+    row-gap: 0.45rem;
+}
+
+.hero--discovery {
+    align-items: stretch;
+}
+
+.hero__panel--stack {
+    gap: 1rem;
+    align-content: start;
+}
+
+.hero__logo--detail {
+    width: min(180px, 55%);
+}
+
+.mini-stat-grid,
+.info-grid {
+    display: grid;
+    gap: 1rem;
+    width: 100%;
+}
+
+.mini-stat,
+.info-card {
+    padding: 1.15rem;
+}
+
+.mini-stat strong,
+.info-card strong {
+    display: block;
+    margin-bottom: 0.45rem;
+    font-family: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    font-size: 1.2rem;
+}
+
+.filter-form {
+    width: 100%;
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 1rem;
+}
+
+.card__header {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+}
+
+.card__excerpt {
+    min-height: 4.8rem;
+}
+
+.card--interactive {
+    display: flex;
+    flex-direction: column;
+}
+
+.card--interactive .button-row {
+    margin-top: auto;
+}
+
+.chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.55rem 0.85rem;
+    border-radius: var(--radius-pill);
+    background: rgba(16, 40, 56, 0.08);
+    color: var(--color-ink-deep);
+    border: 1px solid rgba(13, 37, 53, 0.08);
+    font-size: 0.92rem;
+    font-weight: 700;
+}
+
+.chip--muted {
+    background: rgba(220, 201, 175, 0.38);
+}
+
+.stack-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.list-card {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(13, 37, 53, 0.08);
+    background: rgba(238, 228, 214, 0.42);
+}
+
+.list-card__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.8rem;
+}
+
+.list-card__head h4 {
+    margin-bottom: 0;
+}
+
+.text-emphasis {
+    color: var(--color-ink-deep);
+}
+
+.text-emphasis--success {
+    color: var(--color-success);
+}
+
+.text-emphasis--error {
+    color: #8c2f34;
+}
+
+.empty-state--soft {
+    background: rgba(255, 253, 248, 0.86);
+}
+
+.empty-state--error {
+    border-style: solid;
+    border-color: rgba(140, 47, 52, 0.22);
+    color: #8c2f34;
+}
+
+.skeleton {
+    display: block;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(220, 201, 175, 0.4), rgba(255, 253, 248, 0.9), rgba(220, 201, 175, 0.4));
+    background-size: 180% 100%;
+    animation: shimmer 1.2s linear infinite;
+}
+
+.skeleton--line {
+    height: 0.9rem;
+    margin-bottom: 0.75rem;
+}
+
+.skeleton--sm {
+    width: 36%;
+}
+
+.skeleton--md {
+    width: 62%;
+}
+
+.skeleton--lg {
+    width: 84%;
+}
+
+.card--loading,
+.info-card--loading {
+    overflow: hidden;
+}
+
 @keyframes float-in {
     from {
         opacity: 0;
@@ -476,9 +666,20 @@ textarea.form__control {
     }
 }
 
+@keyframes shimmer {
+    0% {
+        background-position: 180% 0;
+    }
+
+    100% {
+        background-position: -20% 0;
+    }
+}
+
 @media (max-width: 960px) {
     .hero,
-    .detail-grid {
+    .detail-grid,
+    .page-hero--split {
         grid-template-columns: 1fr;
     }
 
@@ -494,16 +695,24 @@ textarea.form__control {
         flex-direction: column;
     }
 
+    .card__header,
+    .list-card__head {
+        flex-direction: column;
+    }
+
     .brand__title {
         font-size: 1.2rem;
     }
 
     .hero__content,
     .hero__panel,
+    .page-hero__content,
     .card,
     .panel,
     .status-card,
-    .form-shell {
+    .form-shell,
+    .mini-stat,
+    .info-card {
         padding: 1.2rem;
     }
 

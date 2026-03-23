@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>NoorLocator | Centers</title>
+    <title>NoorLocator | Center Directory</title>
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -11,13 +11,80 @@
     <div data-site-header></div>
 
     <main class="page-shell">
-        <section class="page-hero">
-            <span class="eyebrow">Center discovery</span>
-            <h1>Approved centers will surface here.</h1>
-            <p>Phase 1 connects this page to the scaffolded `GET /api/centers` endpoint and preserves empty, loading, and error states for future data.</p>
+        <section class="page-hero page-hero--split">
+            <div class="page-hero__content">
+                <span class="eyebrow">Center discovery</span>
+                <h1>Search the NoorLocator center directory.</h1>
+                <p>Browse all approved centers, request nearby results from your browser location, or filter by city, country, and language code.</p>
+                <div class="hero__actions">
+                    <button id="locate-centers" class="button button--primary" type="button" data-locate-centers>Use my location</button>
+                    <a class="button button--ghost" href="index.html">Back home</a>
+                </div>
+                <p id="centers-page-message" class="message">Loading the public center directory...</p>
+            </div>
+            <aside class="hero__panel hero__panel--stack">
+                <article class="mini-stat">
+                    <span class="card__meta">Location status</span>
+                    <strong id="location-status">Checking</strong>
+                    <p id="current-location">Browser geolocation helps NoorLocator calculate approximate distance in kilometers.</p>
+                </article>
+            </aside>
+        </section>
+
+        <section class="section" id="search">
+            <div class="section__heading">
+                <div class="section__copy">
+                    <span class="eyebrow">Search and filter</span>
+                    <h2>Find centers by place, language, or keywords.</h2>
+                    <p>If you deny location access, you can still discover centers through city and country search.</p>
+                </div>
+            </div>
+            <form id="center-search-form" class="panel filter-form">
+                <div class="filter-grid">
+                    <label class="form__group">
+                        <span class="form__label">Keyword</span>
+                        <input class="form__control" type="text" name="query" placeholder="Center name, address, or description">
+                    </label>
+                    <label class="form__group">
+                        <span class="form__label">City</span>
+                        <input class="form__control" type="text" name="city" placeholder="Copenhagen">
+                    </label>
+                    <label class="form__group">
+                        <span class="form__label">Country</span>
+                        <input class="form__control" type="text" name="country" placeholder="Denmark">
+                    </label>
+                    <label class="form__group">
+                        <span class="form__label">Language code</span>
+                        <input class="form__control" type="text" name="languageCode" placeholder="ar, en, sv, fa, ur">
+                    </label>
+                </div>
+                <div class="hero__actions">
+                    <button class="button button--primary" type="submit">Search centers</button>
+                    <button id="clear-center-filters" class="button button--secondary" type="button">Show all centers</button>
+                </div>
+                <p data-form-message="center-search-form" class="message"></p>
+            </form>
         </section>
 
         <section class="section">
+            <div class="section__heading">
+                <div class="section__copy">
+                    <span class="eyebrow">Nearby</span>
+                    <h2>Closest centers to your current location.</h2>
+                    <p>This section is filled from `GET /api/centers/nearest` when location access is available.</p>
+                </div>
+            </div>
+            <div id="nearby-centers" class="card-grid"></div>
+        </section>
+
+        <section class="section">
+            <div class="section__heading">
+                <div class="section__copy">
+                    <span class="eyebrow">Directory</span>
+                    <h2>All published centers.</h2>
+                    <p id="centers-results-summary">Showing centers from the live public API.</p>
+                </div>
+            </div>
             <div id="centers-list" class="card-grid"></div>
         </section>
     </main>

@@ -10,10 +10,37 @@ namespace NoorLocator.Infrastructure.Services.Centers;
 
 public class CenterService(NoorLocatorDbContext dbContext) : ICenterService
 {
-    public async Task<OperationResult<CenterDetailsDto>> GetCenterByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async Task<OperationResult<IReadOnlyCollection<CenterSummaryDto>>> GetCentersAsync(CenterLocationQueryDto query, CancellationToken cancellationToken = default)
     {
+        var centers = await dbContext.Centers
+            .AsNoTracking()
+            .OrderBy(center => center.Country)
+            .ThenBy(center => center.City)
+            .ThenBy(center => center.Name)
+            .Select(center => new CenterSummaryDto
+            {
+                Id = center.Id,
+                Name = center.Name,
+                Description = center.Description,
+                Address = center.Address,
+                City = center.City,
+                Country = center.Country,
+                Latitude = center.Latitude,
+                Longitude = center.Longitude
+            })
+            .ToArrayAsync(cancellationToken);
+
+        return OperationResult<IReadOnlyCollection<CenterSummaryDto>>.Success(
+            ApplyDistance(centers, query.Lat, query.Lng));
+    }
+
+    public async Task<OperationResult<CenterDetailsDto>> GetCenterByIdAsync(int id, CenterLocationQueryDto query, CancellationToken cancellationToken = default)
+    {
+        var todayUtc = DateTime.UtcNow.Date;
+
         var center = await dbContext.Centers
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(currentCenter => currentCenter.CenterLanguages)
                 .ThenInclude(centerLanguage => centerLanguage.Language)
             .Include(currentCenter => currentCenter.Majalis)
@@ -30,12 +57,15 @@ public class CenterService(NoorLocatorDbContext dbContext) : ICenterService
         {
             Id = center.Id,
             Name = center.Name,
+            Description = center.Description,
             Address = center.Address,
             City = center.City,
             Country = center.Country,
             Latitude = center.Latitude,
             Longitude = center.Longitude,
-            Description = center.Description,
+            DistanceKm = query.Lat.HasValue && query.Lng.HasValue
+                ? CalculateApproximateDistanceKm((double)query.Lat.Value, (double)query.Lng.Value, (double)center.Latitude, (double)center.Longitude)
+                : null,
             Languages = center.CenterLanguages
                 .Where(centerLanguage => centerLanguage.Language is not null)
                 .Select(centerLanguage => new LanguageDto
@@ -47,6 +77,7 @@ public class CenterService(NoorLocatorDbContext dbContext) : ICenterService
                 .OrderBy(language => language.Name)
                 .ToArray(),
             Majalis = center.Majalis
+                .Where(majlis => majlis.Date >= todayUtc)
                 .OrderBy(majlis => majlis.Date)
                 .Select(MapMajlis)
                 .ToArray()
@@ -55,26 +86,65 @@ public class CenterService(NoorLocatorDbContext dbContext) : ICenterService
         return OperationResult<CenterDetailsDto>.Success(dto);
     }
 
-    public async Task<OperationResult<IReadOnlyCollection<CenterSummaryDto>>> GetCentersAsync(CancellationToken cancellationToken = default)
+    public async Task<OperationResult<IReadOnlyCollection<LanguageDto>>> GetCenterLanguagesAsync(int centerId, CancellationToken cancellationToken = default)
     {
-        var centers = await dbContext.Centers
+        if (!await CenterExistsAsync(centerId, cancellationToken))
+        {
+            return OperationResult<IReadOnlyCollection<LanguageDto>>.Failure("Center not found.", 404);
+        }
+
+        var languages = await dbContext.CenterLanguages
             .AsNoTracking()
-            .OrderBy(center => center.Country)
-            .ThenBy(center => center.City)
-            .ThenBy(center => center.Name)
-            .Select(center => new CenterSummaryDto
+            .Where(centerLanguage => centerLanguage.CenterId == centerId)
+            .Where(centerLanguage => centerLanguage.Language != null)
+            .OrderBy(centerLanguage => centerLanguage.Language!.Name)
+            .Select(centerLanguage => new LanguageDto
             {
-                Id = center.Id,
-                Name = center.Name,
-                Address = center.Address,
-                City = center.City,
-                Country = center.Country,
-                Latitude = center.Latitude,
-                Longitude = center.Longitude
+                Id = centerLanguage.Language!.Id,
+                Name = centerLanguage.Language.Name,
+                Code = centerLanguage.Language.Code
             })
             .ToArrayAsync(cancellationToken);
 
-        return OperationResult<IReadOnlyCollection<CenterSummaryDto>>.Success(centers);
+        return OperationResult<IReadOnlyCollection<LanguageDto>>.Success(languages);
+    }
+
+    public async Task<OperationResult<IReadOnlyCollection<MajlisDto>>> GetCenterMajalisAsync(int centerId, CancellationToken cancellationToken = default)
+    {
+        if (!await CenterExistsAsync(centerId, cancellationToken))
+        {
+            return OperationResult<IReadOnlyCollection<MajlisDto>>.Failure("Center not found.", 404);
+        }
+
+        var todayUtc = DateTime.UtcNow.Date;
+
+        var majalis = await dbContext.Majalis
+            .AsNoTracking()
+            .Where(majlis => majlis.CenterId == centerId && majlis.Date >= todayUtc)
+            .Include(majlis => majlis.MajlisLanguages)
+                .ThenInclude(majlisLanguage => majlisLanguage.Language)
+            .OrderBy(majlis => majlis.Date)
+            .Select(majlis => new MajlisDto
+            {
+                Id = majlis.Id,
+                Title = majlis.Title,
+                Description = majlis.Description,
+                Date = majlis.Date,
+                Time = majlis.Time,
+                CenterId = majlis.CenterId,
+                Languages = majlis.MajlisLanguages
+                    .Where(majlisLanguage => majlisLanguage.Language != null)
+                    .Select(majlisLanguage => new LanguageDto
+                    {
+                        Id = majlisLanguage.Language!.Id,
+                        Name = majlisLanguage.Language.Name,
+                        Code = majlisLanguage.Language.Code
+                    })
+                    .ToArray()
+            })
+            .ToArrayAsync(cancellationToken);
+
+        return OperationResult<IReadOnlyCollection<MajlisDto>>.Success(majalis);
     }
 
     public async Task<OperationResult<IReadOnlyCollection<CenterSummaryDto>>> GetNearestCentersAsync(decimal latitude, decimal longitude, CancellationToken cancellationToken = default)
@@ -85,6 +155,7 @@ public class CenterService(NoorLocatorDbContext dbContext) : ICenterService
             {
                 Id = center.Id,
                 Name = center.Name,
+                Description = center.Description,
                 Address = center.Address,
                 City = center.City,
                 Country = center.Country,
@@ -93,16 +164,102 @@ public class CenterService(NoorLocatorDbContext dbContext) : ICenterService
             })
             .ToArrayAsync(cancellationToken);
 
-        var sorted = centers
+        var sorted = ApplyDistance(centers, latitude, longitude, sortByDistance: true);
+        return OperationResult<IReadOnlyCollection<CenterSummaryDto>>.Success(sorted);
+    }
+
+    public async Task<OperationResult<IReadOnlyCollection<CenterSummaryDto>>> SearchCentersAsync(CenterSearchQueryDto query, CancellationToken cancellationToken = default)
+    {
+        var searchQuery = dbContext.Centers
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(query.Query))
+        {
+            var normalizedQuery = query.Query.Trim();
+            searchQuery = searchQuery.Where(center =>
+                center.Name.Contains(normalizedQuery) ||
+                center.Description.Contains(normalizedQuery) ||
+                center.Address.Contains(normalizedQuery) ||
+                center.City.Contains(normalizedQuery) ||
+                center.Country.Contains(normalizedQuery));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.City))
+        {
+            var city = query.City.Trim();
+            searchQuery = searchQuery.Where(center => center.City.Contains(city));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Country))
+        {
+            var country = query.Country.Trim();
+            searchQuery = searchQuery.Where(center => center.Country.Contains(country));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.LanguageCode))
+        {
+            var languageCode = query.LanguageCode.Trim().ToLowerInvariant();
+            searchQuery = searchQuery.Where(center =>
+                center.CenterLanguages.Any(centerLanguage => centerLanguage.Language != null && centerLanguage.Language.Code == languageCode));
+        }
+
+        var centers = await searchQuery
+            .OrderBy(center => center.Country)
+            .ThenBy(center => center.City)
+            .ThenBy(center => center.Name)
+            .Select(center => new CenterSummaryDto
+            {
+                Id = center.Id,
+                Name = center.Name,
+                Description = center.Description,
+                Address = center.Address,
+                City = center.City,
+                Country = center.Country,
+                Latitude = center.Latitude,
+                Longitude = center.Longitude
+            })
+            .ToArrayAsync(cancellationToken);
+
+        return OperationResult<IReadOnlyCollection<CenterSummaryDto>>.Success(
+            ApplyDistance(centers, query.Lat, query.Lng, sortByDistance: query.Lat.HasValue && query.Lng.HasValue));
+    }
+
+    private async Task<bool> CenterExistsAsync(int centerId, CancellationToken cancellationToken)
+        => await dbContext.Centers.AnyAsync(center => center.Id == centerId, cancellationToken);
+
+    private static IReadOnlyCollection<CenterSummaryDto> ApplyDistance(
+        IReadOnlyCollection<CenterSummaryDto> centers,
+        decimal? latitude,
+        decimal? longitude,
+        bool sortByDistance = false)
+    {
+        if (!latitude.HasValue || !longitude.HasValue)
+        {
+            return centers.ToArray();
+        }
+
+        var withDistance = centers
             .Select(center =>
             {
-                center.DistanceKm = CalculateDistanceKm((double)latitude, (double)longitude, (double)center.Latitude, (double)center.Longitude);
+                center.DistanceKm = CalculateApproximateDistanceKm(
+                    (double)latitude.Value,
+                    (double)longitude.Value,
+                    (double)center.Latitude,
+                    (double)center.Longitude);
                 return center;
             })
-            .OrderBy(center => center.DistanceKm)
             .ToArray();
 
-        return OperationResult<IReadOnlyCollection<CenterSummaryDto>>.Success(sorted);
+        if (!sortByDistance)
+        {
+            return withDistance;
+        }
+
+        return withDistance
+            .OrderBy(center => center.DistanceKm)
+            .ThenBy(center => center.Name)
+            .ToArray();
     }
 
     private static MajlisDto MapMajlis(Domain.Entities.Majlis majlis)
@@ -128,7 +285,7 @@ public class CenterService(NoorLocatorDbContext dbContext) : ICenterService
         };
     }
 
-    private static double CalculateDistanceKm(double lat1, double lng1, double lat2, double lng2)
+    private static double CalculateApproximateDistanceKm(double lat1, double lng1, double lat2, double lng2)
     {
         const double earthRadiusKm = 6371d;
         var dLat = DegreesToRadians(lat2 - lat1);
@@ -137,7 +294,7 @@ public class CenterService(NoorLocatorDbContext dbContext) : ICenterService
                 Math.Cos(DegreesToRadians(lat1)) * Math.Cos(DegreesToRadians(lat2)) *
                 Math.Sin(dLng / 2) * Math.Sin(dLng / 2);
         var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-        return earthRadiusKm * c;
+        return Math.Round(earthRadiusKm * c, 1, MidpointRounding.AwayFromZero);
     }
 
     private static double DegreesToRadians(double degrees) => degrees * (Math.PI / 180d);

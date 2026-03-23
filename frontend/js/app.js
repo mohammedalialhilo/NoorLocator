@@ -1,3 +1,5 @@
+const DISCOVERY_LOCATION_KEY = "noorlocator.discovery.location";
+
 document.addEventListener("DOMContentLoaded", () => {
     const page = document.body.dataset.page;
 
@@ -40,59 +42,485 @@ function setMessage(element, message, type = "") {
     element.className = `message${type ? ` message--${type}` : ""}`;
 }
 
-async function initHomePage() {
-    const healthBadge = document.getElementById("health-badge");
-    const healthMessage = document.getElementById("health-message");
-
-    setMessage(healthMessage, "Checking API health...");
-
-    try {
-        const response = await window.NoorLocatorApi.getHealth();
-        if (healthBadge) {
-            healthBadge.textContent = "Healthy";
-            healthBadge.classList.add("status-pill--success");
-        }
-
-        setMessage(healthMessage, response.message, "success");
-    } catch (error) {
-        if (healthBadge) {
-            healthBadge.textContent = "Unavailable";
-        }
-
-        setMessage(healthMessage, error.message || "Unable to reach the API.", "error");
-    }
-}
-
-async function initCentersPage() {
-    const container = document.getElementById("centers-list");
+function setContainerMessage(container, message, modifier = "") {
     if (!container) {
         return;
     }
 
-    container.innerHTML = `<div class="empty-state">Loading approved centers from the API...</div>`;
+    const className = modifier ? `empty-state empty-state--${modifier}` : "empty-state";
+    container.innerHTML = `<div class="${className}">${escapeHtml(message)}</div>`;
+}
+
+function setCardLoadingState(container, count = 3) {
+    if (!container) {
+        return;
+    }
+
+    container.innerHTML = Array.from({ length: count }, () => `
+        <article class="card card--loading">
+            <span class="skeleton skeleton--line skeleton--sm"></span>
+            <span class="skeleton skeleton--line skeleton--lg"></span>
+            <span class="skeleton skeleton--line"></span>
+            <span class="skeleton skeleton--line skeleton--md"></span>
+        </article>
+    `).join("");
+}
+
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+}
+
+function truncateText(value, maxLength = 140) {
+    const text = String(value || "").trim();
+    if (text.length <= maxLength) {
+        return text;
+    }
+
+    return `${text.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+}
+
+function formatDistance(distanceKm) {
+    if (typeof distanceKm !== "number" || Number.isNaN(distanceKm)) {
+        return "";
+    }
+
+    return `${distanceKm.toFixed(1)} km away`;
+}
+
+function formatDateTime(dateValue) {
+    if (!dateValue) {
+        return "Date to be announced";
+    }
+
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) {
+        return "Date to be announced";
+    }
+
+    return new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short"
+    }).format(date);
+}
+
+function buildMapLink(center) {
+    if (typeof center?.latitude !== "number" || typeof center?.longitude !== "number") {
+        return "#";
+    }
+
+    return `https://www.google.com/maps?q=${encodeURIComponent(`${center.latitude},${center.longitude}`)}`;
+}
+
+function parseLocation(latValue, lngValue) {
+    const lat = typeof latValue === "number" ? latValue : Number(latValue);
+    const lng = typeof lngValue === "number" ? lngValue : Number(lngValue);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return null;
+    }
+
+    return {
+        lat: Number(lat.toFixed(6)),
+        lng: Number(lng.toFixed(6))
+    };
+}
+
+function getStoredDiscoveryLocation() {
+    try {
+        const raw = window.localStorage.getItem(DISCOVERY_LOCATION_KEY);
+        if (!raw) {
+            return null;
+        }
+
+        const parsed = JSON.parse(raw);
+        return parseLocation(parsed.lat, parsed.lng);
+    } catch {
+        return null;
+    }
+}
+
+function getDiscoveryLocationFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const lat = params.get("lat");
+    const lng = params.get("lng");
+
+    if (!lat || !lng) {
+        return null;
+    }
+
+    return parseLocation(lat, lng);
+}
+
+function getDiscoveryLocation() {
+    return getDiscoveryLocationFromUrl() || getStoredDiscoveryLocation();
+}
+
+function setDiscoveryLocation(location) {
+    if (!location) {
+        return;
+    }
 
     try {
-        const response = await window.NoorLocatorApi.getCenters();
+        window.localStorage.setItem(DISCOVERY_LOCATION_KEY, JSON.stringify(location));
+    } catch {
+        // Ignore storage failures and keep the UI running.
+    }
+}
+
+function hasSearchFilters(filters) {
+    return Boolean(
+        filters.query ||
+        filters.city ||
+        filters.country ||
+        filters.languageCode
+    );
+}
+
+function appendLocationParams(params, location) {
+    if (!location) {
+        return params;
+    }
+
+    return {
+        ...params,
+        lat: location.lat,
+        lng: location.lng
+    };
+}
+
+function getTrimmedFormValues(form) {
+    return Object.fromEntries(
+        Array.from(new FormData(form).entries()).map(([key, value]) => [key, String(value).trim()]));
+}
+
+function buildCenterDetailsHref(centerId, location = getDiscoveryLocation()) {
+    const params = new URLSearchParams({ id: String(centerId) });
+
+    if (location) {
+        params.set("lat", String(location.lat));
+        params.set("lng", String(location.lng));
+    }
+
+    return `center-details.html?${params.toString()}`;
+}
+
+function renderCenterCards(container, centers, emptyMessage, options = {}) {
+    if (!container) {
+        return;
+    }
+
+    if (!centers.length) {
+        setContainerMessage(container, emptyMessage, "soft");
+        return;
+    }
+
+    const {
+        limit,
+        titleLevel = "h3"
+    } = options;
+
+    const visibleCenters = typeof limit === "number" ? centers.slice(0, limit) : centers;
+
+    container.innerHTML = visibleCenters.map(center => `
+        <article class="card card--interactive">
+            <div class="card__header">
+                <span class="card__meta">${escapeHtml(`${center.city}, ${center.country}`)}</span>
+                ${typeof center.distanceKm === "number" ? `<span class="status-pill status-pill--success">${escapeHtml(formatDistance(center.distanceKm))}</span>` : ""}
+            </div>
+            <${titleLevel}>${escapeHtml(center.name)}</${titleLevel}>
+            <p class="card__excerpt">${escapeHtml(truncateText(center.description || "Public center details are available on the profile page.", 150))}</p>
+            <p>${escapeHtml(center.address)}</p>
+            <div class="button-row">
+                <a class="button button--secondary" href="${buildCenterDetailsHref(center.id)}">View details</a>
+                <a class="button button--ghost" href="${buildMapLink(center)}" target="_blank" rel="noreferrer noopener">Open map</a>
+            </div>
+        </article>
+    `).join("");
+}
+
+function renderLanguageChips(container, languages) {
+    if (!container) {
+        return;
+    }
+
+    if (!languages.length) {
+        container.innerHTML = `<span class="empty-state empty-state--soft">No supported languages are published for this center yet.</span>`;
+        return;
+    }
+
+    container.innerHTML = languages
+        .map(language => `<span class="chip">${escapeHtml(`${language.name} (${language.code})`)}</span>`)
+        .join("");
+}
+
+function renderMajalis(container, majalis) {
+    if (!container) {
+        return;
+    }
+
+    if (!majalis.length) {
+        container.innerHTML = `<div class="empty-state empty-state--soft">No upcoming majalis are currently published for this center.</div>`;
+        return;
+    }
+
+    container.innerHTML = majalis.map(majlis => `
+        <article class="list-card">
+            <div class="list-card__head">
+                <h4>${escapeHtml(majlis.title)}</h4>
+                <span class="status-pill">${escapeHtml(formatDateTime(majlis.date))}</span>
+            </div>
+            <p>${escapeHtml(majlis.description || "Majlis details will appear here when available.")}</p>
+            <div class="utility-row utility-row--wrap">
+                <span class="card__meta">${escapeHtml(majlis.time || "Time to be confirmed")}</span>
+                ${(majlis.languages || []).map(language => `<span class="chip chip--muted">${escapeHtml(language.name)}</span>`).join("")}
+            </div>
+        </article>
+    `).join("");
+}
+
+function requestBrowserLocation() {
+    if (!("geolocation" in navigator)) {
+        return Promise.reject(new Error("Geolocation is not supported in this browser. Use the city and country filters instead."));
+    }
+
+    return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                const location = parseLocation(position.coords.latitude, position.coords.longitude);
+                if (!location) {
+                    reject(new Error("Your browser returned an invalid location."));
+                    return;
+                }
+
+                resolve(location);
+            },
+            error => {
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        reject(new Error("Location access was denied. Use city and country search instead."));
+                        break;
+                    case error.TIMEOUT:
+                        reject(new Error("Location lookup timed out. Please try again or use city and country search."));
+                        break;
+                    default:
+                        reject(new Error("Unable to determine your location right now."));
+                        break;
+                }
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000
+            });
+    });
+}
+
+async function initHomePage() {
+    const featuredCenters = document.getElementById("featured-centers");
+    const homeStatus = document.getElementById("home-status");
+    const centerCount = document.getElementById("home-center-count");
+    const location = getDiscoveryLocation();
+
+    setCardLoadingState(featuredCenters, 3);
+    setMessage(homeStatus, "Connecting to the live NoorLocator directory...");
+
+    try {
+        const response = location
+            ? await window.NoorLocatorApi.getNearestCenters(location)
+            : await window.NoorLocatorApi.getCenters();
         const centers = response.data || [];
 
-        if (!centers.length) {
-            container.innerHTML = `<div class="empty-state">No centers are published yet.</div>`;
+        if (centerCount) {
+            centerCount.textContent = String(centers.length);
+        }
+
+        renderCenterCards(
+            featuredCenters,
+            centers,
+            "No public centers are available yet.",
+            { limit: 3 });
+
+        setMessage(
+            homeStatus,
+            location
+                ? "Showing the closest published centers based on your saved location."
+                : "Showing a live preview of published centers from the public API.",
+            "success");
+    } catch (error) {
+        if (centerCount) {
+            centerCount.textContent = "0";
+        }
+
+        setContainerMessage(featuredCenters, "The public center preview could not be loaded right now.", "error");
+        setMessage(homeStatus, error.message || "Unable to load the public center preview.", "error");
+    }
+}
+
+async function initCentersPage() {
+    const centersContainer = document.getElementById("centers-list");
+    const nearbyContainer = document.getElementById("nearby-centers");
+    const searchForm = document.getElementById("center-search-form");
+    const searchMessage = document.querySelector('[data-form-message="center-search-form"]');
+    const pageMessage = document.getElementById("centers-page-message");
+    const resultsSummary = document.getElementById("centers-results-summary");
+    const locationStatus = document.getElementById("location-status");
+    const currentLocation = document.getElementById("current-location");
+    const locateButtons = document.querySelectorAll("[data-locate-centers]");
+    const clearButton = document.getElementById("clear-center-filters");
+    const state = {
+        location: getDiscoveryLocation()
+    };
+
+    if (!centersContainer || !nearbyContainer || !searchForm) {
+        return;
+    }
+
+    async function loadDirectory(filters = null) {
+        setCardLoadingState(centersContainer, 4);
+        const response = filters && hasSearchFilters(filters)
+            ? await window.NoorLocatorApi.searchCenters(appendLocationParams(filters, state.location))
+            : await window.NoorLocatorApi.getCenters(appendLocationParams({}, state.location));
+        const centers = response.data || [];
+
+        renderCenterCards(centersContainer, centers, "No centers matched the current filters.");
+
+        if (resultsSummary) {
+            resultsSummary.textContent = filters && hasSearchFilters(filters)
+                ? `Showing ${centers.length} center${centers.length === 1 ? "" : "s"} that match your search.`
+                : `Showing ${centers.length} published center${centers.length === 1 ? "" : "s"} from the public API.`;
+        }
+    }
+
+    async function loadNearbyCenters() {
+        if (!state.location) {
+            setContainerMessage(nearbyContainer, "Enable location access to see the closest centers, or use the search filters below.", "soft");
             return;
         }
 
-        container.innerHTML = centers.map(center => `
-            <article class="card">
-                <span class="card__meta">${center.city}, ${center.country}</span>
-                <h3>${center.name}</h3>
-                <p>${center.address}</p>
-                <div class="button-row">
-                    <a class="button button--secondary" href="center-details.html?id=${center.id}">View details</a>
-                </div>
-            </article>
-        `).join("");
-    } catch (error) {
-        container.innerHTML = `<div class="empty-state">The centers endpoint returned an error: ${error.message || "Unknown error."}</div>`;
+        setCardLoadingState(nearbyContainer, 3);
+
+        try {
+            const response = await window.NoorLocatorApi.getNearestCenters(state.location);
+            const centers = response.data || [];
+            renderCenterCards(nearbyContainer, centers, "No nearby centers are available yet.", { limit: 3 });
+        } catch (error) {
+            setContainerMessage(nearbyContainer, error.message || "Nearby center lookup is currently unavailable.", "error");
+        }
     }
+
+    function updateLocationPanel(message, detail, type = "") {
+        if (locationStatus) {
+            locationStatus.textContent = message;
+            locationStatus.className = type ? `text-emphasis text-emphasis--${type}` : "text-emphasis";
+        }
+
+        if (currentLocation) {
+            currentLocation.textContent = detail;
+        }
+    }
+
+    async function refreshLocation() {
+        updateLocationPanel("Locating", "Requesting your browser location to calculate distances and nearby centers.");
+        setMessage(pageMessage, "Requesting your browser location...");
+
+        try {
+            const location = await requestBrowserLocation();
+            state.location = location;
+            setDiscoveryLocation(location);
+
+            updateLocationPanel(
+                "Enabled",
+                `Approximate coordinates active: ${location.lat.toFixed(3)}, ${location.lng.toFixed(3)}. Distances are now served from the API.`,
+                "success");
+            setMessage(pageMessage, "Location enabled. Distances and nearby centers are now available.", "success");
+
+            const filters = getTrimmedFormValues(searchForm);
+
+            try {
+                await Promise.all([
+                    loadDirectory(filters),
+                    loadNearbyCenters()
+                ]);
+            } catch (loadError) {
+                setContainerMessage(centersContainer, loadError.message || "The public center list could not be refreshed.", "error");
+                setMessage(pageMessage, loadError.message || "Location was enabled, but the center list could not be refreshed.", "error");
+            }
+        } catch (error) {
+            updateLocationPanel("Unavailable", error.message || "Location access is currently unavailable.", "error");
+            setMessage(pageMessage, error.message || "Location access is unavailable. Use city and country search instead.", "error");
+            setContainerMessage(nearbyContainer, "Location access is unavailable. Use city or country search to find relevant centers.", "soft");
+        }
+    }
+
+    locateButtons.forEach(button => {
+        button.addEventListener("click", () => {
+            refreshLocation();
+        });
+    });
+
+    searchForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        const filters = getTrimmedFormValues(searchForm);
+
+        setMessage(searchMessage, "Searching the public center directory...");
+
+        try {
+            await loadDirectory(filters);
+            setMessage(
+                searchMessage,
+                hasSearchFilters(filters)
+                    ? "Search results loaded from the API."
+                    : "Showing all published centers.",
+                "success");
+        } catch (error) {
+            setContainerMessage(centersContainer, error.message || "Search could not be completed.", "error");
+            setMessage(searchMessage, error.message || "Search could not be completed.", "error");
+        }
+    });
+
+    clearButton?.addEventListener("click", async () => {
+        searchForm.reset();
+        setMessage(searchMessage, "Showing all published centers...");
+        await loadDirectory();
+        setMessage(searchMessage, "Showing all published centers.", "success");
+    });
+
+    setCardLoadingState(centersContainer, 4);
+    setCardLoadingState(nearbyContainer, 3);
+
+    if (state.location) {
+        updateLocationPanel(
+            "Enabled",
+            `Using saved coordinates: ${state.location.lat.toFixed(3)}, ${state.location.lng.toFixed(3)}.`,
+            "success");
+    } else {
+        updateLocationPanel("Checking", "No saved location was found. NoorLocator will try browser geolocation next.");
+    }
+
+    try {
+        await loadDirectory();
+    } catch (error) {
+        setContainerMessage(centersContainer, error.message || "The public center directory could not be loaded.", "error");
+        setMessage(pageMessage, error.message || "The public center directory could not be loaded.", "error");
+    }
+
+    if (state.location) {
+        await loadNearbyCenters();
+        setMessage(pageMessage, "Showing distances and nearby centers using your saved location.", "success");
+        return;
+    }
+
+    if (new URLSearchParams(window.location.search).get("locate") === "1") {
+        await refreshLocation();
+        return;
+    }
+
+    await refreshLocation();
 }
 
 async function initCenterDetailsPage() {
@@ -101,35 +529,141 @@ async function initCenterDetailsPage() {
     const description = document.getElementById("center-description");
     const languages = document.getElementById("center-languages");
     const majalis = document.getElementById("center-majalis");
+    const infoGrid = document.getElementById("center-info-grid");
+    const detailMessage = document.getElementById("center-detail-message");
+    const mapLink = document.getElementById("center-map-link");
     const params = new URLSearchParams(window.location.search);
-    const id = params.get("id") || "1";
+    const id = Number(params.get("id"));
+    const location = getDiscoveryLocation();
+
+    if (!Number.isInteger(id) || id <= 0) {
+        if (title) {
+            title.textContent = "Center not found";
+        }
+
+        if (description) {
+            description.textContent = "The requested center identifier is invalid.";
+        }
+
+        setMessage(detailMessage, "Open the center directory and choose a valid center.", "error");
+        renderLanguageChips(languages, []);
+        renderMajalis(majalis, []);
+        if (infoGrid) {
+            infoGrid.innerHTML = "";
+        }
+        return;
+    }
 
     if (title) {
-        title.textContent = `Center #${id}`;
+        title.textContent = "Loading center details...";
+    }
+
+    if (meta) {
+        meta.innerHTML = `<span class="status-pill">Loading profile data</span>`;
+    }
+
+    if (description) {
+        description.textContent = "Fetching this center from the public NoorLocator API.";
+    }
+
+    if (languages) {
+        languages.innerHTML = `<span class="empty-state">Loading supported languages...</span>`;
+    }
+
+    if (majalis) {
+        majalis.innerHTML = `<div class="empty-state">Loading upcoming majalis...</div>`;
+    }
+
+    if (infoGrid) {
+        infoGrid.innerHTML = Array.from({ length: 3 }, () => `
+            <div class="info-card info-card--loading">
+                <span class="skeleton skeleton--line skeleton--sm"></span>
+                <span class="skeleton skeleton--line"></span>
+            </div>
+        `).join("");
     }
 
     try {
-        const response = await window.NoorLocatorApi.getCenter(id);
-        const center = response.data;
+        const [centerResult, languagesResult, majalisResult] = await Promise.allSettled([
+            window.NoorLocatorApi.getCenter(id, appendLocationParams({}, location)),
+            window.NoorLocatorApi.getCenterLanguages(id),
+            window.NoorLocatorApi.getCenterMajalis(id)
+        ]);
 
-        if (!center) {
-            throw { message: "Center details are not available yet." };
+        if (centerResult.status !== "fulfilled") {
+            throw centerResult.reason;
         }
 
+        const center = centerResult.value.data;
+        const centerLanguages = languagesResult.status === "fulfilled"
+            ? (languagesResult.value.data || [])
+            : (center.languages || []);
+        const centerMajalis = majalisResult.status === "fulfilled"
+            ? (majalisResult.value.data || [])
+            : (center.majalis || []);
+
+        document.title = `${center.name} | NoorLocator`;
         title.textContent = center.name;
-        meta.innerHTML = `<span class="status-pill">${center.city}, ${center.country}</span><span class="status-pill status-pill--muted">${center.address}</span>`;
-        description.textContent = center.description || "A full center profile will appear here once moderation and data management are live.";
-        languages.innerHTML = (center.languages || []).length
-            ? center.languages.map(language => `<li class="list__item">${language.name} (${language.code})</li>`).join("")
-            : `<li class="list__item">Supported languages will appear here after approval.</li>`;
-        majalis.innerHTML = (center.majalis || []).length
-            ? center.majalis.map(majlisItem => `<li class="list__item">${majlisItem.title} - ${new Date(majlisItem.date).toLocaleString()}</li>`).join("")
-            : `<li class="list__item">No majalis are published for this center yet.</li>`;
+        meta.innerHTML = `
+            <span class="status-pill">${escapeHtml(`${center.city}, ${center.country}`)}</span>
+            <span class="status-pill status-pill--muted">${escapeHtml(center.address)}</span>
+            ${typeof center.distanceKm === "number" ? `<span class="status-pill status-pill--success">${escapeHtml(formatDistance(center.distanceKm))}</span>` : ""}
+        `;
+        description.textContent = center.description || "This center has not published a public description yet.";
+        renderLanguageChips(languages, centerLanguages);
+        renderMajalis(majalis, centerMajalis);
+
+        if (infoGrid) {
+            infoGrid.innerHTML = `
+                <article class="info-card">
+                    <span class="card__meta">Address</span>
+                    <strong>${escapeHtml(center.address)}</strong>
+                    <p>${escapeHtml(`${center.city}, ${center.country}`)}</p>
+                </article>
+                <article class="info-card">
+                    <span class="card__meta">Distance</span>
+                    <strong>${escapeHtml(typeof center.distanceKm === "number" ? formatDistance(center.distanceKm) : "Unavailable")}</strong>
+                    <p>${typeof center.distanceKm === "number" ? "Approximate distance calculated server-side." : "Enable location to see approximate distance."}</p>
+                </article>
+                <article class="info-card">
+                    <span class="card__meta">Coordinates</span>
+                    <strong>${escapeHtml(center.latitude.toFixed(4))}, ${escapeHtml(center.longitude.toFixed(4))}</strong>
+                    <p>Use the map button to open turn-by-turn directions.</p>
+                </article>
+            `;
+        }
+
+        if (mapLink) {
+            mapLink.href = buildMapLink(center);
+        }
+
+        if (languagesResult.status !== "fulfilled" || majalisResult.status !== "fulfilled") {
+            setMessage(detailMessage, "Some supporting sections could not be refreshed independently, so NoorLocator used the center detail payload as a fallback.", "error");
+            return;
+        }
+
+        setMessage(detailMessage, "Center profile loaded successfully from the public API.", "success");
     } catch (error) {
-        meta.innerHTML = `<span class="status-pill status-pill--muted">Profile unavailable</span>`;
-        description.textContent = error.message || "Center details could not be loaded.";
-        languages.innerHTML = `<li class="list__item">Language associations are not available right now.</li>`;
-        majalis.innerHTML = `<li class="list__item">Majalis for this center are not available right now.</li>`;
+        if (title) {
+            title.textContent = "Center profile unavailable";
+        }
+
+        if (meta) {
+            meta.innerHTML = `<span class="status-pill status-pill--muted">Profile unavailable</span>`;
+        }
+
+        if (description) {
+            description.textContent = error.message || "Center details could not be loaded.";
+        }
+
+        renderLanguageChips(languages, []);
+        renderMajalis(majalis, []);
+
+        if (infoGrid) {
+            infoGrid.innerHTML = `<div class="empty-state empty-state--error">The center profile could not be loaded from the API right now.</div>`;
+        }
+
+        setMessage(detailMessage, error.message || "Center details could not be loaded.", "error");
     }
 }
 
@@ -253,8 +787,8 @@ function populateCards(containerId, cards) {
 
     container.innerHTML = cards.map(card => `
         <article class="card">
-            <h3>${card.title}</h3>
-            <p>${card.body}</p>
+            <h3>${escapeHtml(card.title)}</h3>
+            <p>${escapeHtml(card.body)}</p>
         </article>
     `).join("");
 }

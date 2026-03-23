@@ -34,15 +34,47 @@ window.NoorLocatorApi = (() => {
         return normalized;
     }
 
+    function toQueryString(params) {
+        const searchParams = new URLSearchParams();
+
+        Object.entries(params || {}).forEach(([key, value]) => {
+            if (value === undefined || value === null) {
+                return;
+            }
+
+            const normalized = typeof value === "string" ? value.trim() : value;
+            if (normalized === "") {
+                return;
+            }
+
+            searchParams.set(key, normalized);
+        });
+
+        const queryString = searchParams.toString();
+        return queryString ? `?${queryString}` : "";
+    }
+
     return {
         getHealth() {
             return request("/api/health");
         },
-        getCenters() {
-            return request("/api/centers");
+        getCenters(params = {}) {
+            return request(`/api/centers${toQueryString(params)}`);
         },
-        getCenter(id) {
-            return request(`/api/centers/${id}`);
+        searchCenters(params) {
+            return request(`/api/centers/search${toQueryString(params)}`);
+        },
+        getNearestCenters(params) {
+            return request(`/api/centers/nearest${toQueryString(params)}`);
+        },
+        getCenter(id, params = {}) {
+            return request(`/api/centers/${id}${toQueryString(params)}`);
+        },
+        getCenterMajalis(id) {
+            return request(`/api/centers/${id}/majalis`);
+        },
+        getCenterLanguages(id) {
+            return request(`/api/centers/${id}/languages`);
         },
         getMajalis(centerId) {
             const query = centerId ? `?centerId=${encodeURIComponent(centerId)}` : "";
