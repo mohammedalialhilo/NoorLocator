@@ -16,5 +16,11 @@ public class MajlisDto
 
     public int CenterId { get; set; }
 
+    public string CenterName { get; set; } = string.Empty;
+
+    public string CenterCity { get; set; } = string.Empty;
+
+    public string CenterCountry { get; set; } = string.Empty;
+
     public IReadOnlyCollection<LanguageDto> Languages { get; set; } = Array.Empty<LanguageDto>();
 }

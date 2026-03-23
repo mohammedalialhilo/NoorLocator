@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>NoorLocator | Manager</title>
+    <title>NoorLocator | Manager Workspace</title>
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -11,14 +11,126 @@
     <div data-site-header></div>
 
     <main class="page-shell">
-        <section class="page-hero">
-            <span class="eyebrow">Center manager</span>
-            <h1>Manager tools are mapped and ready for Phase 2.</h1>
-            <p>This page is the frontend placeholder for assigned-center stewardship, majlis publishing, and moderated edit workflows.</p>
+        <section class="page-hero page-hero--split">
+            <div class="page-hero__content">
+                <span class="eyebrow">Center manager</span>
+                <h1>Publish and maintain majalis for your assigned centers.</h1>
+                <p>The manager workspace is tied to real center assignments. You can create, edit, and remove majalis only for centers you are approved to manage.</p>
+                <div class="hero__actions">
+                    <a class="button button--primary" href="#majlis-editor">Create a majlis</a>
+                    <a class="button button--secondary" href="#majlis-list">Manage current majalis</a>
+                </div>
+                <p id="manager-page-message" class="message">Loading your manager workspace...</p>
+            </div>
+            <aside class="hero__panel hero__panel--stack">
+                <article class="mini-stat">
+                    <span class="card__meta">Assigned centers</span>
+                    <strong id="manager-center-count">0</strong>
+                    <p>Only your approved centers appear in this workspace unless you are signed in as an admin.</p>
+                </article>
+                <article class="mini-stat">
+                    <span class="card__meta">Majalis in view</span>
+                    <strong id="manager-majlis-count">0</strong>
+                    <p>Majalis are loaded from the live API and filtered by your currently selected center.</p>
+                </article>
+            </aside>
         </section>
 
         <section class="section">
+            <nav class="dashboard-nav" aria-label="Manager navigation">
+                <a class="dashboard-nav__link" href="#manager-overview">Overview</a>
+                <a class="dashboard-nav__link" href="#my-centers">My centers</a>
+                <a class="dashboard-nav__link" href="#majlis-editor">Majlis editor</a>
+                <a class="dashboard-nav__link" href="#majlis-list">Majlis list</a>
+            </nav>
+        </section>
+
+        <section class="section" id="manager-overview">
             <div id="manager-cards" class="dashboard-grid"></div>
+        </section>
+
+        <section class="section" id="my-centers">
+            <div class="section__heading">
+                <div class="section__copy">
+                    <span class="card__meta">My assigned centers</span>
+                    <h2>Work only where you are approved.</h2>
+                    <p>Your majlis tools are constrained by the center assignments returned from the backend.</p>
+                </div>
+            </div>
+            <div id="manager-centers" class="card-grid">
+                <div class="empty-state">Loading your assigned centers...</div>
+            </div>
+        </section>
+
+        <section class="section section-stack">
+            <div class="detail-grid detail-grid--dashboard">
+                <article class="panel" id="majlis-editor">
+                    <span class="card__meta">Majlis editor</span>
+                    <h3 id="majlis-form-heading">Create a new majlis</h3>
+                    <form id="majlis-form" class="form">
+                        <input type="hidden" name="majlisId">
+
+                        <label class="form__group">
+                            <span class="form__label">Center</span>
+                            <select id="majlis-center-select" class="form__control" name="centerId" required></select>
+                        </label>
+
+                        <div class="filter-grid">
+                            <label class="form__group">
+                                <span class="form__label">Title</span>
+                                <input class="form__control" type="text" name="title" maxlength="200" required>
+                            </label>
+                            <label class="form__group">
+                                <span class="form__label">Date</span>
+                                <input class="form__control" type="date" name="date" required>
+                            </label>
+                            <label class="form__group">
+                                <span class="form__label">Time</span>
+                                <input class="form__control" type="time" name="time" required>
+                            </label>
+                        </div>
+
+                        <label class="form__group">
+                            <span class="form__label">Description</span>
+                            <textarea class="form__control" name="description" placeholder="Share the majlis details that should appear publicly."></textarea>
+                        </label>
+
+                        <fieldset class="form__group">
+                            <legend class="form__label">Languages</legend>
+                            <div id="majlis-language-options" class="checkbox-grid">
+                                <div class="empty-state empty-state--soft">Loading predefined languages...</div>
+                            </div>
+                        </fieldset>
+
+                        <div class="button-row">
+                            <button id="majlis-submit-button" class="button button--primary" type="submit">Create majlis</button>
+                            <button id="majlis-cancel-button" class="button button--ghost" type="button" hidden>Cancel edit</button>
+                        </div>
+                        <p data-form-message="majlis-form" class="message"></p>
+                    </form>
+                </article>
+
+                <article class="panel" id="majlis-list">
+                    <div class="section__heading section__heading--tight">
+                        <div class="section__copy">
+                            <span class="card__meta">Majalis</span>
+                            <h3>Manage majalis by center</h3>
+                        </div>
+                    </div>
+
+                    <div class="toolbar-row">
+                        <label class="form__group toolbar-row__control">
+                            <span class="form__label">Center view</span>
+                            <select id="majlis-filter-center" class="form__control form__control--compact"></select>
+                        </label>
+                        <button id="refresh-majalis-button" class="button button--secondary" type="button">Refresh list</button>
+                    </div>
+
+                    <div id="manager-majalis" class="stack-list">
+                        <div class="empty-state">Loading majalis...</div>
+                    </div>
+                </article>
+            </div>
         </section>
     </main>
 

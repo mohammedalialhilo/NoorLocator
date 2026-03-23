@@ -19,11 +19,35 @@ public class MajalisController(IMajlisService majlisService) : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [Authorize(Roles = "Manager,Admin")]
+    [AllowAnonymous]
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
+    {
+        var result = await majlisService.GetMajlisByIdAsync(id, cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    [Authorize(Policy = "ManagerArea")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateMajlisDto request, CancellationToken cancellationToken)
     {
         var result = await majlisService.CreateMajlisAsync(request, User.GetRequiredUserId(), User.IsAdmin(), cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    [Authorize(Policy = "ManagerArea")]
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateMajlisDto request, CancellationToken cancellationToken)
+    {
+        var result = await majlisService.UpdateMajlisAsync(id, request, User.GetRequiredUserId(), User.IsAdmin(), cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    [Authorize(Policy = "ManagerArea")]
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
+    {
+        var result = await majlisService.DeleteMajlisAsync(id, User.GetRequiredUserId(), User.IsAdmin(), cancellationToken);
         return this.ToActionResult(result);
     }
 }

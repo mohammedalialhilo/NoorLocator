@@ -9,7 +9,9 @@ namespace NoorLocator.Api.Controllers.Manager;
 
 [ApiController]
 [Route("api/manager")]
-public class ManagerController(IManagerService managerService) : ControllerBase
+public class ManagerController(
+    IManagerService managerService,
+    IManagerCenterAccessService managerCenterAccessService) : ControllerBase
 {
     [Authorize(Roles = "User,Admin")]
     [HttpPost("request")]
@@ -19,10 +21,11 @@ public class ManagerController(IManagerService managerService) : ControllerBase
         return this.ToActionResult(result);
     }
 
-    [Authorize(Roles = "Manager,Admin")]
-    [HttpGet("ping")]
-    public ActionResult<ApiResponse<object>> Ping()
+    [Authorize(Policy = "ManagerArea")]
+    [HttpGet("my-centers")]
+    public async Task<IActionResult> GetMyCenters(CancellationToken cancellationToken)
     {
-        return Ok(ApiResponse<object>.SuccessResponse(new { area = "manager" }, "Manager route wiring is active."));
+        var result = await managerCenterAccessService.GetManagedCentersAsync(User.GetRequiredUserId(), User.IsAdmin(), cancellationToken);
+        return this.ToActionResult(result);
     }
 }

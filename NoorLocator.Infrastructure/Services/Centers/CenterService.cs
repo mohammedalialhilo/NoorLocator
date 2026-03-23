@@ -132,6 +132,9 @@ public class CenterService(NoorLocatorDbContext dbContext) : ICenterService
                 Date = majlis.Date,
                 Time = majlis.Time,
                 CenterId = majlis.CenterId,
+                CenterName = majlis.Center != null ? majlis.Center.Name : string.Empty,
+                CenterCity = majlis.Center != null ? majlis.Center.City : string.Empty,
+                CenterCountry = majlis.Center != null ? majlis.Center.Country : string.Empty,
                 Languages = majlis.MajlisLanguages
                     .Where(majlisLanguage => majlisLanguage.Language != null)
                     .Select(majlisLanguage => new LanguageDto
@@ -272,6 +275,9 @@ public class CenterService(NoorLocatorDbContext dbContext) : ICenterService
             Date = majlis.Date,
             Time = majlis.Time,
             CenterId = majlis.CenterId,
+            CenterName = majlis.Center?.Name ?? string.Empty,
+            CenterCity = majlis.Center?.City ?? string.Empty,
+            CenterCountry = majlis.Center?.Country ?? string.Empty,
             Languages = majlis.MajlisLanguages
                 .Where(majlisLanguage => majlisLanguage.Language is not null)
                 .Select(majlisLanguage => new LanguageDto

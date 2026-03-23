@@ -106,9 +106,32 @@ window.NoorLocatorApi = (() => {
                 body: JSON.stringify(payload)
             });
         },
+        getManagerCenters() {
+            return request("/api/manager/my-centers");
+        },
         getMajalis(centerId) {
             const query = centerId ? `?centerId=${encodeURIComponent(centerId)}` : "";
             return request(`/api/majalis${query}`);
+        },
+        getMajlis(id) {
+            return request(`/api/majalis/${id}`);
+        },
+        createMajlis(payload) {
+            return request("/api/majalis", {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+        },
+        updateMajlis(id, payload) {
+            return request(`/api/majalis/${id}`, {
+                method: "PUT",
+                body: JSON.stringify(payload)
+            });
+        },
+        deleteMajlis(id) {
+            return request(`/api/majalis/${id}`, {
+                method: "DELETE"
+            });
         },
         login(payload) {
             return request("/api/auth/login", {

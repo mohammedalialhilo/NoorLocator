@@ -1078,25 +1078,415 @@ function initDashboardPage() {
     });
 }
 
+function formatDateForInput(dateValue) {
+    if (!dateValue) {
+        return "";
+    }
+
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) {
+        return "";
+    }
+
+    return date.toISOString().slice(0, 10);
+}
+
+function renderManagedCenters(container, centers) {
+    if (!container) {
+        return;
+    }
+
+    if (!centers.length) {
+        setContainerMessage(container, "No approved centers are currently assigned to this manager account.", "soft");
+        return;
+    }
+
+    container.innerHTML = centers.map(center => `
+        <article class="card">
+            <div class="card__header">
+                <span class="card__meta">${escapeHtml(`${center.city}, ${center.country}`)}</span>
+                <span class="status-pill status-pill--success">Assigned</span>
+            </div>
+            <h3>${escapeHtml(center.name)}</h3>
+            <p class="card__excerpt">${escapeHtml(truncateText(center.description || "This center is ready for majlis publishing through the manager workspace.", 150))}</p>
+            <p>${escapeHtml(center.address)}</p>
+        </article>
+    `).join("");
+}
+
+function renderMajlisLanguageOptions(container, languages, selectedIds = []) {
+    if (!container) {
+        return;
+    }
+
+    if (!languages.length) {
+        container.innerHTML = `<div class="empty-state empty-state--soft">No predefined languages are available.</div>`;
+        return;
+    }
+
+    const selected = new Set(selectedIds.map(Number));
+    container.innerHTML = languages.map(language => `
+        <label class="checkbox-card">
+            <input type="checkbox" name="languageIds" value="${escapeHtml(language.id)}"${selected.has(Number(language.id)) ? " checked" : ""}>
+            <span>
+                <strong>${escapeHtml(language.name)}</strong>
+                <span>${escapeHtml(language.code)}</span>
+            </span>
+        </label>
+    `).join("");
+}
+
+function getSelectedLanguageIds(container) {
+    if (!container) {
+        return [];
+    }
+
+    return Array.from(container.querySelectorAll('input[name="languageIds"]:checked'))
+        .map(input => Number(input.value))
+        .filter(languageId => Number.isInteger(languageId) && languageId > 0);
+}
+
+function renderManagerMajalis(container, majalis) {
+    if (!container) {
+        return;
+    }
+
+    if (!majalis.length) {
+        setContainerMessage(container, "No majalis are published for the selected center yet.", "soft");
+        return;
+    }
+
+    container.innerHTML = majalis.map(majlis => `
+        <article class="list-card">
+            <div class="list-card__head">
+                <div>
+                    <h4>${escapeHtml(majlis.title)}</h4>
+                    <p class="list-card__meta">${escapeHtml(`${majlis.centerName} (${majlis.centerCity}, ${majlis.centerCountry})`)}</p>
+                </div>
+                <span class="status-pill">${escapeHtml(formatDateTime(majlis.date))}</span>
+            </div>
+            <p>${escapeHtml(truncateText(majlis.description || "No public description is available for this majlis yet.", 190))}</p>
+            <div class="utility-row utility-row--wrap">
+                <span class="card__meta">Time: ${escapeHtml(majlis.time || "To be announced")}</span>
+                ${(majlis.languages || []).map(language => `<span class="chip chip--muted">${escapeHtml(language.name)}</span>`).join("")}
+            </div>
+            <div class="button-row">
+                <button class="button button--secondary" type="button" data-edit-majlis-id="${escapeHtml(majlis.id)}">Edit</button>
+                <button class="button button--danger" type="button" data-delete-majlis-id="${escapeHtml(majlis.id)}" data-majlis-title="${escapeHtml(majlis.title)}">Delete</button>
+            </div>
+        </article>
+    `).join("");
+}
+
 function initManagerPage() {
     if (!window.NoorLocatorAuth.requireAuth(["Manager", "Admin"])) {
         return;
     }
 
-    populateCards("manager-cards", [
-        {
-            title: "Majalis publishing",
-            body: "Managers assigned to a center can now create majalis through the secured API."
-        },
-        {
-            title: "Center stewardship",
-            body: "Center assignments are enforced through the CenterManagers relationship in the database."
-        },
-        {
-            title: "Language moderation",
-            body: "Suggested language additions flow through admin approval instead of direct edits."
+    const pageMessage = document.getElementById("manager-page-message");
+    const centerCount = document.getElementById("manager-center-count");
+    const majlisCount = document.getElementById("manager-majlis-count");
+    const cardsContainer = document.getElementById("manager-cards");
+    const centersContainer = document.getElementById("manager-centers");
+    const majlisListContainer = document.getElementById("manager-majalis");
+    const form = document.getElementById("majlis-form");
+    const formMessage = document.querySelector('[data-form-message="majlis-form"]');
+    const formHeading = document.getElementById("majlis-form-heading");
+    const submitButton = document.getElementById("majlis-submit-button");
+    const cancelButton = document.getElementById("majlis-cancel-button");
+    const refreshButton = document.getElementById("refresh-majalis-button");
+    const formCenterSelect = document.getElementById("majlis-center-select");
+    const filterCenterSelect = document.getElementById("majlis-filter-center");
+    const languageOptions = document.getElementById("majlis-language-options");
+    const state = {
+        user: window.NoorLocatorAuth.getUser(),
+        centers: [],
+        languages: [],
+        majalis: [],
+        selectedCenterId: null,
+        editingMajlisId: null
+    };
+
+    if (!pageMessage || !centerCount || !majlisCount || !cardsContainer || !centersContainer || !majlisListContainer || !form || !formMessage || !formHeading || !submitButton || !cancelButton || !refreshButton || !formCenterSelect || !filterCenterSelect || !languageOptions) {
+        return;
+    }
+
+    setCardLoadingState(cardsContainer, 3);
+    setContainerMessage(centersContainer, "Loading your assigned centers...", "soft");
+    setContainerMessage(majlisListContainer, "Loading majalis...", "soft");
+    setMessage(pageMessage, "Loading your manager workspace...");
+
+    function updateCounts() {
+        centerCount.textContent = String(state.centers.length);
+        majlisCount.textContent = String(state.majalis.length);
+    }
+
+    function refreshOverviewCards() {
+        const currentUser = state.user || window.NoorLocatorAuth.getUser() || { name: "Manager", role: "Manager" };
+        populateCards("manager-cards", [
+            {
+                title: "Manager session",
+                body: `${currentUser.name} is signed in as ${currentUser.role}. Majlis changes are accepted only for approved center assignments.`
+            },
+            {
+                title: "Assigned centers",
+                body: state.centers.length
+                    ? `${state.centers.length} center${state.centers.length === 1 ? "" : "s"} are available in this workspace.`
+                    : "No assigned centers are available for this account."
+            },
+            {
+                title: "Majalis in view",
+                body: state.majalis.length
+                    ? `${state.majalis.length} majlis record${state.majalis.length === 1 ? "" : "s"} are loaded for the selected center.`
+                    : "No majalis are currently loaded for the selected center."
+            }
+        ]);
+    }
+
+    function resetMajlisForm(preferredCenterId = null) {
+        state.editingMajlisId = null;
+        form.reset();
+        form.elements.namedItem("majlisId").value = "";
+        formHeading.textContent = "Create a new majlis";
+        submitButton.textContent = "Create majlis";
+        submitButton.dataset.defaultLabel = "Create majlis";
+        cancelButton.hidden = true;
+
+        const fallbackCenterId = preferredCenterId || state.selectedCenterId || state.centers[0]?.id || null;
+        if (fallbackCenterId) {
+            formCenterSelect.value = String(fallbackCenterId);
         }
-    ]);
+
+        renderMajlisLanguageOptions(languageOptions, state.languages, []);
+        setMessage(formMessage, "Create a majlis for one of your assigned centers.");
+    }
+
+    function populateCenterControls() {
+        populateSelectOptions([formCenterSelect, filterCenterSelect], state.centers, {
+            placeholder: state.centers.length ? "Select a center" : "No centers available",
+            getValue: center => String(center.id),
+            getLabel: center => `${center.name} (${center.city}, ${center.country})`
+        });
+
+        if (!state.centers.length) {
+            return;
+        }
+
+        const fallbackCenterId = state.selectedCenterId || state.centers[0].id;
+        state.selectedCenterId = fallbackCenterId;
+
+        filterCenterSelect.value = String(fallbackCenterId);
+        if (!formCenterSelect.value) {
+            formCenterSelect.value = String(fallbackCenterId);
+        }
+    }
+
+    function bindMajlisListActions() {
+        majlisListContainer.querySelectorAll("[data-edit-majlis-id]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const majlisId = Number(button.getAttribute("data-edit-majlis-id"));
+                if (!Number.isInteger(majlisId) || majlisId <= 0) {
+                    return;
+                }
+
+                setMessage(formMessage, "Loading majlis details...");
+
+                try {
+                    const response = await window.NoorLocatorApi.getMajlis(majlisId);
+                    const majlis = response.data;
+
+                    if (!state.centers.some(center => center.id === majlis.centerId)) {
+                        throw new Error("This majlis is outside your assigned centers.");
+                    }
+
+                    state.editingMajlisId = majlis.id;
+                    form.elements.namedItem("majlisId").value = String(majlis.id);
+                    form.elements.namedItem("title").value = majlis.title || "";
+                    form.elements.namedItem("description").value = majlis.description || "";
+                    form.elements.namedItem("date").value = formatDateForInput(majlis.date);
+                    form.elements.namedItem("time").value = majlis.time || "";
+                    formCenterSelect.value = String(majlis.centerId);
+                    formHeading.textContent = "Edit majlis";
+                    submitButton.textContent = "Save changes";
+                    submitButton.dataset.defaultLabel = "Save changes";
+                    cancelButton.hidden = false;
+                    renderMajlisLanguageOptions(languageOptions, state.languages, (majlis.languages || []).map(language => language.id));
+                    setMessage(formMessage, `Editing "${majlis.title}".`, "success");
+                    document.getElementById("majlis-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                } catch (error) {
+                    const message = normalizeErrorMessage(error, "Majlis details could not be loaded.");
+                    setMessage(formMessage, message, "error");
+                    showToast(message, "error");
+                }
+            });
+        });
+
+        majlisListContainer.querySelectorAll("[data-delete-majlis-id]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const majlisId = Number(button.getAttribute("data-delete-majlis-id"));
+                const title = button.getAttribute("data-majlis-title") || "this majlis";
+
+                if (!Number.isInteger(majlisId) || majlisId <= 0) {
+                    return;
+                }
+
+                if (!window.confirm(`Delete "${title}" from NoorLocator?`)) {
+                    return;
+                }
+
+                try {
+                    const response = await window.NoorLocatorApi.deleteMajlis(majlisId);
+                    showToast(response.message || "Majlis deleted successfully.", "success");
+
+                    if (state.editingMajlisId === majlisId) {
+                        resetMajlisForm(state.selectedCenterId);
+                    }
+
+                    await loadMajalisForSelectedCenter();
+                } catch (error) {
+                    const message = normalizeErrorMessage(error, "Majlis deletion could not be completed.");
+                    showToast(message, "error");
+                    setMessage(pageMessage, message, "error");
+                }
+            });
+        });
+    }
+
+    async function loadMajalisForSelectedCenter() {
+        const centerId = Number(filterCenterSelect.value);
+        state.selectedCenterId = Number.isInteger(centerId) && centerId > 0 ? centerId : null;
+
+        if (!state.selectedCenterId) {
+            state.majalis = [];
+            updateCounts();
+            setContainerMessage(majlisListContainer, "Select one of your assigned centers to manage majalis.", "soft");
+            refreshOverviewCards();
+            return;
+        }
+
+        setContainerMessage(majlisListContainer, "Loading majalis for the selected center...", "soft");
+
+        try {
+            const response = await window.NoorLocatorApi.getMajalis(state.selectedCenterId);
+            state.majalis = (response.data || []).filter(majlis =>
+                state.centers.some(center => center.id === majlis.centerId));
+
+            renderManagerMajalis(majlisListContainer, state.majalis);
+            bindMajlisListActions();
+            updateCounts();
+            refreshOverviewCards();
+            setMessage(pageMessage, "Manager workspace loaded from the live API.", "success");
+        } catch (error) {
+            const message = normalizeErrorMessage(error, "Majalis could not be loaded for the selected center.");
+            state.majalis = [];
+            updateCounts();
+            refreshOverviewCards();
+            setContainerMessage(majlisListContainer, message, "error");
+            setMessage(pageMessage, message, "error");
+        }
+    }
+
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+        setSubmitButtonState(form, true, state.editingMajlisId ? "Saving changes..." : "Creating majlis...");
+        setMessage(formMessage, state.editingMajlisId ? "Saving majlis changes..." : "Creating majlis...");
+
+        const values = getTrimmedFormValues(form);
+        const payload = {
+            title: values.title,
+            description: values.description,
+            date: values.date ? `${values.date}T00:00:00` : "",
+            time: values.time,
+            centerId: Number(values.centerId),
+            languageIds: getSelectedLanguageIds(languageOptions)
+        };
+
+        try {
+            const response = state.editingMajlisId
+                ? await window.NoorLocatorApi.updateMajlis(state.editingMajlisId, payload)
+                : await window.NoorLocatorApi.createMajlis(payload);
+
+            filterCenterSelect.value = String(payload.centerId);
+            state.selectedCenterId = payload.centerId;
+
+            await loadMajalisForSelectedCenter();
+            resetMajlisForm(payload.centerId);
+            setMessage(formMessage, response.message, "success");
+            showToast(response.message, "success");
+        } catch (error) {
+            const message = normalizeErrorMessage(error, "Majlis changes could not be saved.");
+            setMessage(formMessage, message, "error");
+            showToast(message, "error");
+        } finally {
+            setSubmitButtonState(form, false, state.editingMajlisId ? "Saving changes..." : "Creating majlis...");
+        }
+    });
+
+    cancelButton.addEventListener("click", () => {
+        resetMajlisForm(state.selectedCenterId);
+    });
+
+    filterCenterSelect.addEventListener("change", async () => {
+        const selectedCenterId = Number(filterCenterSelect.value);
+        state.selectedCenterId = Number.isInteger(selectedCenterId) && selectedCenterId > 0
+            ? selectedCenterId
+            : null;
+
+        if (!state.editingMajlisId && state.selectedCenterId) {
+            formCenterSelect.value = String(state.selectedCenterId);
+        }
+
+        await loadMajalisForSelectedCenter();
+    });
+
+    refreshButton.addEventListener("click", async () => {
+        await loadMajalisForSelectedCenter();
+    });
+
+    Promise.allSettled([
+        window.NoorLocatorAuth.syncCurrentUser(),
+        window.NoorLocatorApi.getManagerCenters(),
+        window.NoorLocatorApi.getLanguages()
+    ]).then(async results => {
+        const [userResult, centersResult, languagesResult] = results;
+
+        if (userResult.status === "fulfilled" && userResult.value) {
+            state.user = userResult.value;
+        }
+
+        if (centersResult.status === "fulfilled") {
+            state.centers = centersResult.value.data || [];
+        } else {
+            throw centersResult.reason;
+        }
+
+        if (languagesResult.status === "fulfilled") {
+            state.languages = languagesResult.value.data || [];
+        } else {
+            throw languagesResult.reason;
+        }
+
+        renderManagedCenters(centersContainer, state.centers);
+        renderMajlisLanguageOptions(languageOptions, state.languages, []);
+        populateCenterControls();
+        updateCounts();
+        refreshOverviewCards();
+
+        if (!state.centers.length) {
+            setMessage(pageMessage, "No assigned centers were found for this account.", "error");
+            setContainerMessage(majlisListContainer, "No majalis can be managed until a center assignment exists.", "soft");
+            return;
+        }
+
+        resetMajlisForm(state.selectedCenterId);
+        await loadMajalisForSelectedCenter();
+    }).catch(error => {
+        const message = normalizeErrorMessage(error, "The manager workspace could not be loaded right now.");
+        setMessage(pageMessage, message, "error");
+        setContainerMessage(centersContainer, message, "error");
+        setContainerMessage(majlisListContainer, message, "error");
+        showToast(message, "error");
+    });
 }
 
 function initAdminPage() {

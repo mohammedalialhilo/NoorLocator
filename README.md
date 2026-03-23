@@ -13,6 +13,7 @@ The project currently includes:
 - MySQL persistence through EF Core and Pomelo
 - seeded users, languages, demo centers, and sample manager assignment
 - moderation-first contribution workflows for authenticated users
+- manager-scoped majlis CRUD with center-assignment enforcement
 
 ## Architecture
 
@@ -58,6 +59,17 @@ NoorLocator.sln
 - `POST /api/manager/request`
 
 All contribution endpoints require authentication. User submissions do not write directly to public center data. Center requests and center language suggestions are stored as `Pending`, manager access requests are approval-based, and suggestions are tracked by type and review status. Audit entries are written for submission and auth-critical events.
+
+### Manager workflows and majalis CRUD
+
+- `GET /api/manager/my-centers`
+- `GET /api/majalis?centerId=`
+- `GET /api/majalis/{id}`
+- `POST /api/majalis`
+- `PUT /api/majalis/{id}`
+- `DELETE /api/majalis/{id}`
+
+Manager and admin routes enforce server-side authorization. A manager must be assigned to the target center before they can create, edit, move, or delete majalis for it. Languages must come from the predefined `Languages` table, and majlis-language links are persisted through `MajlisLanguages`.
 
 ## Seeded Accounts
 
@@ -113,6 +125,7 @@ Default URLs:
 - The frontend stores auth state in `localStorage`
 - The navbar reflects logged-in and role-aware state
 - The dashboard now supports center requests, user suggestions, center language suggestions, manager access requests, and request-status tracking
+- The manager workspace now shows assigned centers, loads majalis by center, and supports create, edit, and delete actions with language checkbox selection
 - Browser geolocation is used for public nearby-center discovery, with search fallback when location is unavailable
 
 ## Migrations

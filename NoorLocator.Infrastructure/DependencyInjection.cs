@@ -48,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<ICenterRequestService, CenterRequestService>();
         services.AddScoped<ILanguageService, LanguageService>();
         services.AddScoped<IMajlisService, MajlisService>();
+        services.AddScoped<IManagerCenterAccessService, ManagerCenterAccessService>();
         services.AddScoped<IManagerService, ManagerService>();
         services.AddScoped<ISuggestionService, SuggestionService>();
 
