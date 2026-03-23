@@ -109,6 +109,76 @@ window.NoorLocatorApi = (() => {
         getManagerCenters() {
             return request("/api/manager/my-centers");
         },
+        getAdminDashboard() {
+            return request("/api/admin/dashboard");
+        },
+        getAdminCenterRequests() {
+            return request("/api/admin/center-requests");
+        },
+        approveAdminCenterRequest(id) {
+            return request(`/api/admin/center-requests/${id}/approve`, {
+                method: "POST"
+            });
+        },
+        rejectAdminCenterRequest(id) {
+            return request(`/api/admin/center-requests/${id}/reject`, {
+                method: "POST"
+            });
+        },
+        getAdminManagerRequests() {
+            return request("/api/admin/manager-requests");
+        },
+        approveAdminManagerRequest(id) {
+            return request(`/api/admin/manager-requests/${id}/approve`, {
+                method: "POST"
+            });
+        },
+        rejectAdminManagerRequest(id) {
+            return request(`/api/admin/manager-requests/${id}/reject`, {
+                method: "POST"
+            });
+        },
+        getAdminCenterLanguageSuggestions() {
+            return request("/api/admin/center-language-suggestions");
+        },
+        approveAdminCenterLanguageSuggestion(id) {
+            return request(`/api/admin/center-language-suggestions/${id}/approve`, {
+                method: "POST"
+            });
+        },
+        rejectAdminCenterLanguageSuggestion(id) {
+            return request(`/api/admin/center-language-suggestions/${id}/reject`, {
+                method: "POST"
+            });
+        },
+        getAdminSuggestions() {
+            return request("/api/admin/suggestions");
+        },
+        reviewAdminSuggestion(id) {
+            return request(`/api/admin/suggestions/${id}/review`, {
+                method: "PUT"
+            });
+        },
+        getAdminUsers() {
+            return request("/api/admin/users");
+        },
+        getAdminCenters() {
+            return request("/api/admin/centers");
+        },
+        updateAdminCenter(id, payload) {
+            return request(`/api/admin/centers/${id}`, {
+                method: "PUT",
+                body: JSON.stringify(payload)
+            });
+        },
+        deleteAdminCenter(id) {
+            return request(`/api/admin/centers/${id}`, {
+                method: "DELETE"
+            });
+        },
+        getAdminAuditLogs() {
+            return request("/api/admin/audit-logs");
+        },
         getMajalis(centerId) {
             const query = centerId ? `?centerId=${encodeURIComponent(centerId)}` : "";
             return request(`/api/majalis${query}`);

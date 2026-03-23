@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>NoorLocator | Admin</title>
+    <title>NoorLocator | Admin Moderation</title>
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -11,14 +11,167 @@
     <div data-site-header></div>
 
     <main class="page-shell">
-        <section class="page-hero">
-            <span class="eyebrow">Admin moderation</span>
-            <h1>Approval workflows are prepared for admins.</h1>
-            <p>The Phase 1 scaffold already exposes placeholder endpoints for reviewing suggestions and approving manager or language requests.</p>
+        <section class="page-hero page-hero--split">
+            <div class="page-hero__content">
+                <span class="eyebrow">Admin moderation</span>
+                <h1>Review, approve, reject, and manage the full NoorLocator workflow.</h1>
+                <p>The admin panel pulls live moderation queues, center management data, user summaries, and audit history directly from the secured API.</p>
+                <div class="hero__actions">
+                    <a class="button button--primary" href="#admin-overview">Open dashboard</a>
+                    <a class="button button--secondary" href="#center-requests">Review queues</a>
+                </div>
+                <p id="admin-page-message" class="message">Loading the admin workspace...</p>
+            </div>
+            <aside class="hero__panel hero__panel--stack">
+                <article class="mini-stat">
+                    <span class="card__meta">Pending moderation</span>
+                    <strong id="admin-pending-count">0</strong>
+                    <p>Pending center requests, manager requests, language suggestions, and app suggestions are summarized here.</p>
+                </article>
+                <article class="mini-stat">
+                    <span class="card__meta">Audit visibility</span>
+                    <strong id="admin-audit-count">0</strong>
+                    <p>Every approval, rejection, center edit, and deletion is surfaced in the audit log section.</p>
+                </article>
+            </aside>
         </section>
 
         <section class="section">
+            <nav class="dashboard-nav" aria-label="Admin navigation">
+                <a class="dashboard-nav__link" href="#admin-overview">Overview</a>
+                <a class="dashboard-nav__link" href="#center-requests">Center requests</a>
+                <a class="dashboard-nav__link" href="#manager-requests">Manager requests</a>
+                <a class="dashboard-nav__link" href="#language-suggestions">Language suggestions</a>
+                <a class="dashboard-nav__link" href="#app-suggestions">App suggestions</a>
+                <a class="dashboard-nav__link" href="#center-management">Centers</a>
+                <a class="dashboard-nav__link" href="#user-management">Users</a>
+                <a class="dashboard-nav__link" href="#audit-logs">Audit logs</a>
+            </nav>
+        </section>
+
+        <section class="section" id="admin-overview">
             <div id="admin-cards" class="dashboard-grid"></div>
+        </section>
+
+        <section class="section section-stack">
+            <div class="detail-grid detail-grid--dashboard">
+                <article class="panel" id="center-requests">
+                    <span class="card__meta">Center requests</span>
+                    <h3>Approve or reject submitted centers</h3>
+                    <div id="admin-center-requests" class="stack-list">
+                        <div class="empty-state">Loading center requests...</div>
+                    </div>
+                </article>
+
+                <article class="panel" id="manager-requests">
+                    <span class="card__meta">Manager requests</span>
+                    <h3>Review access requests</h3>
+                    <div id="admin-manager-requests" class="stack-list">
+                        <div class="empty-state">Loading manager requests...</div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="section section-stack">
+            <div class="detail-grid detail-grid--dashboard">
+                <article class="panel" id="language-suggestions">
+                    <span class="card__meta">Language suggestions</span>
+                    <h3>Review center language proposals</h3>
+                    <div id="admin-language-suggestions" class="stack-list">
+                        <div class="empty-state">Loading language suggestions...</div>
+                    </div>
+                </article>
+
+                <article class="panel" id="app-suggestions">
+                    <span class="card__meta">App suggestions</span>
+                    <h3>Mark user feedback as reviewed</h3>
+                    <div id="admin-suggestions" class="stack-list">
+                        <div class="empty-state">Loading app suggestions...</div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="section section-stack" id="center-management">
+            <div class="detail-grid detail-grid--dashboard">
+                <article class="panel">
+                    <span class="card__meta">Center editor</span>
+                    <h3 id="admin-center-form-heading">Edit a published center</h3>
+                    <form id="admin-center-form" class="form">
+                        <input type="hidden" name="centerId">
+                        <div class="filter-grid">
+                            <label class="form__group">
+                                <span class="form__label">Name</span>
+                                <input class="form__control" type="text" name="name" maxlength="200" required>
+                            </label>
+                            <label class="form__group">
+                                <span class="form__label">Address</span>
+                                <input class="form__control" type="text" name="address" maxlength="250" required>
+                            </label>
+                            <label class="form__group">
+                                <span class="form__label">City</span>
+                                <input class="form__control" type="text" name="city" maxlength="100" required>
+                            </label>
+                            <label class="form__group">
+                                <span class="form__label">Country</span>
+                                <input class="form__control" type="text" name="country" maxlength="100" required>
+                            </label>
+                            <label class="form__group">
+                                <span class="form__label">Latitude</span>
+                                <input class="form__control" type="number" step="0.000001" name="latitude" required>
+                            </label>
+                            <label class="form__group">
+                                <span class="form__label">Longitude</span>
+                                <input class="form__control" type="number" step="0.000001" name="longitude" required>
+                            </label>
+                        </div>
+                        <label class="form__group">
+                            <span class="form__label">Description</span>
+                            <textarea class="form__control" name="description"></textarea>
+                        </label>
+                        <div class="button-row">
+                            <button id="admin-center-submit-button" class="button button--primary" type="submit">Save center</button>
+                            <button id="admin-center-cancel-button" class="button button--ghost" type="button" hidden>Cancel edit</button>
+                        </div>
+                        <p data-form-message="admin-center-form" class="message"></p>
+                    </form>
+                </article>
+
+                <article class="panel">
+                    <span class="card__meta">Published centers</span>
+                    <h3>Edit or delete public centers</h3>
+                    <div id="admin-centers" class="stack-list">
+                        <div class="empty-state">Loading centers...</div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="section" id="user-management">
+            <div class="section__heading">
+                <div class="section__copy">
+                    <span class="card__meta">Users</span>
+                    <h2>View platform users and roles</h2>
+                    <p>User role changes come from approval workflows, while this table gives admins a current overview.</p>
+                </div>
+            </div>
+            <div id="admin-users-table" class="table-shell">
+                <div class="empty-state">Loading users...</div>
+            </div>
+        </section>
+
+        <section class="section" id="audit-logs">
+            <div class="section__heading">
+                <div class="section__copy">
+                    <span class="card__meta">Audit logs</span>
+                    <h2>Trace moderation and management actions</h2>
+                    <p>The audit log is loaded from the API and includes approvals, rejections, center edits, center deletions, and other tracked actions.</p>
+                </div>
+            </div>
+            <div id="admin-audit-logs-table" class="table-shell">
+                <div class="empty-state">Loading audit logs...</div>
+            </div>
         </section>
     </main>
 

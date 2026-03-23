@@ -14,6 +14,7 @@ The project currently includes:
 - seeded users, languages, demo centers, and sample manager assignment
 - moderation-first contribution workflows for authenticated users
 - manager-scoped majlis CRUD with center-assignment enforcement
+- admin moderation, center management, user visibility, and audit review tools
 
 ## Architecture
 
@@ -71,6 +72,28 @@ All contribution endpoints require authentication. User submissions do not write
 
 Manager and admin routes enforce server-side authorization. A manager must be assigned to the target center before they can create, edit, move, or delete majalis for it. Languages must come from the predefined `Languages` table, and majlis-language links are persisted through `MajlisLanguages`.
 
+### Admin moderation and management
+
+- `GET /api/admin/dashboard`
+- `GET /api/admin/center-requests`
+- `POST /api/admin/center-requests/{id}/approve`
+- `POST /api/admin/center-requests/{id}/reject`
+- `GET /api/admin/manager-requests`
+- `POST /api/admin/manager-requests/{id}/approve`
+- `POST /api/admin/manager-requests/{id}/reject`
+- `GET /api/admin/center-language-suggestions`
+- `POST /api/admin/center-language-suggestions/{id}/approve`
+- `POST /api/admin/center-language-suggestions/{id}/reject`
+- `GET /api/admin/suggestions`
+- `PUT /api/admin/suggestions/{id}/review`
+- `GET /api/admin/users`
+- `GET /api/admin/centers`
+- `PUT /api/admin/centers/{id}`
+- `DELETE /api/admin/centers/{id}`
+- `GET /api/admin/audit-logs`
+
+Admin routes are server-enforced and do not rely on frontend-only moderation rules. Approving a center request creates a live `Center`, approving a manager request creates or updates `CenterManagers`, approving a center language suggestion adds to `CenterLanguages`, and admin approvals, rejections, edits, deletions, and reviews all write audit logs.
+
 ## Seeded Accounts
 
 - Admin: `admin@noorlocator.local` / `Admin123!Pass`
@@ -126,6 +149,7 @@ Default URLs:
 - The navbar reflects logged-in and role-aware state
 - The dashboard now supports center requests, user suggestions, center language suggestions, manager access requests, and request-status tracking
 - The manager workspace now shows assigned centers, loads majalis by center, and supports create, edit, and delete actions with language checkbox selection
+- The admin workspace now provides moderation queues, center editing/deletion, user visibility, and audit-log review with confirmation-based actions
 - Browser geolocation is used for public nearby-center discovery, with search fallback when location is unavailable
 
 ## Migrations

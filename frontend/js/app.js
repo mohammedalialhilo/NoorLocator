@@ -1489,25 +1489,582 @@ function initManagerPage() {
     });
 }
 
+function renderAdminCenterRequests(container, requests) {
+    if (!container) {
+        return;
+    }
+
+    if (!requests.length) {
+        setContainerMessage(container, "No center requests are waiting in the moderation queue.", "soft");
+        return;
+    }
+
+    container.innerHTML = requests.map(request => `
+        <article class="list-card">
+            <div class="list-card__head">
+                <div>
+                    <h4>${escapeHtml(request.name)}</h4>
+                    <p class="list-card__meta">${escapeHtml(`${request.city}, ${request.country}`)}</p>
+                </div>
+                ${renderStatusBadge(request.status)}
+            </div>
+            <p>${escapeHtml(request.address)}</p>
+            <p>${escapeHtml(truncateText(request.description || "No description was submitted for this center request.", 180))}</p>
+            <div class="utility-row utility-row--wrap">
+                <span class="card__meta">By ${escapeHtml(request.requestedByUserName || request.requestedByUserEmail)}</span>
+                <span class="card__meta">${escapeHtml(request.requestedByUserEmail)}</span>
+                <span class="card__meta">Submitted ${escapeHtml(formatDateTime(request.createdAt))}</span>
+            </div>
+            <div class="button-row">
+                <button class="button button--primary" type="button" data-admin-center-request-approve="${escapeHtml(request.id)}"${String(request.status) !== "Pending" ? " disabled" : ""}>Approve</button>
+                <button class="button button--danger" type="button" data-admin-center-request-reject="${escapeHtml(request.id)}"${String(request.status) !== "Pending" ? " disabled" : ""}>Reject</button>
+            </div>
+        </article>
+    `).join("");
+}
+
+function renderAdminManagerRequests(container, requests) {
+    if (!container) {
+        return;
+    }
+
+    if (!requests.length) {
+        setContainerMessage(container, "No manager requests are waiting in the moderation queue.", "soft");
+        return;
+    }
+
+    container.innerHTML = requests.map(request => `
+        <article class="list-card">
+            <div class="list-card__head">
+                <div>
+                    <h4>${escapeHtml(request.userName || request.userEmail)}</h4>
+                    <p class="list-card__meta">${escapeHtml(request.userEmail)}</p>
+                </div>
+                ${renderStatusBadge(request.status)}
+            </div>
+            <p>${escapeHtml(`Requested center: ${request.centerName} (${request.centerCity}, ${request.centerCountry})`)}</p>
+            <div class="utility-row utility-row--wrap">
+                <span class="card__meta">Submitted ${escapeHtml(formatDateTime(request.createdAt))}</span>
+            </div>
+            <div class="button-row">
+                <button class="button button--primary" type="button" data-admin-manager-request-approve="${escapeHtml(request.id)}"${String(request.status) !== "Pending" ? " disabled" : ""}>Approve</button>
+                <button class="button button--danger" type="button" data-admin-manager-request-reject="${escapeHtml(request.id)}"${String(request.status) !== "Pending" ? " disabled" : ""}>Reject</button>
+            </div>
+        </article>
+    `).join("");
+}
+
+function renderAdminLanguageSuggestions(container, suggestions) {
+    if (!container) {
+        return;
+    }
+
+    if (!suggestions.length) {
+        setContainerMessage(container, "No center language suggestions are waiting for review.", "soft");
+        return;
+    }
+
+    container.innerHTML = suggestions.map(suggestion => `
+        <article class="list-card">
+            <div class="list-card__head">
+                <div>
+                    <h4>${escapeHtml(suggestion.centerName)}</h4>
+                    <p class="list-card__meta">${escapeHtml(`${suggestion.languageName} (${suggestion.languageCode})`)}</p>
+                </div>
+                ${renderStatusBadge(suggestion.status)}
+            </div>
+            <p>${escapeHtml(`Suggested by ${suggestion.suggestedByUserName || suggestion.suggestedByUserEmail}`)}</p>
+            <div class="utility-row utility-row--wrap">
+                <span class="card__meta">${escapeHtml(suggestion.suggestedByUserEmail)}</span>
+            </div>
+            <div class="button-row">
+                <button class="button button--primary" type="button" data-admin-language-suggestion-approve="${escapeHtml(suggestion.id)}"${String(suggestion.status) !== "Pending" ? " disabled" : ""}>Approve</button>
+                <button class="button button--danger" type="button" data-admin-language-suggestion-reject="${escapeHtml(suggestion.id)}"${String(suggestion.status) !== "Pending" ? " disabled" : ""}>Reject</button>
+            </div>
+        </article>
+    `).join("");
+}
+
+function renderAdminSuggestions(container, suggestions) {
+    if (!container) {
+        return;
+    }
+
+    if (!suggestions.length) {
+        setContainerMessage(container, "No app suggestions are waiting for review.", "soft");
+        return;
+    }
+
+    container.innerHTML = suggestions.map(suggestion => `
+        <article class="list-card">
+            <div class="list-card__head">
+                <div>
+                    <h4>${escapeHtml(suggestion.userName || suggestion.userEmail)}</h4>
+                    <p class="list-card__meta">${escapeHtml(suggestion.userEmail)}</p>
+                </div>
+                ${renderStatusBadge(suggestion.status)}
+            </div>
+            <p>${escapeHtml(truncateText(suggestion.message, 220))}</p>
+            <div class="utility-row utility-row--wrap">
+                <span class="card__meta">${escapeHtml(String(suggestion.type))}</span>
+                <span class="card__meta">Submitted ${escapeHtml(formatDateTime(suggestion.createdAt))}</span>
+            </div>
+            <div class="button-row">
+                <button class="button button--secondary" type="button" data-admin-suggestion-review="${escapeHtml(suggestion.id)}"${String(suggestion.status) !== "Pending" ? " disabled" : ""}>Mark reviewed</button>
+            </div>
+        </article>
+    `).join("");
+}
+
+function renderAdminCenters(container, centers) {
+    if (!container) {
+        return;
+    }
+
+    if (!centers.length) {
+        setContainerMessage(container, "No published centers are available to manage.", "soft");
+        return;
+    }
+
+    container.innerHTML = centers.map(center => `
+        <article class="list-card">
+            <div class="list-card__head">
+                <div>
+                    <h4>${escapeHtml(center.name)}</h4>
+                    <p class="list-card__meta">${escapeHtml(`${center.city}, ${center.country}`)}</p>
+                </div>
+                <span class="status-pill status-pill--muted">${escapeHtml(`${center.managerCount} manager${center.managerCount === 1 ? "" : "s"}`)}</span>
+            </div>
+            <p>${escapeHtml(center.address)}</p>
+            <p>${escapeHtml(truncateText(center.description || "No public description is available for this center.", 180))}</p>
+            <div class="utility-row utility-row--wrap">
+                <span class="card__meta">${escapeHtml(`${center.majlisCount} majlis${center.majlisCount === 1 ? "" : "es"}`)}</span>
+                <span class="card__meta">${escapeHtml(`${center.languageCount} language${center.languageCount === 1 ? "" : "s"}`)}</span>
+            </div>
+            <div class="button-row">
+                <button class="button button--secondary" type="button" data-admin-center-edit="${escapeHtml(center.id)}">Edit</button>
+                <button class="button button--danger" type="button" data-admin-center-delete="${escapeHtml(center.id)}" data-admin-center-name="${escapeHtml(center.name)}">Delete</button>
+            </div>
+        </article>
+    `).join("");
+}
+
+function renderAdminUsersTable(container, users) {
+    if (!container) {
+        return;
+    }
+
+    if (!users.length) {
+        container.innerHTML = `<div class="empty-state empty-state--soft">No users are available.</div>`;
+        return;
+    }
+
+    container.innerHTML = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Assigned Centers</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${users.map(user => `
+                    <tr>
+                        <td>${escapeHtml(user.name)}</td>
+                        <td>${escapeHtml(user.email)}</td>
+                        <td>${escapeHtml(String(user.role))}</td>
+                        <td>${escapeHtml(String(user.assignedCenterCount))}</td>
+                        <td>${escapeHtml(formatDateTime(user.createdAt))}</td>
+                    </tr>
+                `).join("")}
+            </tbody>
+        </table>
+    `;
+}
+
+function renderAdminAuditLogsTable(container, auditLogs) {
+    if (!container) {
+        return;
+    }
+
+    if (!auditLogs.length) {
+        container.innerHTML = `<div class="empty-state empty-state--soft">No audit log entries are available.</div>`;
+        return;
+    }
+
+    container.innerHTML = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>When</th>
+                    <th>Action</th>
+                    <th>Entity</th>
+                    <th>User</th>
+                    <th>IP</th>
+                    <th>Metadata</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${auditLogs.map(log => `
+                    <tr>
+                        <td>${escapeHtml(formatDateTime(log.createdAt))}</td>
+                        <td>${escapeHtml(log.action)}</td>
+                        <td>${escapeHtml(log.entityName)}${log.entityId ? ` <span class="data-table__mono">#${escapeHtml(log.entityId)}</span>` : ""}</td>
+                        <td>${escapeHtml(log.userName || log.userEmail || "System")}</td>
+                        <td class="data-table__mono">${escapeHtml(log.ipAddress || "-")}</td>
+                        <td class="data-table__mono">${escapeHtml(truncateText(log.metadata || "-", 140))}</td>
+                    </tr>
+                `).join("")}
+            </tbody>
+        </table>
+    `;
+}
+
 function initAdminPage() {
     if (!window.NoorLocatorAuth.requireAuth(["Admin"])) {
         return;
     }
 
-    populateCards("admin-cards", [
-        {
-            title: "Approval pipeline",
-            body: "Admins can approve manager requests and center language suggestions."
-        },
-        {
-            title: "Suggestion review",
-            body: "The admin suggestion endpoint now returns persisted suggestions from the database."
-        },
-        {
-            title: "System integrity",
-            body: "Audit logs capture authentication-critical activity for traceability."
+    const pageMessage = document.getElementById("admin-page-message");
+    const pendingCount = document.getElementById("admin-pending-count");
+    const auditCount = document.getElementById("admin-audit-count");
+    const cardsContainer = document.getElementById("admin-cards");
+    const centerRequestsContainer = document.getElementById("admin-center-requests");
+    const managerRequestsContainer = document.getElementById("admin-manager-requests");
+    const languageSuggestionsContainer = document.getElementById("admin-language-suggestions");
+    const suggestionsContainer = document.getElementById("admin-suggestions");
+    const centersContainer = document.getElementById("admin-centers");
+    const usersTableContainer = document.getElementById("admin-users-table");
+    const auditLogsTableContainer = document.getElementById("admin-audit-logs-table");
+    const centerForm = document.getElementById("admin-center-form");
+    const centerFormHeading = document.getElementById("admin-center-form-heading");
+    const centerFormMessage = document.querySelector('[data-form-message="admin-center-form"]');
+    const centerSubmitButton = document.getElementById("admin-center-submit-button");
+    const centerCancelButton = document.getElementById("admin-center-cancel-button");
+    const state = {
+        user: window.NoorLocatorAuth.getUser(),
+        dashboard: null,
+        centerRequests: [],
+        managerRequests: [],
+        languageSuggestions: [],
+        suggestions: [],
+        users: [],
+        centers: [],
+        auditLogs: [],
+        editingCenterId: null
+    };
+
+    if (!pageMessage || !pendingCount || !auditCount || !cardsContainer || !centerRequestsContainer || !managerRequestsContainer || !languageSuggestionsContainer || !suggestionsContainer || !centersContainer || !usersTableContainer || !auditLogsTableContainer || !centerForm || !centerFormHeading || !centerFormMessage || !centerSubmitButton || !centerCancelButton) {
+        return;
+    }
+
+    function updateCounters() {
+        const pendingTotal = (state.dashboard?.pendingCenterRequests || 0)
+            + (state.dashboard?.pendingManagerRequests || 0)
+            + (state.dashboard?.pendingCenterLanguageSuggestions || 0)
+            + (state.dashboard?.pendingSuggestions || 0);
+
+        pendingCount.textContent = String(pendingTotal);
+        auditCount.textContent = String(state.dashboard?.totalAuditLogs || 0);
+    }
+
+    function refreshOverviewCards() {
+        const currentUser = state.user || window.NoorLocatorAuth.getUser() || { name: "Admin" };
+        populateCards("admin-cards", [
+            {
+                title: "Moderation queue",
+                body: `${currentUser.name} currently has ${(state.dashboard?.pendingCenterRequests || 0) + (state.dashboard?.pendingManagerRequests || 0) + (state.dashboard?.pendingCenterLanguageSuggestions || 0) + (state.dashboard?.pendingSuggestions || 0)} pending items to review.`
+            },
+            {
+                title: "Platform scale",
+                body: `${state.dashboard?.totalUsers || 0} users, ${state.dashboard?.totalCenters || 0} centers, and ${state.dashboard?.totalMajalis || 0} majalis are currently stored in NoorLocator.`
+            },
+            {
+                title: "Center moderation",
+                body: `${state.dashboard?.pendingCenterRequests || 0} center requests, ${state.dashboard?.pendingManagerRequests || 0} manager requests, and ${state.dashboard?.pendingCenterLanguageSuggestions || 0} language suggestions are awaiting action.`
+            },
+            {
+                title: "Audit coverage",
+                body: `${state.dashboard?.totalAuditLogs || 0} audit log entries are available for admin traceability and change review.`
+            }
+        ]);
+    }
+
+    function resetCenterForm() {
+        state.editingCenterId = null;
+        centerForm.reset();
+        centerForm.elements.namedItem("centerId").value = "";
+        centerFormHeading.textContent = "Edit a published center";
+        centerSubmitButton.textContent = "Save center";
+        centerSubmitButton.dataset.defaultLabel = "Save center";
+        centerSubmitButton.disabled = true;
+        centerCancelButton.hidden = true;
+        setMessage(centerFormMessage, "Choose a center from the list to edit.");
+    }
+
+    function populateCenterForm(center) {
+        state.editingCenterId = center.id;
+        centerForm.elements.namedItem("centerId").value = String(center.id);
+        centerForm.elements.namedItem("name").value = center.name || "";
+        centerForm.elements.namedItem("address").value = center.address || "";
+        centerForm.elements.namedItem("city").value = center.city || "";
+        centerForm.elements.namedItem("country").value = center.country || "";
+        centerForm.elements.namedItem("latitude").value = String(center.latitude);
+        centerForm.elements.namedItem("longitude").value = String(center.longitude);
+        centerForm.elements.namedItem("description").value = center.description || "";
+        centerFormHeading.textContent = `Editing ${center.name}`;
+        centerSubmitButton.textContent = "Save changes";
+        centerSubmitButton.dataset.defaultLabel = "Save changes";
+        centerSubmitButton.disabled = false;
+        centerCancelButton.hidden = false;
+        setMessage(centerFormMessage, `Editing "${center.name}".`, "success");
+        document.getElementById("center-management")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function renderAllSections() {
+        renderAdminCenterRequests(centerRequestsContainer, state.centerRequests);
+        renderAdminManagerRequests(managerRequestsContainer, state.managerRequests);
+        renderAdminLanguageSuggestions(languageSuggestionsContainer, state.languageSuggestions);
+        renderAdminSuggestions(suggestionsContainer, state.suggestions);
+        renderAdminCenters(centersContainer, state.centers);
+        renderAdminUsersTable(usersTableContainer, state.users);
+        renderAdminAuditLogsTable(auditLogsTableContainer, state.auditLogs);
+        updateCounters();
+        refreshOverviewCards();
+
+        if (state.editingCenterId) {
+            const editedCenter = state.centers.find(center => center.id === state.editingCenterId);
+            if (editedCenter) {
+                populateCenterForm(editedCenter);
+                return;
+            }
         }
-    ]);
+
+        resetCenterForm();
+    }
+
+    async function loadAdminWorkspace(showLoading = false) {
+        if (showLoading) {
+            setCardLoadingState(cardsContainer, 4);
+            setContainerMessage(centerRequestsContainer, "Loading center requests...", "soft");
+            setContainerMessage(managerRequestsContainer, "Loading manager requests...", "soft");
+            setContainerMessage(languageSuggestionsContainer, "Loading language suggestions...", "soft");
+            setContainerMessage(suggestionsContainer, "Loading app suggestions...", "soft");
+            setContainerMessage(centersContainer, "Loading centers...", "soft");
+            usersTableContainer.innerHTML = `<div class="empty-state empty-state--soft">Loading users...</div>`;
+            auditLogsTableContainer.innerHTML = `<div class="empty-state empty-state--soft">Loading audit logs...</div>`;
+        }
+
+        const [
+            user,
+            dashboardResponse,
+            centerRequestsResponse,
+            managerRequestsResponse,
+            languageSuggestionsResponse,
+            suggestionsResponse,
+            usersResponse,
+            centersResponse,
+            auditLogsResponse
+        ] = await Promise.all([
+            window.NoorLocatorAuth.syncCurrentUser(),
+            window.NoorLocatorApi.getAdminDashboard(),
+            window.NoorLocatorApi.getAdminCenterRequests(),
+            window.NoorLocatorApi.getAdminManagerRequests(),
+            window.NoorLocatorApi.getAdminCenterLanguageSuggestions(),
+            window.NoorLocatorApi.getAdminSuggestions(),
+            window.NoorLocatorApi.getAdminUsers(),
+            window.NoorLocatorApi.getAdminCenters(),
+            window.NoorLocatorApi.getAdminAuditLogs()
+        ]);
+
+        state.user = user || state.user;
+        state.dashboard = dashboardResponse.data;
+        state.centerRequests = centerRequestsResponse.data || [];
+        state.managerRequests = managerRequestsResponse.data || [];
+        state.languageSuggestions = languageSuggestionsResponse.data || [];
+        state.suggestions = suggestionsResponse.data || [];
+        state.users = usersResponse.data || [];
+        state.centers = centersResponse.data || [];
+        state.auditLogs = auditLogsResponse.data || [];
+
+        renderAllSections();
+        setMessage(pageMessage, "Admin workspace loaded from the secured API.", "success");
+    }
+
+    async function runAdminAction(confirmMessage, action) {
+        if (confirmMessage && !window.confirm(confirmMessage)) {
+            return;
+        }
+
+        try {
+            const response = await action();
+            await loadAdminWorkspace();
+            setMessage(pageMessage, response.message, "success");
+            showToast(response.message, "success");
+        } catch (error) {
+            const message = normalizeErrorMessage(error, "The admin action could not be completed.");
+            setMessage(pageMessage, message, "error");
+            showToast(message, "error");
+        }
+    }
+
+    function bindModerationActions() {
+        centerRequestsContainer.querySelectorAll("[data-admin-center-request-approve]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const id = Number(button.getAttribute("data-admin-center-request-approve"));
+                await runAdminAction(
+                    "Approve this center request and publish it as a live center?",
+                    () => window.NoorLocatorApi.approveAdminCenterRequest(id));
+            });
+        });
+
+        centerRequestsContainer.querySelectorAll("[data-admin-center-request-reject]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const id = Number(button.getAttribute("data-admin-center-request-reject"));
+                await runAdminAction(
+                    "Reject this center request?",
+                    () => window.NoorLocatorApi.rejectAdminCenterRequest(id));
+            });
+        });
+
+        managerRequestsContainer.querySelectorAll("[data-admin-manager-request-approve]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const id = Number(button.getAttribute("data-admin-manager-request-approve"));
+                await runAdminAction(
+                    "Approve this manager request and grant center access?",
+                    () => window.NoorLocatorApi.approveAdminManagerRequest(id));
+            });
+        });
+
+        managerRequestsContainer.querySelectorAll("[data-admin-manager-request-reject]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const id = Number(button.getAttribute("data-admin-manager-request-reject"));
+                await runAdminAction(
+                    "Reject this manager request?",
+                    () => window.NoorLocatorApi.rejectAdminManagerRequest(id));
+            });
+        });
+
+        languageSuggestionsContainer.querySelectorAll("[data-admin-language-suggestion-approve]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const id = Number(button.getAttribute("data-admin-language-suggestion-approve"));
+                await runAdminAction(
+                    "Approve this center language suggestion?",
+                    () => window.NoorLocatorApi.approveAdminCenterLanguageSuggestion(id));
+            });
+        });
+
+        languageSuggestionsContainer.querySelectorAll("[data-admin-language-suggestion-reject]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const id = Number(button.getAttribute("data-admin-language-suggestion-reject"));
+                await runAdminAction(
+                    "Reject this center language suggestion?",
+                    () => window.NoorLocatorApi.rejectAdminCenterLanguageSuggestion(id));
+            });
+        });
+
+        suggestionsContainer.querySelectorAll("[data-admin-suggestion-review]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const id = Number(button.getAttribute("data-admin-suggestion-review"));
+                await runAdminAction(
+                    "Mark this suggestion as reviewed?",
+                    () => window.NoorLocatorApi.reviewAdminSuggestion(id));
+            });
+        });
+
+        centersContainer.querySelectorAll("[data-admin-center-edit]").forEach(button => {
+            button.addEventListener("click", () => {
+                const id = Number(button.getAttribute("data-admin-center-edit"));
+                const center = state.centers.find(currentCenter => currentCenter.id === id);
+                if (center) {
+                    populateCenterForm(center);
+                }
+            });
+        });
+
+        centersContainer.querySelectorAll("[data-admin-center-delete]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const id = Number(button.getAttribute("data-admin-center-delete"));
+                const centerName = button.getAttribute("data-admin-center-name") || "this center";
+                await runAdminAction(
+                    `Delete "${centerName}" and its related center data?`,
+                    async () => {
+                        if (state.editingCenterId === id) {
+                            resetCenterForm();
+                        }
+
+                        return await window.NoorLocatorApi.deleteAdminCenter(id);
+                    });
+            });
+        });
+    }
+
+    const originalRenderAllSections = renderAllSections;
+    renderAllSections = () => {
+        originalRenderAllSections();
+        bindModerationActions();
+    };
+
+    centerForm.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        if (!state.editingCenterId) {
+            setMessage(centerFormMessage, "Choose a center from the list before saving changes.", "error");
+            return;
+        }
+
+        setSubmitButtonState(centerForm, true, "Saving changes...");
+        setMessage(centerFormMessage, "Saving center changes...");
+
+        const values = getTrimmedFormValues(centerForm);
+        const payload = {
+            name: values.name,
+            address: values.address,
+            city: values.city,
+            country: values.country,
+            latitude: Number(values.latitude),
+            longitude: Number(values.longitude),
+            description: values.description
+        };
+
+        try {
+            const response = await window.NoorLocatorApi.updateAdminCenter(state.editingCenterId, payload);
+            await loadAdminWorkspace();
+            const updatedCenter = state.centers.find(center => center.id === state.editingCenterId);
+            if (updatedCenter) {
+                populateCenterForm(updatedCenter);
+            }
+            setMessage(centerFormMessage, response.message, "success");
+            setMessage(pageMessage, response.message, "success");
+            showToast(response.message, "success");
+        } catch (error) {
+            const message = normalizeErrorMessage(error, "Center changes could not be saved.");
+            setMessage(centerFormMessage, message, "error");
+            showToast(message, "error");
+        } finally {
+            setSubmitButtonState(centerForm, false, "Saving changes...");
+        }
+    });
+
+    centerCancelButton.addEventListener("click", () => {
+        resetCenterForm();
+    });
+
+    loadAdminWorkspace(true).catch(error => {
+        const message = normalizeErrorMessage(error, "The admin workspace could not be loaded right now.");
+        setMessage(pageMessage, message, "error");
+        setContainerMessage(centerRequestsContainer, message, "error");
+        setContainerMessage(managerRequestsContainer, message, "error");
+        setContainerMessage(languageSuggestionsContainer, message, "error");
+        setContainerMessage(suggestionsContainer, message, "error");
+        setContainerMessage(centersContainer, message, "error");
+        usersTableContainer.innerHTML = `<div class="empty-state empty-state--error">${escapeHtml(message)}</div>`;
+        auditLogsTableContainer.innerHTML = `<div class="empty-state empty-state--error">${escapeHtml(message)}</div>`;
+        showToast(message, "error");
+    });
 }
 
 function populateCards(containerId, cards) {

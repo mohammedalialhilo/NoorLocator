@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using NoorLocator.Application.Admin.Interfaces;
 using NoorLocator.Application.Authentication.Interfaces;
 using NoorLocator.Application.Common.Configuration;
 using NoorLocator.Application.Centers.Interfaces;
@@ -11,6 +12,7 @@ using NoorLocator.Application.Suggestions.Interfaces;
 using NoorLocator.Infrastructure.Persistence;
 using NoorLocator.Infrastructure.Seeding;
 using NoorLocator.Infrastructure.Security;
+using NoorLocator.Infrastructure.Services.Admin;
 using NoorLocator.Infrastructure.Services.Auth;
 using NoorLocator.Infrastructure.Services.Audit;
 using NoorLocator.Infrastructure.Services.Centers;
@@ -43,6 +45,7 @@ public static class DependencyInjection
         services.AddScoped<AuditLogger>();
         services.AddScoped<NoorLocatorDbInitializer>();
 
+        services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ICenterService, CenterService>();
         services.AddScoped<ICenterRequestService, CenterRequestService>();
