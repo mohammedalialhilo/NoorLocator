@@ -1,7 +1,9 @@
-const CACHE_NAME = "noorlocator-shell-v3";
+const CACHE_NAME = "noorlocator-shell-v4";
 const SHELL_ASSETS = [
     "/",
+    "/about",
     "/index.html",
+    "/about.html",
     "/centers.html",
     "/center-details.html",
     "/login.html",

@@ -554,6 +554,34 @@ textarea.form__control {
     box-shadow: var(--shadow-soft);
 }
 
+.site-footer__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.site-footer__brand {
+    display: flex;
+    gap: 1rem;
+    align-items: start;
+}
+
+.site-footer__logo {
+    width: 64px;
+    height: 64px;
+    padding: 0.6rem;
+    border-radius: 20px;
+    background: rgba(255, 253, 248, 0.08);
+    box-shadow: inset 0 0 0 1px rgba(255, 253, 248, 0.08);
+}
+
+.site-footer__title {
+    font-family: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
 .site-footer__inner p {
     color: inherit;
     margin: 0.3rem 0;
@@ -561,6 +589,31 @@ textarea.form__control {
 
 .site-footer__credit {
     font-weight: 700;
+}
+
+.footer-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.footer-nav__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0.7rem 1rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid rgba(255, 253, 248, 0.12);
+    background: rgba(255, 253, 248, 0.06);
+    color: rgba(255, 253, 248, 0.92);
+    transition: transform var(--transition-base), background-color var(--transition-base);
+}
+
+.footer-nav__link:hover,
+.footer-nav__link:focus-visible {
+    transform: translateY(-1px);
+    background: rgba(255, 253, 248, 0.14);
 }
 
 .dashboard-nav {
@@ -655,6 +708,102 @@ textarea.form__control {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
     gap: 1rem;
+}
+
+.identity-note {
+    display: flex;
+    gap: 0.9rem;
+    align-items: start;
+    padding: 1rem 1.1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(13, 37, 53, 0.1);
+    background: rgba(220, 201, 175, 0.22);
+}
+
+.identity-note--panel {
+    width: 100%;
+}
+
+.identity-note__mark,
+.identity-card__mark,
+.manifesto-section__mark,
+.principle-card__mark {
+    display: inline-grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(16, 40, 56, 0.96), rgba(13, 37, 53, 0.9));
+    color: var(--color-white);
+    font-family: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.identity-note p {
+    margin: 0;
+}
+
+.identity-grid,
+.principle-grid,
+.manifesto-stack {
+    display: grid;
+    gap: 1rem;
+}
+
+.identity-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.identity-card,
+.principle-card,
+.manifesto-section {
+    padding: 1.35rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    background: rgba(255, 253, 248, 0.92);
+    box-shadow: var(--shadow-card);
+}
+
+.identity-card h3,
+.principle-card h3 {
+    margin-top: 1rem;
+}
+
+.manifesto-section__head {
+    display: flex;
+    gap: 1rem;
+    align-items: start;
+    margin-bottom: 1rem;
+}
+
+.manifesto-list {
+    display: grid;
+    gap: 0.9rem;
+}
+
+.manifesto-list__item {
+    display: flex;
+    gap: 0.8rem;
+    align-items: start;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(13, 37, 53, 0.08);
+    background: rgba(238, 228, 214, 0.4);
+}
+
+.manifesto-list__icon {
+    width: 12px;
+    height: 12px;
+    margin-top: 0.55rem;
+    border-radius: 50%;
+    background: var(--color-ink);
+    flex: 0 0 12px;
+}
+
+.manifesto-list__item p {
+    margin: 0;
 }
 
 .card__header {
@@ -1104,8 +1253,14 @@ textarea.form__control {
     }
 
     .card__header,
-    .list-card__head {
+    .list-card__head,
+    .manifesto-section__head,
+    .site-footer__brand {
         flex-direction: column;
+    }
+
+    .site-footer__grid {
+        grid-template-columns: 1fr;
     }
 
     .brand__title {
@@ -1132,6 +1287,10 @@ textarea.form__control {
         top: auto;
         right: 1rem;
         bottom: 1rem;
+    }
+
+    .footer-nav {
+        justify-content: flex-start;
     }
 }
 

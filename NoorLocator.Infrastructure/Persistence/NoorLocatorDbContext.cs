@@ -7,6 +7,8 @@ public class NoorLocatorDbContext(DbContextOptions<NoorLocatorDbContext> options
 {
     public DbSet<User> Users => Set<User>();
 
+    public DbSet<AppContent> AppContents => Set<AppContent>();
+
     public DbSet<Center> Centers => Set<Center>();
 
     public DbSet<CenterRequest> CenterRequests => Set<CenterRequest>();

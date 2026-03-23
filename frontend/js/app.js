@@ -9,6 +9,9 @@ document.addEventListener("DOMContentLoaded", () => {
         case "home":
             initHomePage();
             break;
+        case "about":
+            initAboutPage();
+            break;
         case "centers":
             initCentersPage();
             break;
@@ -575,20 +578,131 @@ function requestBrowserLocation() {
     });
 }
 
+function renderFeatureHighlights(container, features) {
+    if (!container) {
+        return;
+    }
+
+    if (!features.length) {
+        setContainerMessage(container, "No identity highlights are available right now.", "soft");
+        return;
+    }
+
+    container.innerHTML = features.map(feature => `
+        <article class="card">
+            <span class="card__meta">Feature</span>
+            <h3>${escapeHtml(feature.title)}</h3>
+            <p>${escapeHtml(feature.description)}</p>
+        </article>
+    `).join("");
+}
+
+function renderManifestoItems(container, items) {
+    if (!container) {
+        return;
+    }
+
+    if (!items.length) {
+        setContainerMessage(container, "No manifesto details are available right now.", "soft");
+        return;
+    }
+
+    container.innerHTML = items.map(item => `
+        <article class="manifesto-list__item">
+            <div class="manifesto-list__icon"></div>
+            <p>${escapeHtml(item)}</p>
+        </article>
+    `).join("");
+}
+
+function renderPrinciples(container, principles) {
+    if (!container) {
+        return;
+    }
+
+    if (!principles.length) {
+        setContainerMessage(container, "No core principles are available right now.", "soft");
+        return;
+    }
+
+    container.innerHTML = principles.map(principle => `
+        <article class="principle-card">
+            <div class="principle-card__mark">${escapeHtml(principle.title.charAt(0) || "P")}</div>
+            <h3>${escapeHtml(principle.title)}</h3>
+            <p>${escapeHtml(principle.description)}</p>
+        </article>
+    `).join("");
+}
+
 async function initHomePage() {
     const featuredCenters = document.getElementById("featured-centers");
     const homeStatus = document.getElementById("home-status");
     const centerCount = document.getElementById("home-center-count");
+    const heroTitle = document.getElementById("home-hero-title");
+    const heroDescription = document.getElementById("home-hero-description");
+    const heroHighlight = document.getElementById("home-hero-highlight");
+    const missionTitle = document.getElementById("home-mission-title");
+    const missionDescription = document.getElementById("home-mission-description");
+    const missionHighlight = document.getElementById("home-mission-highlight");
+    const featuresTitle = document.getElementById("home-features-title");
+    const featuresDescription = document.getElementById("home-features-description");
+    const featureHighlights = document.getElementById("home-feature-highlights");
+    const submitCenterLink = document.getElementById("home-submit-center-link");
     const location = getDiscoveryLocation();
 
+    if (submitCenterLink) {
+        submitCenterLink.href = window.NoorLocatorAuth.isAuthenticated()
+            ? "dashboard.html#center-request"
+            : "register.html";
+    }
+
     setCardLoadingState(featuredCenters, 3);
+    setCardLoadingState(featureHighlights, 3);
     setMessage(homeStatus, "Connecting to the live NoorLocator directory...");
 
     try {
-        const response = location
-            ? await window.NoorLocatorApi.getNearestCenters(location)
-            : await window.NoorLocatorApi.getCenters();
-        const centers = response.data || [];
+        const [contentResponse, centersResponse] = await Promise.all([
+            window.NoorLocatorApi.getAboutContent(),
+            location
+                ? window.NoorLocatorApi.getNearestCenters(location)
+                : window.NoorLocatorApi.getCenters()
+        ]);
+        const content = contentResponse.data;
+        const centers = centersResponse.data || [];
+
+        if (heroTitle) {
+            heroTitle.textContent = content.homeHero.title;
+        }
+
+        if (heroDescription) {
+            heroDescription.textContent = content.homeHero.description;
+        }
+
+        if (heroHighlight) {
+            heroHighlight.textContent = content.homeHero.highlight;
+        }
+
+        if (missionTitle) {
+            missionTitle.textContent = content.homeMission.title;
+        }
+
+        if (missionDescription) {
+            missionDescription.textContent = content.homeMission.description;
+        }
+
+        if (missionHighlight) {
+            missionHighlight.textContent = content.homeMission.highlight;
+        }
+
+        if (featuresTitle) {
+            featuresTitle.textContent = content.homeFeatures.title;
+        }
+
+        if (featuresDescription) {
+            featuresDescription.textContent = content.homeFeatures.description;
+        }
+
+        renderFeatureHighlights(featureHighlights, content.homeFeatures.items || []);
 
         if (centerCount) {
             centerCount.textContent = String(centers.length);
@@ -612,7 +726,129 @@ async function initHomePage() {
         }
 
         setContainerMessage(featuredCenters, "The public center preview could not be loaded right now.", "error");
+        setContainerMessage(featureHighlights, "The mission highlights could not be loaded right now.", "error");
         setMessage(homeStatus, error.message || "Unable to load the public center preview.", "error");
+    }
+}
+
+async function initAboutPage() {
+    const pageMessage = document.getElementById("about-page-message");
+    const submitCenterLink = document.getElementById("about-submit-center-link");
+    const heroTitle = document.getElementById("about-hero-title");
+    const heroDescription = document.getElementById("about-hero-description");
+    const heroHighlight = document.getElementById("about-hero-highlight");
+    const visionTitle = document.getElementById("about-vision-title");
+    const visionDescription = document.getElementById("about-vision-description");
+    const visionHighlight = document.getElementById("about-vision-highlight");
+    const problemTitle = document.getElementById("about-problem-title");
+    const problemDescription = document.getElementById("about-problem-description");
+    const problemItems = document.getElementById("about-problem-items");
+    const missionTitle = document.getElementById("about-mission-title");
+    const missionDescription = document.getElementById("about-mission-description");
+    const missionItems = document.getElementById("about-mission-items");
+    const principlesTitle = document.getElementById("about-principles-title");
+    const principlesDescription = document.getElementById("about-principles-description");
+    const principles = document.getElementById("about-principles");
+    const identityTitle = document.getElementById("about-identity-title");
+    const identityDescription = document.getElementById("about-identity-description");
+    const identityHighlight = document.getElementById("about-identity-highlight");
+    const closingTitle = document.getElementById("about-closing-title");
+    const closingDescription = document.getElementById("about-closing-description");
+    const closingHighlight = document.getElementById("about-closing-highlight");
+
+    if (submitCenterLink) {
+        submitCenterLink.href = window.NoorLocatorAuth.isAuthenticated()
+            ? "dashboard.html#center-request"
+            : "register.html";
+    }
+
+    try {
+        const response = await window.NoorLocatorApi.getAboutContent();
+        const content = response.data;
+
+        document.title = "About NoorLocator";
+
+        if (heroDescription) {
+            heroDescription.textContent = content.vision.description;
+        }
+
+        if (heroHighlight) {
+            heroHighlight.textContent = content.siteTagline;
+        }
+
+        if (visionTitle) {
+            visionTitle.textContent = content.vision.title;
+        }
+
+        if (visionDescription) {
+            visionDescription.textContent = content.vision.description;
+        }
+
+        if (visionHighlight) {
+            visionHighlight.textContent = content.vision.highlight;
+        }
+
+        if (problemTitle) {
+            problemTitle.textContent = content.problemStatement.title;
+        }
+
+        if (problemDescription) {
+            problemDescription.textContent = content.problemStatement.description;
+        }
+
+        renderManifestoItems(problemItems, content.problemStatement.items || []);
+
+        if (missionTitle) {
+            missionTitle.textContent = content.mission.title;
+        }
+
+        if (missionDescription) {
+            missionDescription.textContent = content.mission.description;
+        }
+
+        renderManifestoItems(missionItems, content.mission.items || []);
+
+        if (principlesTitle) {
+            principlesTitle.textContent = content.corePrinciples.title;
+        }
+
+        if (principlesDescription) {
+            principlesDescription.textContent = content.corePrinciples.description;
+        }
+
+        renderPrinciples(principles, content.corePrinciples.items || []);
+
+        if (identityTitle) {
+            identityTitle.textContent = content.whoWeAre.title;
+        }
+
+        if (identityDescription) {
+            identityDescription.textContent = content.whoWeAre.description;
+        }
+
+        if (identityHighlight) {
+            identityHighlight.textContent = content.whoWeAre.highlight;
+        }
+
+        if (closingTitle) {
+            closingTitle.textContent = content.closing.title;
+        }
+
+        if (closingDescription) {
+            closingDescription.textContent = content.closing.description;
+        }
+
+        if (closingHighlight) {
+            closingHighlight.textContent = content.closing.highlight;
+        }
+
+        setMessage(pageMessage, "Manifesto-driven identity content loaded successfully.", "success");
+    } catch (error) {
+        const message = normalizeErrorMessage(error, "The About page could not be loaded right now.");
+        setMessage(pageMessage, message, "error");
+        renderManifestoItems(problemItems, []);
+        renderManifestoItems(missionItems, []);
+        renderPrinciples(principles, []);
     }
 }
 

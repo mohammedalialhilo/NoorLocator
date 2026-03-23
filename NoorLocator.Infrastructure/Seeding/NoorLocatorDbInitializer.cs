@@ -20,6 +20,7 @@ public class NoorLocatorDbInitializer(NoorLocatorDbContext dbContext, PasswordHa
         await dbContext.Database.MigrateAsync(cancellationToken);
 
         await SeedLanguagesAsync(cancellationToken);
+        await SeedAppContentAsync(cancellationToken);
         await SeedUsersAsync(cancellationToken);
         await SeedCentersAndAssignmentsAsync(cancellationToken);
     }
@@ -53,6 +54,63 @@ public class NoorLocatorDbInitializer(NoorLocatorDbContext dbContext, PasswordHa
         await EnsureUserAsync("NoorLocator Admin", AdminEmail, AdminPassword, UserRole.Admin, cancellationToken);
         await EnsureUserAsync("NoorLocator Manager", ManagerEmail, ManagerPassword, UserRole.Manager, cancellationToken);
         await EnsureUserAsync("NoorLocator User", UserEmail, UserPassword, UserRole.User, cancellationToken);
+    }
+
+    private async Task SeedAppContentAsync(CancellationToken cancellationToken)
+    {
+        var entries = new[]
+        {
+            new AppContentSeed("site.tagline", "Connecting you to Shia centers and majalis worldwide"),
+            new AppContentSeed("site.attribution", "Driven by موكب خدام أهل البيت (عليهم السلام), Copenhagen, Denmark."),
+            new AppContentSeed("home.hero.title", "Find Shia centers and majalis near you"),
+            new AppContentSeed("home.hero.description", "NoorLocator helps followers of Ahlulbayt (AS) discover nearby centers, stay aware of majalis, and connect with their community through trusted, location-aware information."),
+            new AppContentSeed("home.hero.highlight", "No follower of Ahlulbayt (AS) should feel disconnected from their community, no matter where they are in the world."),
+            new AppContentSeed("home.mission.title", "A mission built around connection, trust, and service"),
+            new AppContentSeed("home.mission.description", "NoorLocator connects people to the nearest Shia centers, enables centers to communicate their activities, and empowers community contributions with moderation that protects authenticity."),
+            new AppContentSeed("home.mission.highlight", "This is not just a directory. It is a living, community-driven ecosystem for connection, knowledge, and service."),
+            new AppContentSeed("home.features.title", "Key platform strengths"),
+            new AppContentSeed("home.features.description", "The public experience is shaped by manifesto-driven priorities that keep NoorLocator clear, useful, and community-first."),
+            new AppContentSeed("home.features.location.title", "Location-based discovery"),
+            new AppContentSeed("home.features.location.description", "Surface the nearest centers and most relevant local community opportunities first."),
+            new AppContentSeed("home.features.languages.title", "Multi-language majalis"),
+            new AppContentSeed("home.features.languages.description", "Support diaspora communities through structured language data for centers and majalis."),
+            new AppContentSeed("home.features.community.title", "Community-driven platform"),
+            new AppContentSeed("home.features.community.description", "Enable community contributions while preserving trust through moderation and clearly defined roles."),
+            new AppContentSeed("about.vision.title", "Vision"),
+            new AppContentSeed("about.vision.description", "NoorLocator is built on a simple but powerful idea: no follower of Ahlulbayt (AS) should feel disconnected from their community, no matter where they are in the world."),
+            new AppContentSeed("about.vision.highlight", "The platform focuses on global accessibility, location relevance, and stronger community connection across Europe and beyond."),
+            new AppContentSeed("about.problem.title", "Problem statement"),
+            new AppContentSeed("about.problem.description", "The manifesto identifies recurring challenges that NoorLocator exists to solve."),
+            new AppContentSeed("about.problem.items.01", "Finding nearby Shia centers can be difficult when community spaces are scattered or not clearly visible online."),
+            new AppContentSeed("about.problem.items.02", "People often lack timely awareness of majalis, gatherings, and center activities in their area."),
+            new AppContentSeed("about.problem.items.03", "Language barriers make it harder for diaspora communities to access events and feel fully connected."),
+            new AppContentSeed("about.mission.title", "Mission"),
+            new AppContentSeed("about.mission.description", "NoorLocator exists to connect, inform, and empower people through trusted community infrastructure."),
+            new AppContentSeed("about.mission.items.01", "Connect users to the nearest Shia centers."),
+            new AppContentSeed("about.mission.items.02", "Enable centers to communicate their activities and public information clearly."),
+            new AppContentSeed("about.mission.items.03", "Empower community contributions with moderation that protects authenticity and accuracy."),
+            new AppContentSeed("about.principles.title", "Core principles"),
+            new AppContentSeed("about.principles.description", "The product experience and system rules are intentionally shaped by the manifesto."),
+            new AppContentSeed("about.principles.trust.title", "Trust and authenticity"),
+            new AppContentSeed("about.principles.trust.description", "Public center data is moderated because religious community information must be accurate, verified, and safe to trust."),
+            new AppContentSeed("about.principles.community.title", "Community-driven, admin-controlled"),
+            new AppContentSeed("about.principles.community.description", "Users contribute, admins validate, and managers maintain center content so the platform can grow without misinformation."),
+            new AppContentSeed("about.principles.language.title", "Multi-language accessibility"),
+            new AppContentSeed("about.principles.language.description", "Structured language support reflects the diversity of diaspora communities and helps non-Arabic speakers find meaningful access."),
+            new AppContentSeed("about.principles.location.title", "Location relevance"),
+            new AppContentSeed("about.principles.location.description", "Nearest centers, accessible languages, and relevant events should appear where they matter most to the user."),
+            new AppContentSeed("about.identity.title", "Who we are"),
+            new AppContentSeed("about.identity.description", "NoorLocator is proudly initiated and driven by موكب خدام أهل البيت (عليهم السلام), Copenhagen, Denmark."),
+            new AppContentSeed("about.identity.highlight", "The platform is designed as service to the community, not simply as software."),
+            new AppContentSeed("about.closing.title", "Closing"),
+            new AppContentSeed("about.closing.description", "NoorLocator is built with the intention of service so people can find remembrance, attend majalis, and stay connected to Ahlulbayt (AS)."),
+            new AppContentSeed("about.closing.highlight", "Wherever someone lives in the world, NoorLocator aims to ensure they are never far from their community.")
+        };
+
+        foreach (var entry in entries)
+        {
+            await EnsureAppContentAsync(entry, cancellationToken);
+        }
     }
 
     private async Task SeedCentersAndAssignmentsAsync(CancellationToken cancellationToken)
@@ -407,6 +465,30 @@ public class NoorLocatorDbInitializer(NoorLocatorDbContext dbContext, PasswordHa
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    private async Task EnsureAppContentAsync(AppContentSeed definition, CancellationToken cancellationToken)
+    {
+        var appContent = await dbContext.AppContents
+            .SingleOrDefaultAsync(
+                currentContent => currentContent.Key == definition.Key && currentContent.LanguageCode == definition.LanguageCode,
+                cancellationToken);
+
+        if (appContent is null)
+        {
+            dbContext.AppContents.Add(new AppContent
+            {
+                Key = definition.Key,
+                Value = definition.Value,
+                LanguageCode = definition.LanguageCode
+            });
+        }
+        else
+        {
+            appContent.Value = definition.Value;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     private sealed record CenterSeed(
         string Name,
         string Address,
@@ -424,4 +506,9 @@ public class NoorLocatorDbInitializer(NoorLocatorDbContext dbContext, PasswordHa
         string Time,
         string CenterName,
         IReadOnlyCollection<string> LanguageCodes);
+
+    private sealed record AppContentSeed(
+        string Key,
+        string Value,
+        string LanguageCode = "en");
 }

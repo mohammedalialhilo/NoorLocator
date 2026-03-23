@@ -15,13 +15,13 @@
     <main class="site-shell">
         <section class="hero hero--discovery">
             <div class="hero__content">
-                <span class="eyebrow">Public center discovery</span>
-                <h1>Find nearby Shia centers, languages, and upcoming majalis with confidence.</h1>
-                <p>NoorLocator helps guests discover community centers through a clean public experience backed by moderated data, verified locations, and live API search.</p>
+                <span class="eyebrow">NoorLocator purpose</span>
+                <h1 id="home-hero-title">Find Shia centers and majalis near you</h1>
+                <p id="home-hero-description">NoorLocator helps followers of Ahlulbayt (AS) discover nearby centers, stay aware of majalis, and connect with their community through trusted, location-aware information.</p>
                 <div class="hero__actions">
-                    <a class="button button--primary" href="centers.html?locate=1">Find nearest centers</a>
-                    <a class="button button--secondary" href="centers.html">Browse all centers</a>
-                    <a class="button button--ghost" href="login.html">Sign in</a>
+                    <a class="button button--primary" href="centers.html?locate=1">Find Centers</a>
+                    <a id="home-submit-center-link" class="button button--secondary" href="register.html">Submit Center</a>
+                    <a class="button button--ghost" href="/about">Read our purpose</a>
                 </div>
                 <p id="home-status" class="message">Connecting to the live NoorLocator directory...</p>
             </div>
@@ -34,9 +34,9 @@
                         <p>Published centers currently available through the API.</p>
                     </article>
                     <article class="mini-stat">
-                        <span class="card__meta">Moderated data</span>
-                        <strong>Guest-ready</strong>
-                        <p>Public search is backed by the approved NoorLocator data model and location logic.</p>
+                        <span class="card__meta">Manifesto</span>
+                        <strong id="home-hero-highlight">Community first</strong>
+                        <p>No follower of Ahlulbayt (AS) should feel disconnected from their community, no matter where they are in the world.</p>
                     </article>
                 </div>
             </aside>
@@ -45,26 +45,68 @@
         <section class="section">
             <div class="section__heading">
                 <div class="section__copy">
-                    <span class="eyebrow">How NoorLocator works</span>
-                    <h2>Built for clarity, location, and trusted community discovery.</h2>
-                    <p>The public experience is centered on real center data, server-side nearest-center logic, and direct access to languages and upcoming majalis.</p>
+                    <span class="eyebrow">Mission</span>
+                    <h2 id="home-mission-title">A mission built around connection, trust, and service</h2>
+                    <p id="home-mission-description">NoorLocator connects people to the nearest Shia centers, enables centers to communicate their activities, and empowers community contributions with moderation that protects authenticity.</p>
+                </div>
+                <a class="button button--secondary" href="/about">About NoorLocator</a>
+            </div>
+            <div class="identity-note">
+                <div class="identity-note__mark">N</div>
+                <p id="home-mission-highlight">This is not just a directory. It is a living, community-driven ecosystem for connection, knowledge, and service.</p>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="section__heading">
+                <div class="section__copy">
+                    <span class="eyebrow">Key features</span>
+                    <h2 id="home-features-title">Key platform strengths</h2>
+                    <p id="home-features-description">The public experience is shaped by manifesto-driven priorities that keep NoorLocator clear, useful, and community-first.</p>
                 </div>
             </div>
-            <div class="card-grid">
-                <article class="card">
-                    <span class="card__meta">Locate</span>
-                    <h3>Nearest center search</h3>
-                    <p>Use your browser location to retrieve nearby centers ranked by distance through the backend Haversine calculation.</p>
+            <div id="home-feature-highlights" class="card-grid">
+                <article class="card card--loading">
+                    <span class="skeleton skeleton--line skeleton--sm"></span>
+                    <span class="skeleton skeleton--line skeleton--lg"></span>
+                    <span class="skeleton skeleton--line"></span>
                 </article>
-                <article class="card">
-                    <span class="card__meta">Explore</span>
-                    <h3>Filter by place and language</h3>
-                    <p>Browse by city, country, free-text query, or predefined language code to narrow the public center list.</p>
+                <article class="card card--loading">
+                    <span class="skeleton skeleton--line skeleton--sm"></span>
+                    <span class="skeleton skeleton--line skeleton--lg"></span>
+                    <span class="skeleton skeleton--line"></span>
                 </article>
-                <article class="card">
-                    <span class="card__meta">Plan</span>
-                    <h3>Open a full center profile</h3>
-                    <p>Each detail page brings together description, address, map link, supported languages, and upcoming majalis.</p>
+                <article class="card card--loading">
+                    <span class="skeleton skeleton--line skeleton--sm"></span>
+                    <span class="skeleton skeleton--line skeleton--lg"></span>
+                    <span class="skeleton skeleton--line"></span>
+                </article>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="section__heading">
+                <div class="section__copy">
+                    <span class="eyebrow">Community purpose</span>
+                    <h2>Built for clarity, trust, and global connection.</h2>
+                    <p>NoorLocator keeps the experience simple on purpose so guests, contributors, managers, and admins can all understand why the platform exists and how it protects authenticity.</p>
+                </div>
+            </div>
+            <div class="identity-grid">
+                <article class="identity-card">
+                    <div class="identity-card__mark">V</div>
+                    <h3>Vision</h3>
+                    <p>No follower of Ahlulbayt (AS) should feel disconnected from their community.</p>
+                </article>
+                <article class="identity-card">
+                    <div class="identity-card__mark">T</div>
+                    <h3>Trust</h3>
+                    <p>Moderation exists to protect the accuracy and authenticity of public religious community information.</p>
+                </article>
+                <article class="identity-card">
+                    <div class="identity-card__mark">L</div>
+                    <h3>Language</h3>
+                    <p>Structured language support helps diaspora communities discover accessible centers and majalis.</p>
                 </article>
             </div>
         </section>

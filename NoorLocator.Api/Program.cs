@@ -180,6 +180,7 @@ var frontendPath = frontendCandidates.FirstOrDefault(Directory.Exists);
 if (!string.IsNullOrWhiteSpace(frontendPath))
 {
     var frontendFileProvider = new PhysicalFileProvider(frontendPath);
+    var aboutPagePath = Path.Combine(frontendPath, "about.html");
 
     app.UseDefaultFiles(new DefaultFilesOptions
     {
@@ -190,6 +191,15 @@ if (!string.IsNullOrWhiteSpace(frontendPath))
     {
         FileProvider = frontendFileProvider
     });
+
+    if (File.Exists(aboutPagePath))
+    {
+        app.MapGet("/about", async context =>
+        {
+            context.Response.ContentType = "text/html; charset=utf-8";
+            await context.Response.SendFileAsync(aboutPagePath);
+        });
+    }
 }
 
 var swaggerEnabled = app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled");

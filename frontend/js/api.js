@@ -95,6 +95,9 @@ window.NoorLocatorApi = (() => {
         getHealth() {
             return request("/api/health");
         },
+        getAboutContent(languageCode = "") {
+            return request(`/api/content/about${toQueryString({ languageCode })}`);
+        },
         getCenters(params = {}) {
             return request(`/api/centers${toQueryString(params)}`);
         },

@@ -5,6 +5,7 @@ using NoorLocator.Application.Admin.Interfaces;
 using NoorLocator.Application.Authentication.Interfaces;
 using NoorLocator.Application.CenterImages.Interfaces;
 using NoorLocator.Application.Common.Configuration;
+using NoorLocator.Application.Content.Interfaces;
 using NoorLocator.Application.Centers.Interfaces;
 using NoorLocator.Application.EventAnnouncements.Interfaces;
 using NoorLocator.Application.Languages.Interfaces;
@@ -19,6 +20,7 @@ using NoorLocator.Infrastructure.Services.Auth;
 using NoorLocator.Infrastructure.Services.Audit;
 using NoorLocator.Infrastructure.Services.Centers;
 using NoorLocator.Infrastructure.Services.CenterImages;
+using NoorLocator.Infrastructure.Services.Content;
 using NoorLocator.Infrastructure.Services.EventAnnouncements;
 using NoorLocator.Infrastructure.Services.Majalis;
 using NoorLocator.Infrastructure.Services.Media;
@@ -53,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<NoorLocatorDbInitializer>();
 
         services.AddScoped<IAdminService, AdminService>();
+        services.AddScoped<IAppContentService, AppContentService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ICenterImageService, CenterImageService>();
         services.AddScoped<ICenterService, CenterService>();

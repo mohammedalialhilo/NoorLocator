@@ -2,7 +2,20 @@
 
 NoorLocator is a moderated web platform for discovering Shia Islamic centers, browsing upcoming majalis, publishing manager-led center updates, and contributing trusted community information through role-based workflows.
 
-Driven by موكب خدام اهل البيت (عليهم السلام), Copenhagen, Denmark.
+Driven by موكب خدام أهل البيت (عليهم السلام), Copenhagen, Denmark.
+
+## Project Purpose & Vision
+
+NoorLocator is grounded in a simple manifesto-driven purpose: no follower of Ahlulbayt (AS) should feel disconnected from their community, no matter where they are in the world.
+
+The project exists to:
+
+- help people find nearby Shia centers
+- make majalis and center activities easier to discover
+- reduce language barriers in diaspora communities
+- empower community contribution without sacrificing trust or authenticity
+
+This is why the platform is location-aware, moderation-first, role-based, and strict about structured language data.
 
 ## What Is Included
 
@@ -12,6 +25,7 @@ Driven by موكب خدام اهل البيت (عليهم السلام), Copenha
 - Manager-only majlis CRUD with center assignment enforcement
 - Manager-published event announcements with direct publish or draft status
 - Manager-owned center gallery upload, primary image management, and secure image validation
+- Manifesto-backed About page, identity-focused homepage, and reusable content API for site purpose
 - Admin moderation dashboard, center management, user visibility, and audit logs
 - Swagger/OpenAPI documentation
 - Docker support for the API and MySQL
@@ -133,6 +147,10 @@ Phase 8 adds:
 
 - `AddEventAnnouncementsAndCenterImages`
 
+Phase 9 adds:
+
+- `AddAppContentIdentityLayer`
+
 ## Media Storage
 
 - Development uploads use local storage under `frontend/uploads`
@@ -179,7 +197,7 @@ Swagger includes:
 Main endpoint groups:
 
 - Auth: `/api/auth/*`
-- Public discovery: `/api/centers/*`, `/api/languages`, `/api/majalis`, `/api/event-announcements`
+- Public discovery: `/api/centers/*`, `/api/languages`, `/api/majalis`, `/api/event-announcements`, `/api/content/about`
 - User contributions: `/api/center-requests`, `/api/suggestions`, `/api/center-language-suggestions`, `/api/manager/request`
 - Manager: `/api/manager/*`, `/api/majalis/*`, `/api/event-announcements`, `/api/center-images/*`
 - Admin: `/api/admin/*`
@@ -207,9 +225,15 @@ Test projects:
 - The frontend consumes only the live API
 - Auth state is stored in `localStorage`
 - The navbar updates by role and includes a mobile toggle
+- The public About page is available at `/about`
 - Toasts, loading states, empty states, and responsive layouts are used across public, user, manager, and admin pages
 - Center detail pages now show a primary banner image, gallery grid, and event announcement feed
+- The homepage and About page now surface manifesto-backed purpose, mission, principles, and attribution through the content API
 - PWA basics are included through `site.webmanifest` and `service-worker.js`
+
+## Developer Notes
+
+- `DEVELOPER_MANUAL.md` explains the product philosophy and intent behind moderation, roles, language structure, and manager-controlled announcements
 
 ## Production-Readiness Notes
 

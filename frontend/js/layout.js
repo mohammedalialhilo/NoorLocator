@@ -1,6 +1,7 @@
 window.NoorLocatorLayout = (() => {
     const navPanelId = "site-nav-panel";
-    const attribution = "Driven by \u0645\u0648\u0643\u0628 \u062e\u062f\u0627\u0645 \u0627\u0647\u0644 \u0627\u0644\u0628\u064a\u062a (\u0639\u0644\u064a\u0647\u0645 \u0627\u0644\u0633\u0644\u0627\u0645), Copenhagen, Denmark.";
+    const attribution = "Driven by \u0645\u0648\u0643\u0628 \u062e\u062f\u0627\u0645 \u0623\u0647\u0644 \u0627\u0644\u0628\u064a\u062a (\u0639\u0644\u064a\u0647\u0645 \u0627\u0644\u0633\u0644\u0627\u0645), Copenhagen, Denmark.";
+    const tagline = "Connecting you to Shia centers and majalis worldwide";
 
     function renderHeader() {
         const mount = document.querySelector("[data-site-header]");
@@ -29,7 +30,7 @@ window.NoorLocatorLayout = (() => {
                     <a class="brand" href="index.html" aria-label="NoorLocator home">
                         <img class="brand__mark" src="assets/logo.svg" alt="NoorLocator logo">
                         <span>
-                            <span class="brand__eyebrow">Public Discovery</span>
+                            <span class="brand__eyebrow">Community Connection</span>
                             <span class="brand__title">NoorLocator</span>
                         </span>
                     </a>
@@ -85,11 +86,28 @@ window.NoorLocatorLayout = (() => {
             return;
         }
 
+        const user = window.NoorLocatorAuth.getSessionUser();
+        const suggestionsHref = user ? "dashboard.html#suggestion" : "login.html";
+
         mount.innerHTML = `
             <footer class="site-footer">
                 <div class="site-footer__inner">
-                    <p class="site-footer__credit">${attribution}</p>
-                    <p>NoorLocator helps guests discover nearby centers and lets authenticated users submit moderated contributions through real API-backed workflows.</p>
+                    <div class="site-footer__grid">
+                        <div class="site-footer__brand">
+                            <img class="site-footer__logo" src="assets/logo.svg" alt="NoorLocator logo">
+                            <div>
+                                <p class="site-footer__title">NoorLocator</p>
+                                <p>${tagline}</p>
+                                <p class="site-footer__credit">${attribution}</p>
+                            </div>
+                        </div>
+                        <nav class="footer-nav" aria-label="Footer navigation">
+                            <a class="footer-nav__link" href="index.html">Home</a>
+                            <a class="footer-nav__link" href="centers.html">Centers</a>
+                            <a class="footer-nav__link" href="/about">About</a>
+                            <a class="footer-nav__link" href="${suggestionsHref}">Contact / Suggestions</a>
+                        </nav>
+                    </div>
                 </div>
             </footer>
         `;
@@ -130,7 +148,8 @@ window.NoorLocatorLayout = (() => {
     function buildNavigation(user) {
         const items = [
             { href: "index.html", label: "Home", page: "home" },
-            { href: "centers.html", label: "Centers", page: "centers" }
+            { href: "centers.html", label: "Centers", page: "centers" },
+            { href: "/about", label: "About", page: "about" }
         ];
 
         if (user) {
