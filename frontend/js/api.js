@@ -13,25 +13,62 @@ window.NoorLocatorApi = (() => {
             headers.set("Authorization", `Bearer ${token}`);
         }
 
-        const response = await fetch(`${apiBaseUrl}${path}`, {
-            ...options,
-            headers
-        });
+        let response;
+
+        try {
+            response = await fetch(`${apiBaseUrl}${path}`, {
+                ...options,
+                headers
+            });
+        } catch {
+            throw {
+                success: false,
+                message: "NoorLocator could not reach the API. Check that the backend is running and try again.",
+                data: null,
+                status: 0
+            };
+        }
 
         const contentType = response.headers.get("content-type") || "";
         const payload = contentType.includes("application/json") ? await response.json() : null;
         const normalized = {
             success: payload?.success ?? response.ok,
-            message: payload?.message ?? (response.ok ? "Request completed." : `Request failed with status ${response.status}.`),
+            message: payload?.message ?? defaultStatusMessage(response),
             data: payload?.data ?? null,
+            errors: payload?.data?.errors ?? [],
+            traceId: payload?.data?.traceId ?? "",
             status: response.status
         };
+
+        if (response.status === 401 && token && !path.startsWith("/api/auth/login") && !path.startsWith("/api/auth/register")) {
+            window.NoorLocatorAuth?.clearSession?.();
+        }
 
         if (!response.ok) {
             throw normalized;
         }
 
         return normalized;
+    }
+
+    function defaultStatusMessage(response) {
+        if (response.ok) {
+            return "Request completed.";
+        }
+
+        if (response.status === 401) {
+            return "Your session is no longer valid. Please sign in again.";
+        }
+
+        if (response.status === 403) {
+            return "You do not have permission to perform this action.";
+        }
+
+        if (response.status >= 500) {
+            return "NoorLocator hit a server error while processing the request.";
+        }
+
+        return `Request failed with status ${response.status}.`;
     }
 
     function toQueryString(params) {

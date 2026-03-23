@@ -1,6 +1,8 @@
 const DISCOVERY_LOCATION_KEY = "noorlocator.discovery.location";
 
 document.addEventListener("DOMContentLoaded", () => {
+    notifyIfLoggedOut();
+
     const page = document.body.dataset.page;
 
     switch (page) {
@@ -32,6 +34,22 @@ document.addEventListener("DOMContentLoaded", () => {
             break;
     }
 });
+
+function notifyIfLoggedOut() {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("loggedOut") !== "1") {
+        return;
+    }
+
+    url.searchParams.delete("loggedOut");
+
+    if (window.history?.replaceState) {
+        const query = url.searchParams.toString();
+        window.history.replaceState({}, document.title, `${url.pathname}${query ? `?${query}` : ""}${url.hash}`);
+    }
+
+    showToast("You have been signed out successfully.", "success");
+}
 
 function setMessage(element, message, type = "") {
     if (!element) {
@@ -210,6 +228,10 @@ function buildCenterDetailsHref(centerId, location = getDiscoveryLocation()) {
 }
 
 function normalizeErrorMessage(error, fallbackMessage) {
+    if (Array.isArray(error?.errors) && error.errors.length > 0 && typeof error.errors[0] === "string") {
+        return error.errors[0].trim();
+    }
+
     if (typeof error?.message === "string" && error.message.trim()) {
         return error.message.trim();
     }
@@ -224,6 +246,8 @@ function ensureToastRoot() {
         toastRoot = document.createElement("div");
         toastRoot.className = "toast-root";
         toastRoot.setAttribute("data-toast-root", "true");
+        toastRoot.setAttribute("role", "status");
+        toastRoot.setAttribute("aria-live", "polite");
         document.body.appendChild(toastRoot);
     }
 
@@ -238,15 +262,27 @@ function showToast(message, type = "success") {
     const toastRoot = ensureToastRoot();
     const toast = document.createElement("div");
     toast.className = `toast toast--${type}`;
-    toast.textContent = message;
+    toast.innerHTML = `
+        <div class="toast__content">
+            <strong class="toast__title">${type === "error" ? "Action needed" : "NoorLocator"}</strong>
+            <span>${escapeHtml(message)}</span>
+        </div>
+        <button class="toast__close" type="button" aria-label="Dismiss notification">&times;</button>
+    `;
     toastRoot.appendChild(toast);
 
-    window.setTimeout(() => {
+    const closeToast = () => {
         toast.classList.add("toast--leaving");
 
         window.setTimeout(() => {
             toast.remove();
         }, 220);
+    };
+
+    toast.querySelector(".toast__close")?.addEventListener("click", closeToast);
+
+    window.setTimeout(() => {
+        closeToast();
     }, 3600);
 }
 
@@ -851,7 +887,7 @@ function initDashboardPage() {
     const languageSelect = document.getElementById("language-select");
     const savedLocation = getDiscoveryLocation();
     const state = {
-        user: window.NoorLocatorAuth.getUser(),
+        user: window.NoorLocatorAuth.getSessionUser(),
         centers: [],
         languages: [],
         requests: []
@@ -873,7 +909,7 @@ function initDashboardPage() {
     }
 
     function refreshOverviewCards() {
-        const currentUser = state.user || window.NoorLocatorAuth.getUser() || { name: "Contributor", role: "User" };
+        const currentUser = state.user || window.NoorLocatorAuth.getSessionUser() || { name: "Contributor", role: "User" };
         populateCards("dashboard-cards", [
             {
                 title: "Signed in",
@@ -1199,7 +1235,7 @@ function initManagerPage() {
     const filterCenterSelect = document.getElementById("majlis-filter-center");
     const languageOptions = document.getElementById("majlis-language-options");
     const state = {
-        user: window.NoorLocatorAuth.getUser(),
+        user: window.NoorLocatorAuth.getSessionUser(),
         centers: [],
         languages: [],
         majalis: [],
@@ -1222,7 +1258,7 @@ function initManagerPage() {
     }
 
     function refreshOverviewCards() {
-        const currentUser = state.user || window.NoorLocatorAuth.getUser() || { name: "Manager", role: "Manager" };
+        const currentUser = state.user || window.NoorLocatorAuth.getSessionUser() || { name: "Manager", role: "Manager" };
         populateCards("manager-cards", [
             {
                 title: "Manager session",
@@ -1745,7 +1781,7 @@ function initAdminPage() {
     const centerSubmitButton = document.getElementById("admin-center-submit-button");
     const centerCancelButton = document.getElementById("admin-center-cancel-button");
     const state = {
-        user: window.NoorLocatorAuth.getUser(),
+        user: window.NoorLocatorAuth.getSessionUser(),
         dashboard: null,
         centerRequests: [],
         managerRequests: [],
@@ -1772,7 +1808,7 @@ function initAdminPage() {
     }
 
     function refreshOverviewCards() {
-        const currentUser = state.user || window.NoorLocatorAuth.getUser() || { name: "Admin" };
+        const currentUser = state.user || window.NoorLocatorAuth.getSessionUser() || { name: "Admin" };
         populateCards("admin-cards", [
             {
                 title: "Moderation queue",

@@ -1,4 +1,7 @@
 window.NoorLocatorLayout = (() => {
+    const navPanelId = "site-nav-panel";
+    const attribution = "Driven by \u0645\u0648\u0643\u0628 \u062e\u062f\u0627\u0645 \u0627\u0647\u0644 \u0627\u0644\u0628\u064a\u062a (\u0639\u0644\u064a\u0647\u0645 \u0627\u0644\u0633\u0644\u0627\u0645), Copenhagen, Denmark.";
+
     function renderHeader() {
         const mount = document.querySelector("[data-site-header]");
         if (!mount) {
@@ -6,16 +9,16 @@ window.NoorLocatorLayout = (() => {
         }
 
         const currentPage = document.body.dataset.page;
-        const user = window.NoorLocatorAuth.getUser();
+        const user = window.NoorLocatorAuth.getSessionUser();
         const navigation = buildNavigation(user);
         const navMarkup = navigation
             .map(item => `<a class="site-nav__link${item.page === currentPage ? " is-active" : ""}" href="${item.href}">${item.label}</a>`)
             .join("");
         const authMarkup = user
             ? `
-                <div class="utility-row">
+                <div class="utility-row utility-row--panel">
                     <span class="card__meta">${user.name} | ${user.role}</span>
-                    <button class="button button--ghost" type="button" data-logout-button>Logout</button>
+                    <a class="button button--ghost" href="logout.html" data-logout-link>Logout</a>
                 </div>
             `
             : "";
@@ -30,21 +33,50 @@ window.NoorLocatorLayout = (() => {
                             <span class="brand__title">NoorLocator</span>
                         </span>
                     </a>
-                    <nav class="site-nav" aria-label="Primary navigation">
-                        ${navMarkup}
-                    </nav>
-                    ${authMarkup}
+                    <button class="site-nav-toggle" type="button" aria-expanded="false" aria-controls="${navPanelId}" data-nav-toggle>
+                        <span class="sr-only">Toggle navigation</span>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                    <div id="${navPanelId}" class="site-header__panel" data-nav-panel>
+                        <nav class="site-nav" aria-label="Primary navigation">
+                            ${navMarkup}
+                        </nav>
+                        ${authMarkup}
+                    </div>
                 </div>
             </header>
         `;
 
-        const logoutButton = mount.querySelector("[data-logout-button]");
-        if (logoutButton) {
-            logoutButton.addEventListener("click", () => {
+        const logoutLink = mount.querySelector("[data-logout-link]");
+        if (logoutLink) {
+            logoutLink.addEventListener("click", () => {
                 window.NoorLocatorAuth.clearSession();
-                window.location.href = "index.html";
             });
         }
+
+        const toggleButton = mount.querySelector("[data-nav-toggle]");
+        const navPanel = mount.querySelector("[data-nav-panel]");
+        if (!toggleButton || !navPanel) {
+            return;
+        }
+
+        const setExpanded = expanded => {
+            toggleButton.setAttribute("aria-expanded", String(expanded));
+            navPanel.classList.toggle("is-open", expanded);
+        };
+
+        setExpanded(false);
+
+        toggleButton.addEventListener("click", () => {
+            const expanded = toggleButton.getAttribute("aria-expanded") === "true";
+            setExpanded(!expanded);
+        });
+
+        navPanel.querySelectorAll("a, button").forEach(element => {
+            element.addEventListener("click", () => setExpanded(false));
+        });
     }
 
     function renderFooter() {
@@ -56,11 +88,43 @@ window.NoorLocatorLayout = (() => {
         mount.innerHTML = `
             <footer class="site-footer">
                 <div class="site-footer__inner">
-                    <p class="site-footer__credit">Driven by موكب خدام اهل البيت (عليهم السلام), Copenhagen, Denmark.</p>
+                    <p class="site-footer__credit">${attribution}</p>
                     <p>NoorLocator helps guests discover nearby centers and lets authenticated users submit moderated contributions through real API-backed workflows.</p>
                 </div>
             </footer>
         `;
+    }
+
+    async function registerServiceWorker() {
+        if (!("serviceWorker" in navigator)) {
+            return;
+        }
+
+        const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+        if (isLocal) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(registrations.map(registration => registration.unregister()));
+
+            if ("caches" in window) {
+                const cacheKeys = await caches.keys();
+                await Promise.all(
+                    cacheKeys
+                        .filter(key => key.startsWith("noorlocator-"))
+                        .map(key => caches.delete(key)));
+            }
+
+            return;
+        }
+
+        if (!window.isSecureContext) {
+            return;
+        }
+
+        try {
+            await navigator.serviceWorker.register("service-worker.js");
+        } catch (error) {
+            console.warn("NoorLocator service worker registration failed.", error);
+        }
     }
 
     function buildNavigation(user) {
@@ -96,6 +160,10 @@ window.NoorLocatorLayout = (() => {
             if (window.NoorLocatorAuth.isAuthenticated()) {
                 window.NoorLocatorAuth.syncCurrentUser().finally(renderHeader);
             }
+
+            registerServiceWorker().catch(error => {
+                console.warn("NoorLocator service worker setup failed.", error);
+            });
         }
     };
 })();

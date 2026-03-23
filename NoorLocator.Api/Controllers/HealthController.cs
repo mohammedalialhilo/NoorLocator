@@ -4,10 +4,16 @@ using NoorLocator.Application.Common.Models;
 
 namespace NoorLocator.Api.Controllers;
 
+/// <summary>
+/// Publishes lightweight health and readiness checks for the NoorLocator API host.
+/// </summary>
 [ApiController]
 [Route("api/health")]
 public class HealthController(IWebHostEnvironment environment) : ControllerBase
 {
+    /// <summary>
+    /// Returns a verbose application health payload.
+    /// </summary>
     [AllowAnonymous]
     [HttpGet]
     public ActionResult<ApiResponse<object>> Get()
@@ -23,6 +29,9 @@ public class HealthController(IWebHostEnvironment environment) : ControllerBase
         return Ok(ApiResponse<object>.SuccessResponse(payload, "NoorLocator API is running."));
     }
 
+    /// <summary>
+    /// Returns a lightweight pong response for connectivity checks.
+    /// </summary>
     [AllowAnonymous]
     [HttpGet("ping")]
     public ActionResult<ApiResponse<object>> Ping()

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0D2535">
+    <title>NoorLocator | Signing Out</title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="logout">
+    <main class="page-shell">
+        <section class="page-hero page-hero--split">
+            <div class="page-hero__content">
+                <span class="eyebrow">Signing out</span>
+                <h1>Clearing your NoorLocator session.</h1>
+                <p id="logout-status">Removing cached session data and returning you to the public homepage...</p>
+                <div class="hero__actions">
+                    <a class="button button--secondary" href="index.html">Go to homepage now</a>
+                    <a class="button button--ghost" href="login.html">Sign in again</a>
+                </div>
+            </div>
+            <aside class="hero__panel">
+                <img class="hero__logo" src="assets/logo.svg" alt="NoorLocator logo">
+            </aside>
+        </section>
+    </main>
+
+    <script>
+        (async () => {
+            const status = document.getElementById("logout-status");
+
+            const removeKey = key => {
+                try {
+                    window.localStorage.removeItem(key);
+                } catch {
+                    // Ignore storage cleanup errors on logout.
+                }
+            };
+
+            removeKey("noorlocator.auth.token");
+            removeKey("noorlocator.auth.refreshToken");
+            removeKey("noorlocator.auth.user");
+            removeKey("noorlocator.discovery.location");
+
+            try {
+                if (window.history?.replaceState) {
+                    window.history.replaceState(null, "", "logout.html");
+                }
+            } catch {
+                // Ignore history update failures during logout.
+            }
+
+            try {
+                if ("serviceWorker" in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(registrations.map(registration => registration.unregister()));
+                }
+
+                if ("caches" in window) {
+                    const cacheKeys = await caches.keys();
+                    await Promise.all(
+                        cacheKeys
+                            .filter(key => key.startsWith("noorlocator-"))
+                            .map(key => caches.delete(key)));
+                }
+            } catch {
+                // Ignore cache cleanup failures and continue redirecting.
+            }
+
+            if (status) {
+                status.textContent = "You have been signed out. Redirecting to the public homepage...";
+            }
+
+            window.setTimeout(() => {
+                window.location.replace("index.html?loggedOut=1");
+            }, 300);
+        })();
+    </script>
+</body>
+</html>

@@ -5,7 +5,7 @@ namespace NoorLocator.Api.Extensions;
 
 public static class ControllerExtensions
 {
-    public static IActionResult ToActionResult(this ControllerBase controller, OperationResult result)
+    public static ActionResult<ApiResponse<object?>> ToActionResult(this ControllerBase controller, OperationResult result)
     {
         var payload = result.Succeeded
             ? ApiResponse<object?>.SuccessResponse(null, result.Message)
@@ -14,7 +14,7 @@ public static class ControllerExtensions
         return controller.StatusCode(result.StatusCode, payload);
     }
 
-    public static IActionResult ToActionResult<T>(this ControllerBase controller, OperationResult<T> result)
+    public static ActionResult<ApiResponse<T>> ToActionResult<T>(this ControllerBase controller, OperationResult<T> result)
     {
         var payload = result.Succeeded
             ? ApiResponse<T>.SuccessResponse(result.Data, result.Message)

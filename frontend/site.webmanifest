@@ -1,0 +1,22 @@
+{
+  "name": "NoorLocator",
+  "short_name": "NoorLocator",
+  "description": "Discover nearby Shia centers, languages, and upcoming majalis with NoorLocator.",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#EEE4D6",
+  "theme_color": "#0D2535",
+  "icons": [
+    {
+      "src": "assets/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "assets/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable any"
+    }
+  ]
+}

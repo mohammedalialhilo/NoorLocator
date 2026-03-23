@@ -1,4 +1,5 @@
 window.NoorLocatorAuth = (() => {
+    const apiBaseUrl = document.body?.dataset.apiBaseUrl ?? "";
     const tokenKey = "noorlocator.auth.token";
     const refreshTokenKey = "noorlocator.auth.refreshToken";
     const userKey = "noorlocator.auth.user";
@@ -24,12 +25,20 @@ window.NoorLocatorAuth = (() => {
         }
     }
 
+    function getSessionUser() {
+        if (!getToken()) {
+            return null;
+        }
+
+        return getUser();
+    }
+
     function isAuthenticated() {
-        return Boolean(getToken() && getUser());
+        return Boolean(getSessionUser());
     }
 
     function hasRole(...roles) {
-        const user = getUser();
+        const user = getSessionUser();
         return Boolean(user && roles.includes(user.role));
     }
 
@@ -51,30 +60,42 @@ window.NoorLocatorAuth = (() => {
         notifyChange();
     }
 
+    function logout(redirectPath = "index.html") {
+        clearSession();
+        window.location.replace(redirectPath);
+    }
+
     function notifyChange() {
-        window.dispatchEvent(new CustomEvent("noorlocator:auth-changed", { detail: getUser() }));
+        window.dispatchEvent(new CustomEvent("noorlocator:auth-changed", { detail: getSessionUser() }));
     }
 
     async function syncCurrentUser() {
-        const token = getToken();
-        if (!token) {
+        const requestedToken = getToken();
+        if (!requestedToken) {
             return null;
         }
 
         try {
-            const response = await fetch("/api/auth/me", {
+            const response = await fetch(`${apiBaseUrl}/api/auth/me`, {
                 headers: {
-                    Authorization: `Bearer ${token}`
+                    Authorization: `Bearer ${requestedToken}`
                 }
             });
 
             if (!response.ok) {
-                clearSession();
+                if (response.status === 401 || response.status === 403) {
+                    clearSession();
+                }
+
                 return null;
             }
 
             const payload = await response.json();
             if (payload?.data) {
+                if (getToken() !== requestedToken) {
+                    return getSessionUser();
+                }
+
                 localStorage.setItem(userKey, JSON.stringify(payload.data));
                 notifyChange();
                 return payload.data;
@@ -82,8 +103,7 @@ window.NoorLocatorAuth = (() => {
 
             return null;
         } catch {
-            clearSession();
-            return null;
+            return getSessionUser();
         }
     }
 
@@ -121,10 +141,12 @@ window.NoorLocatorAuth = (() => {
         clearSession,
         getDefaultRoute,
         getRefreshToken,
+        getSessionUser,
         getToken,
         getUser,
         hasRole,
         isAuthenticated,
+        logout,
         requireAuth,
         setSession,
         syncCurrentUser

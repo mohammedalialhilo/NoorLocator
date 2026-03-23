@@ -1,0 +1,43 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: noorlocator-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: Odujde9010!
+      MYSQL_DATABASE: Noorlocator
+    ports:
+      - "3306:3306"
+    volumes:
+      - noorlocator-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-pOdujde9010!"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: noorlocator-api
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Server=mysql;Port=3306;Database=Noorlocator;User=root;Password=Odujde9010!;
+      MySql__ServerVersion: 8.0.36
+      Jwt__Issuer: NoorLocator
+      Jwt__Audience: NoorLocator.Client
+      Jwt__Key: CHANGE-ME-TO-A-SECURE-32-CHARACTER-MINIMUM-SECRET-REPLACE-THIS
+      Frontend__RelativeRootPath: frontend
+      Swagger__Enabled: "true"
+      Cors__AllowedOrigins__0: http://localhost:8080
+    ports:
+      - "8080:8080"
+
+volumes:
+  noorlocator-mysql-data:

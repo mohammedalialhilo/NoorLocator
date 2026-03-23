@@ -3,6 +3,8 @@ using NoorLocator.Application.Authentication.Dtos;
 using NoorLocator.Application.Authentication.Validators;
 using NoorLocator.Application.Centers.Dtos;
 using NoorLocator.Application.Centers.Validators;
+using NoorLocator.Application.Languages.Dtos;
+using NoorLocator.Application.Languages.Validators;
 using NoorLocator.Application.Management.Dtos;
 using NoorLocator.Application.Management.Validators;
 using NoorLocator.Application.Majalis.Dtos;
@@ -20,10 +22,13 @@ public static class DependencyInjection
         services.AddScoped<IValidator<RegisterRequestDto>, RegisterRequestValidator>();
         services.AddScoped<IValidator<LoginRequestDto>, LoginRequestValidator>();
         services.AddScoped<IValidator<CreateCenterRequestDto>, CreateCenterRequestValidator>();
+        services.AddScoped<IValidator<UpdateCenterDto>, UpdateCenterValidator>();
         services.AddScoped<IValidator<CenterLocationQueryDto>, CenterLocationQueryValidator>();
         services.AddScoped<IValidator<NearestCentersQueryDto>, NearestCentersQueryValidator>();
         services.AddScoped<IValidator<CenterSearchQueryDto>, CenterSearchQueryValidator>();
         services.AddScoped<IValidator<CreateMajlisDto>, CreateMajlisValidator>();
+        services.AddScoped<IValidator<UpdateMajlisDto>, UpdateMajlisValidator>();
+        services.AddScoped<IValidator<CreateCenterLanguageSuggestionDto>, CreateCenterLanguageSuggestionValidator>();
         services.AddScoped<IValidator<ManagerRequestDto>, ManagerRequestValidator>();
         services.AddScoped<IValidator<CreateSuggestionDto>, CreateSuggestionValidator>();
 

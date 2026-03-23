@@ -1,0 +1,11 @@
+.git
+.gitignore
+**/bin
+**/obj
+**/.vs
+**/.idea
+**/.vscode
+**/TestResults
+**/*.user
+**/*.suo
+README---NoorLocator -Manifesto.md

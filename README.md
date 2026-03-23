@@ -1,20 +1,29 @@
 # NoorLocator
 
-NoorLocator is a moderated web platform for discovering Shia Islamic centers, browsing published majalis, and submitting authenticated community contributions for review.
+NoorLocator is a moderated web platform for discovering Shia Islamic centers, browsing upcoming majalis, and contributing community updates through role-based workflows.
 
 Driven by موكب خدام اهل البيت (عليهم السلام), Copenhagen, Denmark.
 
-## Current Scope
+## What Is Included
 
-The project currently includes:
-
-- public center discovery with search, filtering, nearest-center lookup, and server-side distance calculation
+- Public center discovery with nearest-center lookup, search, filtering, and center detail pages
 - JWT authentication with `Guest`, `User`, `Manager`, and `Admin` roles
-- MySQL persistence through EF Core and Pomelo
-- seeded users, languages, demo centers, and sample manager assignment
-- moderation-first contribution workflows for authenticated users
-- manager-scoped majlis CRUD with center-assignment enforcement
-- admin moderation, center management, user visibility, and audit review tools
+- Moderation-first contribution workflows for center requests, language suggestions, manager requests, and product feedback
+- Manager-only majlis CRUD with center assignment enforcement
+- Admin moderation dashboard, center management, user visibility, and audit logs
+- Richer seeded demo data for centers, languages, and majalis
+- Swagger/OpenAPI documentation
+- Docker support for the API and MySQL
+- Unit and integration tests
+- PWA basics with a web manifest and service worker shell caching
+
+## Stack
+
+- Frontend: HTML, CSS, JavaScript
+- Backend: ASP.NET Core Web API
+- Database: MySQL with EF Core and Pomelo
+- Auth: JWT
+- Tests: xUnit
 
 ## Architecture
 
@@ -25,74 +34,34 @@ NoorLocator.sln
 |-- NoorLocator.Domain
 |-- NoorLocator.Infrastructure
 |-- frontend
+`-- tests
+    |-- NoorLocator.UnitTests
+    `-- NoorLocator.IntegrationTests
 ```
 
-- `NoorLocator.Api`: controllers, auth middleware, Swagger, static frontend hosting, startup migration, and seed execution
-- `NoorLocator.Application`: DTOs, service interfaces, validation contracts, and shared response models
-- `NoorLocator.Domain`: entities and enums for centers, users, majalis, moderation, and audit data
-- `NoorLocator.Infrastructure`: EF Core `DbContext`, MySQL provider setup, migrations, seeding, auth services, auditing, and concrete business services
-- `frontend`: branded HTML, CSS, and JavaScript pages that consume only the live API
+- `NoorLocator.Api`
+  Hosts controllers, auth setup, exception handling, Swagger, static frontend hosting, and startup initialization.
+- `NoorLocator.Application`
+  Contains DTOs, service contracts, validation, and shared response models.
+- `NoorLocator.Domain`
+  Holds the core entities and enums.
+- `NoorLocator.Infrastructure`
+  Implements EF Core, MySQL setup, migrations, seeding, JWT generation, password hashing, auditing, and concrete services.
+- `frontend`
+  Contains the branded static client that consumes only the live API.
+- `tests`
+  Covers service-level logic and key HTTP flows.
 
-## Implemented Workflows
+## Roles
 
-### Public discovery
-
-- `GET /api/centers`
-- `GET /api/centers/{id}`
-- `GET /api/centers/nearest?lat={lat}&lng={lng}`
-- `GET /api/centers/search?query=&city=&country=&languageCode=`
-- `GET /api/centers/{id}/majalis`
-- `GET /api/centers/{id}/languages`
-- `GET /api/languages`
-
-### Authentication
-
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-
-### Authenticated user contributions
-
-- `POST /api/center-requests`
-- `GET /api/center-requests/my`
-- `POST /api/suggestions`
-- `POST /api/center-language-suggestions`
-- `POST /api/manager/request`
-
-All contribution endpoints require authentication. User submissions do not write directly to public center data. Center requests and center language suggestions are stored as `Pending`, manager access requests are approval-based, and suggestions are tracked by type and review status. Audit entries are written for submission and auth-critical events.
-
-### Manager workflows and majalis CRUD
-
-- `GET /api/manager/my-centers`
-- `GET /api/majalis?centerId=`
-- `GET /api/majalis/{id}`
-- `POST /api/majalis`
-- `PUT /api/majalis/{id}`
-- `DELETE /api/majalis/{id}`
-
-Manager and admin routes enforce server-side authorization. A manager must be assigned to the target center before they can create, edit, move, or delete majalis for it. Languages must come from the predefined `Languages` table, and majlis-language links are persisted through `MajlisLanguages`.
-
-### Admin moderation and management
-
-- `GET /api/admin/dashboard`
-- `GET /api/admin/center-requests`
-- `POST /api/admin/center-requests/{id}/approve`
-- `POST /api/admin/center-requests/{id}/reject`
-- `GET /api/admin/manager-requests`
-- `POST /api/admin/manager-requests/{id}/approve`
-- `POST /api/admin/manager-requests/{id}/reject`
-- `GET /api/admin/center-language-suggestions`
-- `POST /api/admin/center-language-suggestions/{id}/approve`
-- `POST /api/admin/center-language-suggestions/{id}/reject`
-- `GET /api/admin/suggestions`
-- `PUT /api/admin/suggestions/{id}/review`
-- `GET /api/admin/users`
-- `GET /api/admin/centers`
-- `PUT /api/admin/centers/{id}`
-- `DELETE /api/admin/centers/{id}`
-- `GET /api/admin/audit-logs`
-
-Admin routes are server-enforced and do not rely on frontend-only moderation rules. Approving a center request creates a live `Center`, approving a manager request creates or updates `CenterManagers`, approving a center language suggestion adds to `CenterLanguages`, and admin approvals, rejections, edits, deletions, and reviews all write audit logs.
+- `Guest`
+  Unauthenticated public visitor who can browse published centers and majalis.
+- `User`
+  Authenticated community member who can submit moderated contributions.
+- `Manager`
+  Authenticated user assigned to one or more approved centers and allowed to manage majalis there.
+- `Admin`
+  Full moderation and management access across the platform.
 
 ## Seeded Accounts
 
@@ -100,33 +69,34 @@ Admin routes are server-enforced and do not rely on frontend-only moderation rul
 - Manager: `manager@noorlocator.local` / `Manager123!Pass`
 - User: `user@noorlocator.local` / `User123!Pass`
 
-## Seeded Data
+## Seeded Demo Data
 
 - Languages: Arabic, Swedish, English, Farsi, Urdu
-- Demo centers in Copenhagen, Stockholm, and Helsinki
-- One approved manager assignment for the seeded manager account
-- One sample majlis linked to the Copenhagen demo center
+- Demo centers in Copenhagen, Stockholm, Helsinki, Oslo, and Aarhus
+- Approved manager assignments for the seeded manager account
+- Multiple public demo majalis across the seeded centers
 
-## Database Setup
+## Local Setup
 
-The app is configured for MySQL.
+### Prerequisites
 
-Default development target:
+- .NET SDK 10
+- MySQL 8.x
 
-```text
-Server=127.0.0.1;Port=3306;Database=Noorlocator
-```
+### Development Configuration
 
-Update these files if needed:
+Development settings live in:
 
-- `NoorLocator.Api/appsettings.json`
 - `NoorLocator.Api/appsettings.Development.json`
 
-Make sure the MySQL username, password, and `MySql:ServerVersion` value match your local server.
+Safer shared defaults and production placeholders live in:
 
-## Running The App
+- `NoorLocator.Api/appsettings.json`
+- `NoorLocator.Api/appsettings.Production.json`
 
-From the repo root:
+For production-style deployments, prefer environment variables or user-secrets over committed credentials.
+
+### Run Locally
 
 ```powershell
 cd C:\Users\alhil\Desktop\NoorLocator\NoorLocator
@@ -136,27 +106,112 @@ dotnet ef database update --project .\NoorLocator.Infrastructure\NoorLocator.Inf
 dotnet run --project .\NoorLocator.Api\NoorLocator.Api.csproj
 ```
 
-Default URLs:
+### Default URLs
 
 - App: `https://localhost:7132/`
 - HTTP fallback: `http://localhost:5141/`
 - Swagger: `https://localhost:7132/swagger`
 - Health: `https://localhost:7132/api/health`
 
-## Frontend Notes
-
-- The frontend stores auth state in `localStorage`
-- The navbar reflects logged-in and role-aware state
-- The dashboard now supports center requests, user suggestions, center language suggestions, manager access requests, and request-status tracking
-- The manager workspace now shows assigned centers, loads majalis by center, and supports create, edit, and delete actions with language checkbox selection
-- The admin workspace now provides moderation queues, center editing/deletion, user visibility, and audit-log review with confirmation-based actions
-- Browser geolocation is used for public nearby-center discovery, with search fallback when location is unavailable
-
 ## Migrations
 
-Migration files live under:
+Migration files live in:
 
 - `NoorLocator.Infrastructure/Persistence/Migrations`
+
+Useful commands:
+
+```powershell
+dotnet ef migrations add YourMigrationName --project .\NoorLocator.Infrastructure\NoorLocator.Infrastructure.csproj --startup-project .\NoorLocator.Api\NoorLocator.Api.csproj
+dotnet ef database update --project .\NoorLocator.Infrastructure\NoorLocator.Infrastructure.csproj --startup-project .\NoorLocator.Api\NoorLocator.Api.csproj
+```
+
+## Docker
+
+Build and run the app with MySQL:
+
+```powershell
+docker compose up --build
+```
+
+Docker services:
+
+- API: `http://localhost:8080`
+- MySQL: `localhost:3306`
+
+Files:
+
+- `Dockerfile`
+- `docker-compose.yml`
+- `.dockerignore`
+
+Important:
+
+- Replace `Jwt__Key` in `docker-compose.yml` before using it beyond local development.
+- The container uses `Frontend__RelativeRootPath=frontend`, and the frontend assets are copied into the publish output automatically.
+
+## Swagger And API Coverage
+
+Swagger now includes:
+
+- XML-comment summaries for the API surface
+- JWT bearer security definition
+- Default error response documentation
+- Documented public, authenticated, manager, and admin endpoints
+
+Main endpoint groups:
+
+- Auth: `/api/auth/*`
+- Public discovery: `/api/centers/*`, `/api/languages`, `/api/majalis`
+- User contributions: `/api/center-requests`, `/api/suggestions`, `/api/center-language-suggestions`, `/api/manager/request`
+- Manager: `/api/manager/*`, `/api/majalis/*`
+- Admin: `/api/admin/*`
+
+## Testing
+
+Run all tests:
+
+```powershell
+dotnet test NoorLocator.sln
+```
+
+Included coverage:
+
+- Unit tests for center discovery and center request workflows
+- Integration tests for registration, protected routes, public center search, and admin authorization
+
+Test projects:
+
+- `tests/NoorLocator.UnitTests`
+- `tests/NoorLocator.IntegrationTests`
+
+## Frontend Notes
+
+- The frontend consumes only the live API
+- Auth state is stored in `localStorage`
+- The navbar updates by role and now includes a mobile toggle
+- Toasts, loading states, empty states, and responsive layouts were polished in Phase 7
+- PWA basics are included through `site.webmanifest` and `service-worker.js`
+
+## Production-Readiness Notes
+
+- Unhandled exceptions are now returned through a consistent API response shape
+- Validation failures include trace-friendly metadata
+- Admin access is enforced server-side through policy-based authorization
+- DTO-based write endpoints reduce overposting risk
+- JWT configuration is validated more strictly outside development
+- Open CORS is allowed only in development and testing when origins are not explicitly configured
+- Published API output now includes the static frontend assets for container and publish scenarios
+
+## Future Roadmap
+
+- Refresh token rotation and logout/revocation flows
+- Multi-language UI scaffolding for English, Arabic, and Swedish
+- Favorites or saved centers
+- Calendar-style public majalis browsing
+- Nearby majalis and notification scaffolding
+- Media uploads and richer center profiles
+- CI pipelines and deployment environments
 
 ## Attribution
 
