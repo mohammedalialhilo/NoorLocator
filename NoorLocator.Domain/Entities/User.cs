@@ -17,9 +17,15 @@ public class User : AuditableEntity
 
     public ICollection<CenterManager> ManagedCenters { get; set; } = new List<CenterManager>();
 
+    public ICollection<ManagerRequest> ManagerRequests { get; set; } = new List<ManagerRequest>();
+
     public ICollection<Majlis> CreatedMajalis { get; set; } = new List<Majlis>();
 
     public ICollection<CenterLanguageSuggestion> CenterLanguageSuggestions { get; set; } = new List<CenterLanguageSuggestion>();
 
     public ICollection<Suggestion> Suggestions { get; set; } = new List<Suggestion>();
+
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
+    public ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
 }

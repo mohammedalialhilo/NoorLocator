@@ -5,5 +5,5 @@ namespace NoorLocator.Application.Centers.Interfaces;
 
 public interface ICenterRequestService
 {
-    Task<OperationResult> CreateAsync(CreateCenterRequestDto request, CancellationToken cancellationToken = default);
+    Task<OperationResult> CreateAsync(CreateCenterRequestDto request, int userId, CancellationToken cancellationToken = default);
 }

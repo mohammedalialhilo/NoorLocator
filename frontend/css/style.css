@@ -457,6 +457,13 @@ textarea.form__control {
     font-weight: 700;
 }
 
+.utility-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+    align-items: center;
+}
+
 @keyframes float-in {
     from {
         opacity: 0;

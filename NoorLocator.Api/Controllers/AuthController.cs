@@ -26,4 +26,13 @@ public class AuthController(IAuthService authService) : ControllerBase
         var result = await authService.LoginAsync(request, cancellationToken);
         return this.ToActionResult(result);
     }
+
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<IActionResult> Me(CancellationToken cancellationToken)
+    {
+        var userId = User.GetRequiredUserId();
+        var result = await authService.GetCurrentUserAsync(userId, cancellationToken);
+        return this.ToActionResult(result);
+    }
 }

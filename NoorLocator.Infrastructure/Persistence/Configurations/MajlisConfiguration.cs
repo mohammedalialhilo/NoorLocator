@@ -23,7 +23,7 @@ public class MajlisConfiguration : IEntityTypeConfiguration<Majlis>
             .IsRequired();
 
         builder.Property(majlis => majlis.CreatedAt)
-            .HasDefaultValueSql("SYSUTCDATETIME()");
+            .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
         builder.HasOne(majlis => majlis.Center)
             .WithMany(center => center.Majalis)

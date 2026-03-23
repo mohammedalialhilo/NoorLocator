@@ -15,7 +15,7 @@ public class SuggestionsController(ISuggestionService suggestionService) : Contr
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateSuggestionDto request, CancellationToken cancellationToken)
     {
-        var result = await suggestionService.CreateAsync(request, cancellationToken);
+        var result = await suggestionService.CreateAsync(request, User.GetRequiredUserId(), cancellationToken);
         return this.ToActionResult(result);
     }
 }

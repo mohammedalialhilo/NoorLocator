@@ -42,7 +42,7 @@ public class CenterRequestConfiguration : IEntityTypeConfiguration<CenterRequest
             .IsRequired();
 
         builder.Property(centerRequest => centerRequest.CreatedAt)
-            .HasDefaultValueSql("SYSUTCDATETIME()");
+            .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
         builder.HasOne(centerRequest => centerRequest.RequestedByUser)
             .WithMany(user => user.CenterRequests)

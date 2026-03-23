@@ -15,7 +15,7 @@ public class CenterRequestsController(ICenterRequestService centerRequestService
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCenterRequestDto request, CancellationToken cancellationToken)
     {
-        var result = await centerRequestService.CreateAsync(request, cancellationToken);
+        var result = await centerRequestService.CreateAsync(request, User.GetRequiredUserId(), cancellationToken);
         return this.ToActionResult(result);
     }
 }

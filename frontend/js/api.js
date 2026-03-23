@@ -2,12 +2,20 @@ window.NoorLocatorApi = (() => {
     const apiBaseUrl = document.body?.dataset.apiBaseUrl ?? "";
 
     async function request(path, options = {}) {
+        const headers = new Headers(options.headers || {});
+        const token = window.NoorLocatorAuth?.getToken?.();
+
+        if (options.body && !headers.has("Content-Type")) {
+            headers.set("Content-Type", "application/json");
+        }
+
+        if (token && !headers.has("Authorization")) {
+            headers.set("Authorization", `Bearer ${token}`);
+        }
+
         const response = await fetch(`${apiBaseUrl}${path}`, {
-            headers: {
-                "Content-Type": "application/json",
-                ...(options.headers || {})
-            },
-            ...options
+            ...options,
+            headers
         });
 
         const contentType = response.headers.get("content-type") || "";
@@ -45,6 +53,9 @@ window.NoorLocatorApi = (() => {
                 method: "POST",
                 body: JSON.stringify(payload)
             });
+        },
+        me() {
+            return request("/api/auth/me");
         },
         register(payload) {
             return request("/api/auth/register", {

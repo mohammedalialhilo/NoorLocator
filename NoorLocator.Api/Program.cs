@@ -9,6 +9,7 @@ using NoorLocator.Application;
 using NoorLocator.Application.Common.Configuration;
 using NoorLocator.Application.Common.Models;
 using NoorLocator.Infrastructure;
+using NoorLocator.Infrastructure.Seeding;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -112,6 +113,12 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var initializer = scope.ServiceProvider.GetRequiredService<NoorLocatorDbInitializer>();
+    await initializer.InitializeAsync();
+}
 
 var frontendRelativePath = builder.Configuration["Frontend:RelativeRootPath"] ?? "..\\frontend";
 var frontendPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, frontendRelativePath));

@@ -17,6 +17,8 @@ public class NoorLocatorDbContext(DbContextOptions<NoorLocatorDbContext> options
 
     public DbSet<Language> Languages => Set<Language>();
 
+    public DbSet<ManagerRequest> ManagerRequests => Set<ManagerRequest>();
+
     public DbSet<MajlisLanguage> MajlisLanguages => Set<MajlisLanguage>();
 
     public DbSet<CenterLanguage> CenterLanguages => Set<CenterLanguage>();
@@ -25,8 +27,14 @@ public class NoorLocatorDbContext(DbContextOptions<NoorLocatorDbContext> options
 
     public DbSet<Suggestion> Suggestions => Set<Suggestion>();
 
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasCharSet("utf8mb4");
+        modelBuilder.UseCollation("utf8mb4_unicode_ci");
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(NoorLocatorDbContext).Assembly);
         base.OnModelCreating(modelBuilder);
     }

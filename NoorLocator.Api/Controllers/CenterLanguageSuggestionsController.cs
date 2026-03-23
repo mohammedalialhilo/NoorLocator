@@ -15,7 +15,7 @@ public class CenterLanguageSuggestionsController(IManagerService managerService)
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCenterLanguageSuggestionDto request, CancellationToken cancellationToken)
     {
-        var result = await managerService.SuggestCenterLanguageAsync(request, cancellationToken);
+        var result = await managerService.SuggestCenterLanguageAsync(request, User.GetRequiredUserId(), cancellationToken);
         return this.ToActionResult(result);
     }
 }

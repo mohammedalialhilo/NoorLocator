@@ -6,11 +6,11 @@ namespace NoorLocator.Application.Management.Interfaces;
 
 public interface IManagerService
 {
-    Task<OperationResult> RequestManagerAccessAsync(ManagerRequestDto request, CancellationToken cancellationToken = default);
+    Task<OperationResult> RequestManagerAccessAsync(ManagerRequestDto request, int userId, CancellationToken cancellationToken = default);
 
     Task<OperationResult> ApproveManagerAsync(ApproveManagerRequestDto request, CancellationToken cancellationToken = default);
 
-    Task<OperationResult> SuggestCenterLanguageAsync(CreateCenterLanguageSuggestionDto request, CancellationToken cancellationToken = default);
+    Task<OperationResult> SuggestCenterLanguageAsync(CreateCenterLanguageSuggestionDto request, int userId, CancellationToken cancellationToken = default);
 
     Task<OperationResult> ApproveCenterLanguageSuggestionAsync(ApproveLanguageSuggestionDto request, CancellationToken cancellationToken = default);
 }

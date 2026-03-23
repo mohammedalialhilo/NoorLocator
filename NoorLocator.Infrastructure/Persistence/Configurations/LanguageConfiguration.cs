@@ -21,11 +21,5 @@ public class LanguageConfiguration : IEntityTypeConfiguration<Language>
 
         builder.HasIndex(language => language.Code)
             .IsUnique();
-
-        builder.HasData(
-            new Language { Id = 1, Name = "Arabic", Code = "ar" },
-            new Language { Id = 2, Name = "Swedish", Code = "sv" },
-            new Language { Id = 3, Name = "English", Code = "en" },
-            new Language { Id = 4, Name = "Farsi", Code = "fa" });
     }
 }

@@ -15,7 +15,7 @@ public class ManagerController(IManagerService managerService) : ControllerBase
     [HttpPost("request")]
     public async Task<IActionResult> RequestAccess([FromBody] ManagerRequestDto request, CancellationToken cancellationToken)
     {
-        var result = await managerService.RequestManagerAccessAsync(request, cancellationToken);
+        var result = await managerService.RequestManagerAccessAsync(request, User.GetRequiredUserId(), cancellationToken);
         return this.ToActionResult(result);
     }
 

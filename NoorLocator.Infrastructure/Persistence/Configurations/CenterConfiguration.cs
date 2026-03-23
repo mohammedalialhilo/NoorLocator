@@ -37,6 +37,6 @@ public class CenterConfiguration : IEntityTypeConfiguration<Center>
             .HasMaxLength(2000);
 
         builder.Property(center => center.CreatedAt)
-            .HasDefaultValueSql("SYSUTCDATETIME()");
+            .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
     }
 }

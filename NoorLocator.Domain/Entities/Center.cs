@@ -20,6 +20,8 @@ public class Center : AuditableEntity
 
     public ICollection<CenterManager> CenterManagers { get; set; } = new List<CenterManager>();
 
+    public ICollection<ManagerRequest> ManagerRequests { get; set; } = new List<ManagerRequest>();
+
     public ICollection<Majlis> Majalis { get; set; } = new List<Majlis>();
 
     public ICollection<CenterLanguage> CenterLanguages { get; set; } = new List<CenterLanguage>();

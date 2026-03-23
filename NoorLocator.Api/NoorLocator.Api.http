@@ -1,7 +1,35 @@
-@NoorLocator.Api_HostAddress = http://localhost:5181
+@NoorLocator.Api_HostAddress = http://localhost:5141
+@AuthToken = REPLACE_ME
 
 GET {{NoorLocator.Api_HostAddress}}/api/health
 Accept: application/json
+
+###
+
+POST {{NoorLocator.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@noorlocator.local",
+  "password": "Admin123!Pass"
+}
+
+###
+
+POST {{NoorLocator.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Phase Two Tester",
+  "email": "tester@noorlocator.local",
+  "password": "Tester123!Pass"
+}
+
+###
+
+GET {{NoorLocator.Api_HostAddress}}/api/auth/me
+Accept: application/json
+Authorization: Bearer {{AuthToken}}
 
 ###
 

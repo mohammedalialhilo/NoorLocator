@@ -26,7 +26,7 @@ public class SuggestionConfiguration : IEntityTypeConfiguration<Suggestion>
             .IsRequired();
 
         builder.Property(suggestion => suggestion.CreatedAt)
-            .HasDefaultValueSql("SYSUTCDATETIME()");
+            .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
         builder.HasOne(suggestion => suggestion.User)
             .WithMany(user => user.Suggestions)

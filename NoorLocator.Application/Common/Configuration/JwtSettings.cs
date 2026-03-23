@@ -11,4 +11,6 @@ public class JwtSettings
     public string Key { get; set; } = "CHANGE-ME-TO-A-SECURE-32-CHARACTER-MINIMUM-SECRET";
 
     public int TokenLifetimeMinutes { get; set; } = 60;
+
+    public int RefreshTokenLifetimeDays { get; set; } = 30;
 }
