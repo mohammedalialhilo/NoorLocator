@@ -1,0 +1,11 @@
+using NoorLocator.Application.Common.Models;
+using NoorLocator.Application.Majalis.Dtos;
+
+namespace NoorLocator.Application.Majalis.Interfaces;
+
+public interface IMajlisService
+{
+    Task<OperationResult<IReadOnlyCollection<MajlisDto>>> GetMajalisAsync(int? centerId, CancellationToken cancellationToken = default);
+
+    Task<OperationResult> CreateMajlisAsync(CreateMajlisDto request, CancellationToken cancellationToken = default);
+}

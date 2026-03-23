@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>NoorLocator | Center Details</title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="center-details">
+    <div data-site-header></div>
+
+    <main class="page-shell">
+        <section class="page-hero">
+            <span class="eyebrow">Center profile</span>
+            <h1 id="center-title">Center details</h1>
+            <div id="center-meta" class="detail-meta"></div>
+            <p id="center-description">Approved center information, supported languages, and published majalis will appear here.</p>
+        </section>
+
+        <section class="section">
+            <div class="detail-grid">
+                <article class="panel">
+                    <h3>Supported languages</h3>
+                    <ul id="center-languages" class="list">
+                        <li class="list__item">Waiting for language associations from the API.</li>
+                    </ul>
+                </article>
+                <article class="panel">
+                    <h3>Upcoming majalis</h3>
+                    <ul id="center-majalis" class="list">
+                        <li class="list__item">Waiting for majalis data from the API.</li>
+                    </ul>
+                </article>
+            </div>
+        </section>
+    </main>
+
+    <div data-site-footer></div>
+
+    <script defer src="js/api.js"></script>
+    <script defer src="js/layout.js"></script>
+    <script defer src="js/app.js"></script>
+</body>
+</html>

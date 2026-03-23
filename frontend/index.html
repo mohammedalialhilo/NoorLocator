@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>NoorLocator | Phase 1</title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="home">
+    <div data-site-header></div>
+
+    <main class="site-shell">
+        <section class="hero">
+            <div class="hero__content">
+                <span class="eyebrow">Location-based community platform</span>
+                <h1>Find nearby Shia centers with a clean, moderated digital foundation.</h1>
+                <p>NoorLocator Phase 1 establishes the API, architecture, and branded web experience for center discovery, majalis management, and role-based moderation.</p>
+                <div class="hero__actions">
+                    <a class="button button--primary" href="centers.html">Browse centers</a>
+                    <a class="button button--secondary" href="register.html">Create account</a>
+                    <a class="button button--ghost" href="/swagger">Open API docs</a>
+                </div>
+            </div>
+            <aside class="hero__panel">
+                <img class="hero__logo" src="assets/logo.svg" alt="NoorLocator logo">
+            </aside>
+        </section>
+
+        <section class="section">
+            <div class="section__heading">
+                <div class="section__copy">
+                    <span class="eyebrow">Phase 1 scope</span>
+                    <h2>Scaffold first, business workflows next.</h2>
+                    <p>The stack is ready for ASP.NET Core, EF Core, SQL Server, JWT, and static HTML/CSS/JS pages without hard-coding future business behavior.</p>
+                </div>
+            </div>
+            <div class="card-grid">
+                <article class="card">
+                    <span class="card__meta">Architecture</span>
+                    <h3>Clean separation</h3>
+                    <p>API, application, domain, and infrastructure projects are separated so moderation rules and location logic can grow without front-end rewrites.</p>
+                </article>
+                <article class="card">
+                    <span class="card__meta">Moderation-ready</span>
+                    <h3>Role-aware routes</h3>
+                    <p>Guest, user, manager, and admin flows are mapped to placeholder endpoints using JWT and role-based authorization hooks.</p>
+                </article>
+                <article class="card">
+                    <span class="card__meta">Frontend</span>
+                    <h3>Brand system</h3>
+                    <p>The shared design system uses the approved NoorLocator palette and integrates the provided logo direction in navigation, hero, and favicon assets.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="detail-grid">
+                <article class="status-card">
+                    <span id="health-badge" class="status-pill">Checking</span>
+                    <h3>API health</h3>
+                    <p id="health-message" class="message">Waiting for the backend health endpoint.</p>
+                </article>
+                <article class="panel">
+                    <span class="card__meta">Next phases</span>
+                    <h3>What comes after this scaffold</h3>
+                    <ul class="list">
+                        <li class="list__item">Persist moderated center requests instead of placeholder responses.</li>
+                        <li class="list__item">Add real JWT issuance and role-based authentication flows.</li>
+                        <li class="list__item">Implement nearest-center search and center-specific majalis retrieval.</li>
+                    </ul>
+                </article>
+            </div>
+        </section>
+    </main>
+
+    <div data-site-footer></div>
+
+    <script defer src="js/api.js"></script>
+    <script defer src="js/layout.js"></script>
+    <script defer src="js/app.js"></script>
+</body>
+</html>

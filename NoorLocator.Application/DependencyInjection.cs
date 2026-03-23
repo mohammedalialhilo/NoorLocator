@@ -1,0 +1,29 @@
+using Microsoft.Extensions.DependencyInjection;
+using NoorLocator.Application.Authentication.Dtos;
+using NoorLocator.Application.Authentication.Validators;
+using NoorLocator.Application.Centers.Dtos;
+using NoorLocator.Application.Centers.Validators;
+using NoorLocator.Application.Management.Dtos;
+using NoorLocator.Application.Management.Validators;
+using NoorLocator.Application.Majalis.Dtos;
+using NoorLocator.Application.Majalis.Validators;
+using NoorLocator.Application.Suggestions.Dtos;
+using NoorLocator.Application.Suggestions.Validators;
+using NoorLocator.Application.Validation;
+
+namespace NoorLocator.Application;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddApplication(this IServiceCollection services)
+    {
+        services.AddScoped<IValidator<RegisterRequestDto>, RegisterRequestValidator>();
+        services.AddScoped<IValidator<LoginRequestDto>, LoginRequestValidator>();
+        services.AddScoped<IValidator<CreateCenterRequestDto>, CreateCenterRequestValidator>();
+        services.AddScoped<IValidator<CreateMajlisDto>, CreateMajlisValidator>();
+        services.AddScoped<IValidator<ManagerRequestDto>, ManagerRequestValidator>();
+        services.AddScoped<IValidator<CreateSuggestionDto>, CreateSuggestionValidator>();
+
+        return services;
+    }
+}

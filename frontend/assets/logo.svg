@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="logoTitle logoDesc">
+  <title id="logoTitle">NoorLocator logo</title>
+  <desc id="logoDesc">A mosque silhouette inside a location pin inspired by the NoorLocator brand mark.</desc>
+  <g fill="none" stroke="#0D2535" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke-width="16" d="M128 20c-51.91 0-94 42.09-94 94 0 68.18 64.38 109.77 86.99 130.6a10.7 10.7 0 0 0 14.02 0C157.62 223.77 222 182.18 222 114c0-51.91-42.09-94-94-94Z"/>
+    <path stroke-width="12" d="M128 43c-39.21 0-71 31.79-71 71"/>
+  </g>
+  <g fill="#0D2535">
+    <path d="M87 159v-31.5c0-4.43 1.76-8.68 4.9-11.82L102 105V82.5L113 45l11 37.5V159H87Z"/>
+    <path d="M124 159V117.7c0-19.5 15.8-35.3 35.3-35.3 19.49 0 35.28 15.8 35.28 35.3V159H124Z"/>
+    <path d="M104 159h106c0 13.2-10.8 24-24 24h-58c-13.2 0-24-10.8-24-24Z"/>
+    <rect x="95" y="86" width="25" height="10" rx="2"/>
+    <rect x="95" y="112" width="25" height="10" rx="2"/>
+    <rect x="95" y="138" width="25" height="10" rx="2"/>
+    <path d="M161 55c5.72 0 10.78 3.02 13.59 7.55a16.72 16.72 0 0 0-6.45-1.28c-9.3 0-16.84 7.54-16.84 16.84 0 4.33 1.63 8.27 4.32 11.24-8.38-1.77-14.67-9.21-14.67-18.12 0-10.24 8.31-18.55 18.55-18.55Z"/>
+    <rect x="158" y="52" width="4" height="30" rx="2"/>
+  </g>
+</svg>
