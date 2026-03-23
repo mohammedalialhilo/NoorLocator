@@ -289,7 +289,9 @@ function showToast(message, type = "success") {
 function renderStatusBadge(status) {
     const value = String(status || "Pending");
     const normalized = value.toLowerCase();
-    const modifier = ["approved", "rejected", "reviewed"].includes(normalized) ? normalized : "pending";
+    const modifier = ["approved", "rejected", "reviewed", "draft", "published", "archived"].includes(normalized)
+        ? normalized
+        : "pending";
     return `<span class="status-badge status-badge--${modifier}">${escapeHtml(value)}</span>`;
 }
 
@@ -403,6 +405,103 @@ function renderMajalis(container, majalis) {
                 <span class="card__meta">${escapeHtml(majlis.time || "Time to be confirmed")}</span>
                 ${(majlis.languages || []).map(language => `<span class="chip chip--muted">${escapeHtml(language.name)}</span>`).join("")}
             </div>
+        </article>
+    `).join("");
+}
+
+function pickPrimaryCenterImage(images) {
+    if (!Array.isArray(images) || !images.length) {
+        return null;
+    }
+
+    return images.find(image => image.isPrimary) || images[0];
+}
+
+function applyCenterHeroImage(heroImage, logoFallback, centerName, images) {
+    if (!heroImage || !logoFallback) {
+        return;
+    }
+
+    const primaryImage = pickPrimaryCenterImage(images);
+    if (!primaryImage?.imageUrl) {
+        heroImage.hidden = true;
+        heroImage.removeAttribute("src");
+        logoFallback.hidden = false;
+        return;
+    }
+
+    heroImage.src = primaryImage.imageUrl;
+    heroImage.alt = `${centerName} primary image`;
+    heroImage.hidden = false;
+    logoFallback.hidden = true;
+}
+
+function renderCenterGallery(container, images, options = {}) {
+    if (!container) {
+        return;
+    }
+
+    if (!images.length) {
+        const emptyMessage = options.emptyMessage || "No public center photos have been uploaded yet.";
+        setContainerMessage(container, emptyMessage, "soft");
+        return;
+    }
+
+    const manageable = options.manageable === true;
+
+    container.innerHTML = images.map(image => `
+        <article class="gallery-card">
+            <img class="gallery-card__image" src="${escapeHtml(image.imageUrl)}" alt="${escapeHtml(options.imageAlt || "Center gallery image")}" loading="lazy">
+            <div class="gallery-card__head">
+                <div>
+                    ${image.isPrimary ? `<span class="status-badge status-badge--published">Primary</span>` : `<span class="card__meta">Gallery image</span>`}
+                    <p class="gallery-card__meta">Uploaded ${escapeHtml(formatDateTime(image.createdAt))}</p>
+                </div>
+            </div>
+            ${manageable ? `
+                <div class="gallery-card__actions">
+                    ${image.isPrimary ? "" : `<button class="button button--secondary" type="button" data-set-primary-image-id="${escapeHtml(image.id)}">Set primary</button>`}
+                    <button class="button button--danger" type="button" data-delete-center-image-id="${escapeHtml(image.id)}">Delete</button>
+                </div>
+            ` : ""}
+        </article>
+    `).join("");
+}
+
+function renderCenterAnnouncements(container, announcements, options = {}) {
+    if (!container) {
+        return;
+    }
+
+    if (!announcements.length) {
+        const emptyMessage = options.emptyMessage || "No public announcements are available for this center right now.";
+        setContainerMessage(container, emptyMessage, "soft");
+        return;
+    }
+
+    const manageable = options.manageable === true;
+
+    container.innerHTML = announcements.map(announcement => `
+        <article class="list-card">
+            ${announcement.imageUrl ? `<img class="announcement-card__image" src="${escapeHtml(announcement.imageUrl)}" alt="${escapeHtml(announcement.title)}" loading="lazy">` : ""}
+            <div class="announcement-card__head">
+                <div>
+                    <h4>${escapeHtml(announcement.title)}</h4>
+                    <p class="announcement-card__meta">${escapeHtml(announcement.centerName || "")}</p>
+                </div>
+                ${manageable ? renderStatusBadge(announcement.status) : `<span class="status-pill">${escapeHtml(formatDateTime(announcement.createdAt))}</span>`}
+            </div>
+            <p>${escapeHtml(announcement.description || "No additional announcement details have been provided.")}</p>
+            <div class="utility-row utility-row--wrap">
+                <span class="card__meta">Published ${escapeHtml(formatDateTime(announcement.createdAt))}</span>
+                ${manageable ? `<span class="card__meta">Status: ${escapeHtml(String(announcement.status))}</span>` : ""}
+            </div>
+            ${manageable ? `
+                <div class="button-row">
+                    <button class="button button--secondary" type="button" data-edit-announcement-id="${escapeHtml(announcement.id)}">Edit</button>
+                    <button class="button button--danger" type="button" data-delete-announcement-id="${escapeHtml(announcement.id)}" data-announcement-title="${escapeHtml(announcement.title)}">Delete</button>
+                </div>
+            ` : ""}
         </article>
     `).join("");
 }
@@ -685,9 +784,13 @@ async function initCenterDetailsPage() {
     const description = document.getElementById("center-description");
     const languages = document.getElementById("center-languages");
     const majalis = document.getElementById("center-majalis");
+    const gallery = document.getElementById("center-gallery");
+    const announcements = document.getElementById("center-announcements");
     const infoGrid = document.getElementById("center-info-grid");
     const detailMessage = document.getElementById("center-detail-message");
     const mapLink = document.getElementById("center-map-link");
+    const heroImage = document.getElementById("center-hero-image");
+    const heroFallback = document.getElementById("center-logo-fallback");
     const params = new URLSearchParams(window.location.search);
     const id = Number(params.get("id"));
     const location = getDiscoveryLocation();
@@ -704,9 +807,12 @@ async function initCenterDetailsPage() {
         setMessage(detailMessage, "Open the center directory and choose a valid center.", "error");
         renderLanguageChips(languages, []);
         renderMajalis(majalis, []);
+        renderCenterGallery(gallery, []);
+        renderCenterAnnouncements(announcements, []);
         if (infoGrid) {
             infoGrid.innerHTML = "";
         }
+        applyCenterHeroImage(heroImage, heroFallback, "NoorLocator", []);
         return;
     }
 
@@ -730,6 +836,14 @@ async function initCenterDetailsPage() {
         majalis.innerHTML = `<div class="empty-state">Loading upcoming majalis...</div>`;
     }
 
+    if (gallery) {
+        gallery.innerHTML = `<div class="empty-state">Loading center gallery...</div>`;
+    }
+
+    if (announcements) {
+        announcements.innerHTML = `<div class="empty-state">Loading center announcements...</div>`;
+    }
+
     if (infoGrid) {
         infoGrid.innerHTML = Array.from({ length: 3 }, () => `
             <div class="info-card info-card--loading">
@@ -740,10 +854,12 @@ async function initCenterDetailsPage() {
     }
 
     try {
-        const [centerResult, languagesResult, majalisResult] = await Promise.allSettled([
+        const [centerResult, languagesResult, majalisResult, imagesResult, announcementsResult] = await Promise.allSettled([
             window.NoorLocatorApi.getCenter(id, appendLocationParams({}, location)),
             window.NoorLocatorApi.getCenterLanguages(id),
-            window.NoorLocatorApi.getCenterMajalis(id)
+            window.NoorLocatorApi.getCenterMajalis(id),
+            window.NoorLocatorApi.getCenterImages(id),
+            window.NoorLocatorApi.getEventAnnouncements(id)
         ]);
 
         if (centerResult.status !== "fulfilled") {
@@ -757,6 +873,12 @@ async function initCenterDetailsPage() {
         const centerMajalis = majalisResult.status === "fulfilled"
             ? (majalisResult.value.data || [])
             : (center.majalis || []);
+        const centerImages = imagesResult.status === "fulfilled"
+            ? (imagesResult.value.data || [])
+            : [];
+        const centerAnnouncements = announcementsResult.status === "fulfilled"
+            ? (announcementsResult.value.data || [])
+            : [];
 
         document.title = `${center.name} | NoorLocator`;
         title.textContent = center.name;
@@ -768,6 +890,9 @@ async function initCenterDetailsPage() {
         description.textContent = center.description || "This center has not published a public description yet.";
         renderLanguageChips(languages, centerLanguages);
         renderMajalis(majalis, centerMajalis);
+        renderCenterGallery(gallery, centerImages);
+        renderCenterAnnouncements(announcements, centerAnnouncements);
+        applyCenterHeroImage(heroImage, heroFallback, center.name, centerImages);
 
         if (infoGrid) {
             infoGrid.innerHTML = `
@@ -793,7 +918,12 @@ async function initCenterDetailsPage() {
             mapLink.href = buildMapLink(center);
         }
 
-        if (languagesResult.status !== "fulfilled" || majalisResult.status !== "fulfilled") {
+        if (
+            languagesResult.status !== "fulfilled" ||
+            majalisResult.status !== "fulfilled" ||
+            imagesResult.status !== "fulfilled" ||
+            announcementsResult.status !== "fulfilled"
+        ) {
             setMessage(detailMessage, "Some supporting sections could not be refreshed independently, so NoorLocator used the center detail payload as a fallback.", "error");
             return;
         }
@@ -814,6 +944,9 @@ async function initCenterDetailsPage() {
 
         renderLanguageChips(languages, []);
         renderMajalis(majalis, []);
+        renderCenterGallery(gallery, []);
+        renderCenterAnnouncements(announcements, []);
+        applyCenterHeroImage(heroImage, heroFallback, "NoorLocator", []);
 
         if (infoGrid) {
             infoGrid.innerHTML = `<div class="empty-state empty-state--error">The center profile could not be loaded from the API right now.</div>`;
@@ -1214,6 +1347,21 @@ function renderManagerMajalis(container, majalis) {
     `).join("");
 }
 
+function renderManagerAnnouncements(container, announcements) {
+    renderCenterAnnouncements(container, announcements, {
+        manageable: true,
+        emptyMessage: "No announcements exist for the selected center yet."
+    });
+}
+
+function renderManagerCenterImages(container, images) {
+    renderCenterGallery(container, images, {
+        manageable: true,
+        emptyMessage: "No gallery images have been uploaded for the selected center yet.",
+        imageAlt: "Managed center gallery image"
+    });
+}
+
 function initManagerPage() {
     if (!window.NoorLocatorAuth.requireAuth(["Manager", "Admin"])) {
         return;
@@ -1222,9 +1370,13 @@ function initManagerPage() {
     const pageMessage = document.getElementById("manager-page-message");
     const centerCount = document.getElementById("manager-center-count");
     const majlisCount = document.getElementById("manager-majlis-count");
+    const announcementCount = document.getElementById("manager-announcement-count");
+    const imageCount = document.getElementById("manager-image-count");
     const cardsContainer = document.getElementById("manager-cards");
     const centersContainer = document.getElementById("manager-centers");
     const majlisListContainer = document.getElementById("manager-majalis");
+    const announcementsContainer = document.getElementById("manager-announcements");
+    const centerImagesContainer = document.getElementById("manager-center-images");
     const form = document.getElementById("majlis-form");
     const formMessage = document.querySelector('[data-form-message="majlis-form"]');
     const formHeading = document.getElementById("majlis-form-heading");
@@ -1234,27 +1386,80 @@ function initManagerPage() {
     const formCenterSelect = document.getElementById("majlis-center-select");
     const filterCenterSelect = document.getElementById("majlis-filter-center");
     const languageOptions = document.getElementById("majlis-language-options");
+    const announcementForm = document.getElementById("event-announcement-form");
+    const announcementFormMessage = document.querySelector('[data-form-message="event-announcement-form"]');
+    const announcementFormHeading = document.getElementById("event-announcement-form-heading");
+    const announcementSubmitButton = document.getElementById("event-announcement-submit-button");
+    const announcementCancelButton = document.getElementById("event-announcement-cancel-button");
+    const announcementFormCenterSelect = document.getElementById("announcement-center-select");
+    const announcementFilterCenterSelect = document.getElementById("announcement-filter-center");
+    const refreshAnnouncementsButton = document.getElementById("refresh-announcements-button");
+    const imageUploadForm = document.getElementById("center-image-upload-form");
+    const imageUploadFormMessage = document.querySelector('[data-form-message="center-image-upload-form"]');
+    const imageFormCenterSelect = document.getElementById("center-image-center-select");
+    const imageFilterCenterSelect = document.getElementById("center-image-filter-center");
+    const refreshCenterImagesButton = document.getElementById("refresh-center-images-button");
     const state = {
         user: window.NoorLocatorAuth.getSessionUser(),
         centers: [],
         languages: [],
         majalis: [],
+        announcements: [],
+        centerImages: [],
         selectedCenterId: null,
-        editingMajlisId: null
+        editingMajlisId: null,
+        editingAnnouncementId: null
     };
 
-    if (!pageMessage || !centerCount || !majlisCount || !cardsContainer || !centersContainer || !majlisListContainer || !form || !formMessage || !formHeading || !submitButton || !cancelButton || !refreshButton || !formCenterSelect || !filterCenterSelect || !languageOptions) {
+    if (
+        !pageMessage ||
+        !centerCount ||
+        !majlisCount ||
+        !announcementCount ||
+        !imageCount ||
+        !cardsContainer ||
+        !centersContainer ||
+        !majlisListContainer ||
+        !announcementsContainer ||
+        !centerImagesContainer ||
+        !form ||
+        !formMessage ||
+        !formHeading ||
+        !submitButton ||
+        !cancelButton ||
+        !refreshButton ||
+        !formCenterSelect ||
+        !filterCenterSelect ||
+        !languageOptions ||
+        !announcementForm ||
+        !announcementFormMessage ||
+        !announcementFormHeading ||
+        !announcementSubmitButton ||
+        !announcementCancelButton ||
+        !announcementFormCenterSelect ||
+        !announcementFilterCenterSelect ||
+        !refreshAnnouncementsButton ||
+        !imageUploadForm ||
+        !imageUploadFormMessage ||
+        !imageFormCenterSelect ||
+        !imageFilterCenterSelect ||
+        !refreshCenterImagesButton
+    ) {
         return;
     }
 
     setCardLoadingState(cardsContainer, 3);
     setContainerMessage(centersContainer, "Loading your assigned centers...", "soft");
     setContainerMessage(majlisListContainer, "Loading majalis...", "soft");
+    setContainerMessage(announcementsContainer, "Loading announcements...", "soft");
+    setContainerMessage(centerImagesContainer, "Loading center gallery...", "soft");
     setMessage(pageMessage, "Loading your manager workspace...");
 
     function updateCounts() {
         centerCount.textContent = String(state.centers.length);
         majlisCount.textContent = String(state.majalis.length);
+        announcementCount.textContent = String(state.announcements.length);
+        imageCount.textContent = String(state.centerImages.length);
     }
 
     function refreshOverviewCards() {
@@ -1262,7 +1467,7 @@ function initManagerPage() {
         populateCards("manager-cards", [
             {
                 title: "Manager session",
-                body: `${currentUser.name} is signed in as ${currentUser.role}. Majlis changes are accepted only for approved center assignments.`
+                body: `${currentUser.name} is signed in as ${currentUser.role}. Majalis, announcements, and gallery changes are accepted only for approved center assignments.`
             },
             {
                 title: "Assigned centers",
@@ -1275,8 +1480,47 @@ function initManagerPage() {
                 body: state.majalis.length
                     ? `${state.majalis.length} majlis record${state.majalis.length === 1 ? "" : "s"} are loaded for the selected center.`
                     : "No majalis are currently loaded for the selected center."
+            },
+            {
+                title: "Direct announcements",
+                body: state.announcements.length
+                    ? `${state.announcements.length} announcement${state.announcements.length === 1 ? "" : "s"} are loaded for the selected center.`
+                    : "No announcements are currently loaded for the selected center."
+            },
+            {
+                title: "Center gallery",
+                body: state.centerImages.length
+                    ? `${state.centerImages.length} image${state.centerImages.length === 1 ? "" : "s"} are available for the selected center.`
+                    : "No gallery images are currently loaded for the selected center."
             }
         ]);
+    }
+
+    function syncCenterSelection(centerId) {
+        const validCenterId = state.centers.some(center => center.id === centerId)
+            ? centerId
+            : (state.centers[0]?.id || null);
+
+        state.selectedCenterId = validCenterId;
+
+        const selectedValue = validCenterId ? String(validCenterId) : "";
+        [
+            filterCenterSelect,
+            announcementFilterCenterSelect,
+            imageFilterCenterSelect
+        ].forEach(select => {
+            select.value = selectedValue;
+        });
+
+        if (!state.editingMajlisId) {
+            formCenterSelect.value = selectedValue;
+        }
+
+        if (!state.editingAnnouncementId) {
+            announcementFormCenterSelect.value = selectedValue;
+        }
+
+        imageFormCenterSelect.value = selectedValue;
     }
 
     function resetMajlisForm(preferredCenterId = null) {
@@ -1297,24 +1541,56 @@ function initManagerPage() {
         setMessage(formMessage, "Create a majlis for one of your assigned centers.");
     }
 
+    function resetAnnouncementForm(preferredCenterId = null) {
+        state.editingAnnouncementId = null;
+        announcementForm.reset();
+        announcementForm.elements.namedItem("announcementId").value = "";
+        announcementFormHeading.textContent = "Create a center announcement";
+        announcementSubmitButton.textContent = "Publish announcement";
+        announcementSubmitButton.dataset.defaultLabel = "Publish announcement";
+        announcementCancelButton.hidden = true;
+
+        const fallbackCenterId = preferredCenterId || state.selectedCenterId || state.centers[0]?.id || null;
+        if (fallbackCenterId) {
+            announcementFormCenterSelect.value = String(fallbackCenterId);
+        }
+
+        setMessage(announcementFormMessage, "Announcements publish directly for your assigned centers.");
+    }
+
+    function resetImageUploadForm(preferredCenterId = null) {
+        imageUploadForm.reset();
+
+        const fallbackCenterId = preferredCenterId || state.selectedCenterId || state.centers[0]?.id || null;
+        if (fallbackCenterId) {
+            imageFormCenterSelect.value = String(fallbackCenterId);
+        }
+
+        setMessage(imageUploadFormMessage, "Upload JPG, PNG, or WEBP files up to 5MB.");
+    }
+
     function populateCenterControls() {
-        populateSelectOptions([formCenterSelect, filterCenterSelect], state.centers, {
+        populateSelectOptions(
+            [
+                formCenterSelect,
+                filterCenterSelect,
+                announcementFormCenterSelect,
+                announcementFilterCenterSelect,
+                imageFormCenterSelect,
+                imageFilterCenterSelect
+            ],
+            state.centers,
+            {
             placeholder: state.centers.length ? "Select a center" : "No centers available",
             getValue: center => String(center.id),
             getLabel: center => `${center.name} (${center.city}, ${center.country})`
-        });
+            });
 
         if (!state.centers.length) {
             return;
         }
 
-        const fallbackCenterId = state.selectedCenterId || state.centers[0].id;
-        state.selectedCenterId = fallbackCenterId;
-
-        filterCenterSelect.value = String(fallbackCenterId);
-        if (!formCenterSelect.value) {
-            formCenterSelect.value = String(fallbackCenterId);
-        }
+        syncCenterSelection(state.selectedCenterId || state.centers[0].id);
     }
 
     function bindMajlisListActions() {
@@ -1342,6 +1618,7 @@ function initManagerPage() {
                     form.elements.namedItem("date").value = formatDateForInput(majlis.date);
                     form.elements.namedItem("time").value = majlis.time || "";
                     formCenterSelect.value = String(majlis.centerId);
+                    syncCenterSelection(majlis.centerId);
                     formHeading.textContent = "Edit majlis";
                     submitButton.textContent = "Save changes";
                     submitButton.dataset.defaultLabel = "Save changes";
@@ -1388,15 +1665,138 @@ function initManagerPage() {
         });
     }
 
-    async function loadMajalisForSelectedCenter() {
-        const centerId = Number(filterCenterSelect.value);
-        state.selectedCenterId = Number.isInteger(centerId) && centerId > 0 ? centerId : null;
+    function bindAnnouncementActions() {
+        announcementsContainer.querySelectorAll("[data-edit-announcement-id]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const announcementId = Number(button.getAttribute("data-edit-announcement-id"));
+                if (!Number.isInteger(announcementId) || announcementId <= 0) {
+                    return;
+                }
 
+                setMessage(announcementFormMessage, "Loading announcement details...");
+
+                try {
+                    const response = await window.NoorLocatorApi.getEventAnnouncement(announcementId);
+                    const announcement = response.data;
+
+                    if (!state.centers.some(center => center.id === announcement.centerId)) {
+                        throw new Error("This announcement is outside your assigned centers.");
+                    }
+
+                    state.editingAnnouncementId = announcement.id;
+                    announcementForm.elements.namedItem("announcementId").value = String(announcement.id);
+                    announcementForm.elements.namedItem("title").value = announcement.title || "";
+                    announcementForm.elements.namedItem("description").value = announcement.description || "";
+                    announcementForm.elements.namedItem("status").value = announcement.status || "Published";
+                    announcementForm.elements.namedItem("removeImage").checked = false;
+                    announcementFormCenterSelect.value = String(announcement.centerId);
+                    syncCenterSelection(announcement.centerId);
+                    announcementFormHeading.textContent = "Edit center announcement";
+                    announcementSubmitButton.textContent = "Save announcement";
+                    announcementSubmitButton.dataset.defaultLabel = "Save announcement";
+                    announcementCancelButton.hidden = false;
+                    setMessage(
+                        announcementFormMessage,
+                        announcement.imageUrl
+                            ? `Editing "${announcement.title}". Leave the image empty to keep the current one.`
+                            : `Editing "${announcement.title}".`,
+                        "success");
+                    document.getElementById("announcement-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                } catch (error) {
+                    const message = normalizeErrorMessage(error, "Announcement details could not be loaded.");
+                    setMessage(announcementFormMessage, message, "error");
+                    showToast(message, "error");
+                }
+            });
+        });
+
+        announcementsContainer.querySelectorAll("[data-delete-announcement-id]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const announcementId = Number(button.getAttribute("data-delete-announcement-id"));
+                const title = button.getAttribute("data-announcement-title") || "this announcement";
+
+                if (!Number.isInteger(announcementId) || announcementId <= 0) {
+                    return;
+                }
+
+                if (!window.confirm(`Delete "${title}" from NoorLocator?`)) {
+                    return;
+                }
+
+                try {
+                    const response = await window.NoorLocatorApi.deleteEventAnnouncement(announcementId);
+                    if (state.editingAnnouncementId === announcementId) {
+                        resetAnnouncementForm(state.selectedCenterId);
+                    }
+
+                    await loadAnnouncementsForSelectedCenter();
+                    updateCounts();
+                    refreshOverviewCards();
+                    setMessage(pageMessage, response.message || "Announcement deleted successfully.", "success");
+                    showToast(response.message || "Announcement deleted successfully.", "success");
+                } catch (error) {
+                    const message = normalizeErrorMessage(error, "Announcement deletion could not be completed.");
+                    setMessage(pageMessage, message, "error");
+                    showToast(message, "error");
+                }
+            });
+        });
+    }
+
+    function bindCenterImageActions() {
+        centerImagesContainer.querySelectorAll("[data-set-primary-image-id]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const imageId = Number(button.getAttribute("data-set-primary-image-id"));
+                if (!Number.isInteger(imageId) || imageId <= 0) {
+                    return;
+                }
+
+                try {
+                    const response = await window.NoorLocatorApi.setPrimaryCenterImage(imageId);
+                    await loadCenterImagesForSelectedCenter();
+                    updateCounts();
+                    refreshOverviewCards();
+                    setMessage(pageMessage, response.message || "Primary image updated successfully.", "success");
+                    showToast(response.message || "Primary image updated successfully.", "success");
+                } catch (error) {
+                    const message = normalizeErrorMessage(error, "Primary image could not be updated.");
+                    setMessage(pageMessage, message, "error");
+                    showToast(message, "error");
+                }
+            });
+        });
+
+        centerImagesContainer.querySelectorAll("[data-delete-center-image-id]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const imageId = Number(button.getAttribute("data-delete-center-image-id"));
+                if (!Number.isInteger(imageId) || imageId <= 0) {
+                    return;
+                }
+
+                if (!window.confirm("Delete this center image from the gallery?")) {
+                    return;
+                }
+
+                try {
+                    const response = await window.NoorLocatorApi.deleteCenterImage(imageId);
+                    await loadCenterImagesForSelectedCenter();
+                    updateCounts();
+                    refreshOverviewCards();
+                    setMessage(pageMessage, response.message || "Center image deleted successfully.", "success");
+                    showToast(response.message || "Center image deleted successfully.", "success");
+                } catch (error) {
+                    const message = normalizeErrorMessage(error, "Center image could not be deleted.");
+                    setMessage(pageMessage, message, "error");
+                    showToast(message, "error");
+                }
+            });
+        });
+    }
+
+    async function loadMajalisForSelectedCenter() {
         if (!state.selectedCenterId) {
             state.majalis = [];
-            updateCounts();
             setContainerMessage(majlisListContainer, "Select one of your assigned centers to manage majalis.", "soft");
-            refreshOverviewCards();
             return;
         }
 
@@ -1409,15 +1809,69 @@ function initManagerPage() {
 
             renderManagerMajalis(majlisListContainer, state.majalis);
             bindMajlisListActions();
-            updateCounts();
-            refreshOverviewCards();
-            setMessage(pageMessage, "Manager workspace loaded from the live API.", "success");
         } catch (error) {
             const message = normalizeErrorMessage(error, "Majalis could not be loaded for the selected center.");
             state.majalis = [];
+            setContainerMessage(majlisListContainer, message, "error");
+        }
+    }
+
+    async function loadAnnouncementsForSelectedCenter() {
+        if (!state.selectedCenterId) {
+            state.announcements = [];
+            setContainerMessage(announcementsContainer, "Select one of your assigned centers to manage announcements.", "soft");
+            return;
+        }
+
+        setContainerMessage(announcementsContainer, "Loading announcements for the selected center...", "soft");
+
+        try {
+            const response = await window.NoorLocatorApi.getEventAnnouncements(state.selectedCenterId);
+            state.announcements = response.data || [];
+
+            renderManagerAnnouncements(announcementsContainer, state.announcements);
+            bindAnnouncementActions();
+        } catch (error) {
+            const message = normalizeErrorMessage(error, "Announcements could not be loaded for the selected center.");
+            state.announcements = [];
+            setContainerMessage(announcementsContainer, message, "error");
+        }
+    }
+
+    async function loadCenterImagesForSelectedCenter() {
+        if (!state.selectedCenterId) {
+            state.centerImages = [];
+            setContainerMessage(centerImagesContainer, "Select one of your assigned centers to manage the gallery.", "soft");
+            return;
+        }
+
+        setContainerMessage(centerImagesContainer, "Loading center gallery...", "soft");
+
+        try {
+            const response = await window.NoorLocatorApi.getCenterImages(state.selectedCenterId);
+            state.centerImages = response.data || [];
+
+            renderManagerCenterImages(centerImagesContainer, state.centerImages);
+            bindCenterImageActions();
+        } catch (error) {
+            const message = normalizeErrorMessage(error, "Center images could not be loaded for the selected center.");
+            state.centerImages = [];
+            setContainerMessage(centerImagesContainer, message, "error");
+        }
+    }
+
+    async function refreshSelectedCenterWorkspace(successMessage = "Manager workspace loaded from the live API.") {
+        try {
+            await Promise.all([
+                loadMajalisForSelectedCenter(),
+                loadAnnouncementsForSelectedCenter(),
+                loadCenterImagesForSelectedCenter()
+            ]);
             updateCounts();
             refreshOverviewCards();
-            setContainerMessage(majlisListContainer, message, "error");
+            setMessage(pageMessage, successMessage, "success");
+        } catch (error) {
+            const message = normalizeErrorMessage(error, "The manager workspace could not be loaded right now.");
             setMessage(pageMessage, message, "error");
         }
     }
@@ -1442,10 +1896,8 @@ function initManagerPage() {
                 ? await window.NoorLocatorApi.updateMajlis(state.editingMajlisId, payload)
                 : await window.NoorLocatorApi.createMajlis(payload);
 
-            filterCenterSelect.value = String(payload.centerId);
-            state.selectedCenterId = payload.centerId;
-
-            await loadMajalisForSelectedCenter();
+            syncCenterSelection(payload.centerId);
+            await refreshSelectedCenterWorkspace(response.message);
             resetMajlisForm(payload.centerId);
             setMessage(formMessage, response.message, "success");
             showToast(response.message, "success");
@@ -1462,21 +1914,91 @@ function initManagerPage() {
         resetMajlisForm(state.selectedCenterId);
     });
 
-    filterCenterSelect.addEventListener("change", async () => {
-        const selectedCenterId = Number(filterCenterSelect.value);
-        state.selectedCenterId = Number.isInteger(selectedCenterId) && selectedCenterId > 0
-            ? selectedCenterId
-            : null;
+    announcementForm.addEventListener("submit", async event => {
+        event.preventDefault();
 
-        if (!state.editingMajlisId && state.selectedCenterId) {
-            formCenterSelect.value = String(state.selectedCenterId);
+        setSubmitButtonState(
+            announcementForm,
+            true,
+            state.editingAnnouncementId ? "Saving announcement..." : "Publishing announcement...");
+        setMessage(
+            announcementFormMessage,
+            state.editingAnnouncementId ? "Saving announcement changes..." : "Publishing announcement...");
+
+        const formData = new FormData(announcementForm);
+        const centerId = Number(formData.get("centerId"));
+
+        try {
+            const response = state.editingAnnouncementId
+                ? await window.NoorLocatorApi.updateEventAnnouncement(state.editingAnnouncementId, formData)
+                : await window.NoorLocatorApi.createEventAnnouncement(formData);
+
+            syncCenterSelection(centerId);
+            await refreshSelectedCenterWorkspace(response.message);
+            resetAnnouncementForm(centerId);
+            setMessage(announcementFormMessage, response.message, "success");
+            showToast(response.message, "success");
+        } catch (error) {
+            const message = normalizeErrorMessage(error, "Announcement changes could not be saved.");
+            setMessage(announcementFormMessage, message, "error");
+            showToast(message, "error");
+        } finally {
+            setSubmitButtonState(
+                announcementForm,
+                false,
+                state.editingAnnouncementId ? "Saving announcement..." : "Publishing announcement...");
         }
-
-        await loadMajalisForSelectedCenter();
     });
 
+    announcementCancelButton.addEventListener("click", () => {
+        resetAnnouncementForm(state.selectedCenterId);
+    });
+
+    imageUploadForm.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        setSubmitButtonState(imageUploadForm, true, "Uploading image...");
+        setMessage(imageUploadFormMessage, "Uploading center image...");
+
+        const formData = new FormData(imageUploadForm);
+        const centerId = Number(formData.get("centerId"));
+
+        try {
+            const response = await window.NoorLocatorApi.uploadCenterImage(formData);
+            syncCenterSelection(centerId);
+            await refreshSelectedCenterWorkspace(response.message);
+            resetImageUploadForm(centerId);
+            setMessage(imageUploadFormMessage, response.message, "success");
+            showToast(response.message, "success");
+        } catch (error) {
+            const message = normalizeErrorMessage(error, "Center image upload could not be completed.");
+            setMessage(imageUploadFormMessage, message, "error");
+            showToast(message, "error");
+        } finally {
+            setSubmitButtonState(imageUploadForm, false, "Uploading image...");
+        }
+    });
+
+    const handleCenterFilterChange = async event => {
+        const selectedCenterId = Number(event.target.value);
+        syncCenterSelection(Number.isInteger(selectedCenterId) && selectedCenterId > 0 ? selectedCenterId : null);
+        await refreshSelectedCenterWorkspace("Manager content refreshed for the selected center.");
+    };
+
+    filterCenterSelect.addEventListener("change", handleCenterFilterChange);
+    announcementFilterCenterSelect.addEventListener("change", handleCenterFilterChange);
+    imageFilterCenterSelect.addEventListener("change", handleCenterFilterChange);
+
     refreshButton.addEventListener("click", async () => {
-        await loadMajalisForSelectedCenter();
+        await refreshSelectedCenterWorkspace("Majalis refreshed for the selected center.");
+    });
+
+    refreshAnnouncementsButton.addEventListener("click", async () => {
+        await refreshSelectedCenterWorkspace("Announcements refreshed for the selected center.");
+    });
+
+    refreshCenterImagesButton.addEventListener("click", async () => {
+        await refreshSelectedCenterWorkspace("Center gallery refreshed for the selected center.");
     });
 
     Promise.allSettled([
@@ -1511,16 +2033,22 @@ function initManagerPage() {
         if (!state.centers.length) {
             setMessage(pageMessage, "No assigned centers were found for this account.", "error");
             setContainerMessage(majlisListContainer, "No majalis can be managed until a center assignment exists.", "soft");
+            setContainerMessage(announcementsContainer, "No announcements can be managed until a center assignment exists.", "soft");
+            setContainerMessage(centerImagesContainer, "No center images can be managed until a center assignment exists.", "soft");
             return;
         }
 
         resetMajlisForm(state.selectedCenterId);
-        await loadMajalisForSelectedCenter();
+        resetAnnouncementForm(state.selectedCenterId);
+        resetImageUploadForm(state.selectedCenterId);
+        await refreshSelectedCenterWorkspace();
     }).catch(error => {
         const message = normalizeErrorMessage(error, "The manager workspace could not be loaded right now.");
         setMessage(pageMessage, message, "error");
         setContainerMessage(centersContainer, message, "error");
         setContainerMessage(majlisListContainer, message, "error");
+        setContainerMessage(announcementsContainer, message, "error");
+        setContainerMessage(centerImagesContainer, message, "error");
         showToast(message, "error");
     });
 }

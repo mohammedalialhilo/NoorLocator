@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NoorLocator.Domain.Entities;
@@ -14,10 +15,19 @@ namespace NoorLocator.IntegrationTests;
 public class NoorLocatorWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly string databaseName = $"NoorLocatorTests-{Guid.NewGuid():N}";
+    private readonly string uploadRootPath = Path.Combine(Path.GetTempPath(), "NoorLocatorTests", "uploads", Guid.NewGuid().ToString("N"));
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+
+        builder.ConfigureAppConfiguration((_, configurationBuilder) =>
+        {
+            configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["MediaStorage:RelativeRootPath"] = uploadRootPath
+            });
+        });
 
         builder.ConfigureServices(services =>
         {
@@ -131,5 +141,27 @@ public class NoorLocatorWebApplicationFactory : WebApplicationFactory<Program>
         });
 
         dbContext.SaveChanges();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+
+        if (!disposing)
+        {
+            return;
+        }
+
+        try
+        {
+            if (Directory.Exists(uploadRootPath))
+            {
+                Directory.Delete(uploadRootPath, recursive: true);
+            }
+        }
+        catch
+        {
+            // Ignore upload cleanup failures in test teardown.
+        }
     }
 }

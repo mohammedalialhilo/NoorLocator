@@ -21,6 +21,10 @@ public class User : AuditableEntity
 
     public ICollection<Majlis> CreatedMajalis { get; set; } = new List<Majlis>();
 
+    public ICollection<EventAnnouncement> EventAnnouncements { get; set; } = new List<EventAnnouncement>();
+
+    public ICollection<CenterImage> UploadedCenterImages { get; set; } = new List<CenterImage>();
+
     public ICollection<CenterLanguageSuggestion> CenterLanguageSuggestions { get; set; } = new List<CenterLanguageSuggestion>();
 
     public ICollection<Suggestion> Suggestions { get; set; } = new List<Suggestion>();

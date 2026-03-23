@@ -15,6 +15,10 @@ public class NoorLocatorDbContext(DbContextOptions<NoorLocatorDbContext> options
 
     public DbSet<Majlis> Majalis => Set<Majlis>();
 
+    public DbSet<EventAnnouncement> EventAnnouncements => Set<EventAnnouncement>();
+
+    public DbSet<CenterImage> CenterImages => Set<CenterImage>();
+
     public DbSet<Language> Languages => Set<Language>();
 
     public DbSet<ManagerRequest> ManagerRequests => Set<ManagerRequest>();

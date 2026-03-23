@@ -16,11 +16,11 @@
         <section class="page-hero page-hero--split">
             <div class="page-hero__content">
                 <span class="eyebrow">Center manager</span>
-                <h1>Publish and maintain majalis for your assigned centers.</h1>
-                <p>The manager workspace is tied to real center assignments. You can create, edit, and remove majalis only for centers you are approved to manage.</p>
+                <h1>Publish majalis, center announcements, and gallery updates for your assigned centers.</h1>
+                <p>The manager workspace is tied to real center assignments. You can publish announcements directly, maintain majalis, and curate center photos only for centers you are approved to manage.</p>
                 <div class="hero__actions">
                     <a class="button button--primary" href="#majlis-editor">Create a majlis</a>
-                    <a class="button button--secondary" href="#majlis-list">Manage current majalis</a>
+                    <a class="button button--secondary" href="#announcement-editor">Manage announcements</a>
                 </div>
                 <p id="manager-page-message" class="message">Loading your manager workspace...</p>
             </div>
@@ -35,6 +35,16 @@
                     <strong id="manager-majlis-count">0</strong>
                     <p>Majalis are loaded from the live API and filtered by your currently selected center.</p>
                 </article>
+                <article class="mini-stat">
+                    <span class="card__meta">Announcements</span>
+                    <strong id="manager-announcement-count">0</strong>
+                    <p>Center announcements publish directly from managers without an admin approval step.</p>
+                </article>
+                <article class="mini-stat">
+                    <span class="card__meta">Gallery images</span>
+                    <strong id="manager-image-count">0</strong>
+                    <p>Center photos are uploaded through the API and can be marked as the primary banner image.</p>
+                </article>
             </aside>
         </section>
 
@@ -44,6 +54,8 @@
                 <a class="dashboard-nav__link" href="#my-centers">My centers</a>
                 <a class="dashboard-nav__link" href="#majlis-editor">Majlis editor</a>
                 <a class="dashboard-nav__link" href="#majlis-list">Majlis list</a>
+                <a class="dashboard-nav__link" href="#announcement-editor">Announcements</a>
+                <a class="dashboard-nav__link" href="#media-gallery">Media gallery</a>
             </nav>
         </section>
 
@@ -130,6 +142,137 @@
 
                     <div id="manager-majalis" class="stack-list">
                         <div class="empty-state">Loading majalis...</div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="section section-stack">
+            <div class="detail-grid detail-grid--dashboard">
+                <article class="panel" id="announcement-editor">
+                    <span class="card__meta">Event announcements</span>
+                    <h3 id="event-announcement-form-heading">Create a center announcement</h3>
+                    <form id="event-announcement-form" class="form" enctype="multipart/form-data">
+                        <input type="hidden" name="announcementId">
+
+                        <label class="form__group">
+                            <span class="form__label">Center</span>
+                            <select id="announcement-center-select" class="form__control" name="centerId" required></select>
+                        </label>
+
+                        <div class="filter-grid">
+                            <label class="form__group">
+                                <span class="form__label">Title</span>
+                                <input class="form__control" type="text" name="title" maxlength="200" required>
+                            </label>
+                            <label class="form__group">
+                                <span class="form__label">Status</span>
+                                <select class="form__control" name="status" required>
+                                    <option value="Published">Published</option>
+                                    <option value="Draft">Draft</option>
+                                    <option value="Archived">Archived</option>
+                                </select>
+                            </label>
+                        </div>
+
+                        <label class="form__group">
+                            <span class="form__label">Description</span>
+                            <textarea class="form__control" name="description" maxlength="4000" placeholder="Share a public update, upcoming activity, or center announcement."></textarea>
+                        </label>
+
+                        <div class="filter-grid">
+                            <label class="form__group">
+                                <span class="form__label">Optional image</span>
+                                <input class="form__control" type="file" name="image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                            </label>
+                            <div class="form__group form__group--checkbox">
+                                <span class="form__label">Image actions</span>
+                                <label class="checkbox">
+                                    <input type="checkbox" name="removeImage">
+                                    <span>Remove the current image when saving</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="button-row">
+                            <button id="event-announcement-submit-button" class="button button--primary" type="submit">Publish announcement</button>
+                            <button id="event-announcement-cancel-button" class="button button--ghost" type="button" hidden>Cancel edit</button>
+                        </div>
+                        <p data-form-message="event-announcement-form" class="message"></p>
+                    </form>
+                </article>
+
+                <article class="panel" id="announcement-list">
+                    <div class="section__heading section__heading--tight">
+                        <div class="section__copy">
+                            <span class="card__meta">Announcement feed</span>
+                            <h3>Manage announcements by center</h3>
+                        </div>
+                    </div>
+
+                    <div class="toolbar-row">
+                        <label class="form__group toolbar-row__control">
+                            <span class="form__label">Center view</span>
+                            <select id="announcement-filter-center" class="form__control form__control--compact"></select>
+                        </label>
+                        <button id="refresh-announcements-button" class="button button--secondary" type="button">Refresh announcements</button>
+                    </div>
+
+                    <div id="manager-announcements" class="stack-list">
+                        <div class="empty-state">Loading announcements...</div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="section section-stack" id="media-gallery">
+            <div class="detail-grid detail-grid--dashboard">
+                <article class="panel">
+                    <span class="card__meta">Center media</span>
+                    <h3>Upload gallery images</h3>
+                    <form id="center-image-upload-form" class="form" enctype="multipart/form-data">
+                        <label class="form__group">
+                            <span class="form__label">Center</span>
+                            <select id="center-image-center-select" class="form__control" name="centerId" required></select>
+                        </label>
+
+                        <div class="filter-grid">
+                            <label class="form__group">
+                                <span class="form__label">Image file</span>
+                                <input class="form__control" type="file" name="image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" required>
+                            </label>
+                            <div class="form__group form__group--checkbox">
+                                <span class="form__label">Gallery options</span>
+                                <label class="checkbox">
+                                    <input type="checkbox" name="isPrimary">
+                                    <span>Use as primary center image</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button class="button button--primary" type="submit">Upload image</button>
+                        <p data-form-message="center-image-upload-form" class="message"></p>
+                    </form>
+                </article>
+
+                <article class="panel">
+                    <div class="section__heading section__heading--tight">
+                        <div class="section__copy">
+                            <span class="card__meta">Gallery</span>
+                            <h3>Set primary images or remove outdated photos</h3>
+                        </div>
+                    </div>
+
+                    <div class="toolbar-row">
+                        <label class="form__group toolbar-row__control">
+                            <span class="form__label">Center view</span>
+                            <select id="center-image-filter-center" class="form__control form__control--compact"></select>
+                        </label>
+                        <button id="refresh-center-images-button" class="button button--secondary" type="button">Refresh gallery</button>
+                    </div>
+
+                    <div id="manager-center-images" class="gallery-grid">
+                        <div class="empty-state">Loading center gallery...</div>
                     </div>
                 </article>
             </div>

@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NoorLocator.Api.Extensions;
+using NoorLocator.Application.CenterImages.Dtos;
+using NoorLocator.Application.CenterImages.Interfaces;
 using NoorLocator.Application.Centers.Dtos;
 using NoorLocator.Application.Centers.Interfaces;
 using NoorLocator.Application.Common.Models;
@@ -16,6 +18,7 @@ namespace NoorLocator.Api.Controllers;
 [ApiController]
 [Route("api/centers")]
 public class CentersController(
+    ICenterImageService centerImageService,
     ICenterService centerService,
     IValidator<CenterLocationQueryDto> locationQueryValidator,
     IValidator<NearestCentersQueryDto> nearestQueryValidator,
@@ -108,6 +111,17 @@ public class CentersController(
     public async Task<ActionResult<ApiResponse<IReadOnlyCollection<LanguageDto>>>> GetLanguages(int id, CancellationToken cancellationToken)
     {
         var result = await centerService.GetCenterLanguagesAsync(id, cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Lists the public image gallery for a center.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("{id:int}/images")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<CenterImageDto>>>> GetImages(int id, CancellationToken cancellationToken)
+    {
+        var result = await centerImageService.GetCenterImagesAsync(id, cancellationToken);
         return this.ToActionResult(result);
     }
 

@@ -5,3 +5,5 @@ obj/
 *.user
 *.suo
 *.cache
+frontend/uploads/*
+!frontend/uploads/.gitkeep

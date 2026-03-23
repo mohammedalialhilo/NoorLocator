@@ -1,4 +1,4 @@
-const CACHE_NAME = "noorlocator-shell-v2";
+const CACHE_NAME = "noorlocator-shell-v3";
 const SHELL_ASSETS = [
     "/",
     "/index.html",
@@ -17,6 +17,7 @@ const SHELL_ASSETS = [
     "/js/app.js",
     "/assets/logo.svg",
     "/assets/favicon.svg",
+    "/assets/center-photo-placeholder.svg",
     "/site.webmanifest"
 ];
 

@@ -122,6 +122,44 @@ namespace NoorLocator.Infrastructure.Persistence.Migrations
                     b.ToTable("Centers", (string)null);
                 });
 
+            modelBuilder.Entity("NoorLocator.Domain.Entities.CenterImage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CenterId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime(6)")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("UploadedByManagerId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UploadedByManagerId");
+
+                    b.HasIndex("CenterId", "CreatedAt");
+
+                    b.HasIndex("CenterId", "IsPrimary");
+
+                    b.ToTable("CenterImages", (string)null);
+                });
+
             modelBuilder.Entity("NoorLocator.Domain.Entities.CenterLanguage", b =>
                 {
                     b.Property<int>("Id")
@@ -265,6 +303,53 @@ namespace NoorLocator.Infrastructure.Persistence.Migrations
                     b.HasIndex("RequestedByUserId");
 
                     b.ToTable("CenterRequests", (string)null);
+                });
+
+            modelBuilder.Entity("NoorLocator.Domain.Entities.EventAnnouncement", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CenterId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime(6)")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+                    b.Property<int>("CreatedByManagerId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("varchar(4000)");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByManagerId");
+
+                    b.HasIndex("CenterId", "Status", "CreatedAt");
+
+                    b.ToTable("EventAnnouncements", (string)null);
                 });
 
             modelBuilder.Entity("NoorLocator.Domain.Entities.Language", b =>
@@ -522,6 +607,25 @@ namespace NoorLocator.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("NoorLocator.Domain.Entities.CenterImage", b =>
+                {
+                    b.HasOne("NoorLocator.Domain.Entities.Center", "Center")
+                        .WithMany("CenterImages")
+                        .HasForeignKey("CenterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("NoorLocator.Domain.Entities.User", "UploadedByManager")
+                        .WithMany("UploadedCenterImages")
+                        .HasForeignKey("UploadedByManagerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Center");
+
+                    b.Navigation("UploadedByManager");
+                });
+
             modelBuilder.Entity("NoorLocator.Domain.Entities.CenterLanguage", b =>
                 {
                     b.HasOne("NoorLocator.Domain.Entities.Center", "Center")
@@ -596,6 +700,25 @@ namespace NoorLocator.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("RequestedByUser");
+                });
+
+            modelBuilder.Entity("NoorLocator.Domain.Entities.EventAnnouncement", b =>
+                {
+                    b.HasOne("NoorLocator.Domain.Entities.Center", "Center")
+                        .WithMany("EventAnnouncements")
+                        .HasForeignKey("CenterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("NoorLocator.Domain.Entities.User", "CreatedByManager")
+                        .WithMany("EventAnnouncements")
+                        .HasForeignKey("CreatedByManagerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Center");
+
+                    b.Navigation("CreatedByManager");
                 });
 
             modelBuilder.Entity("NoorLocator.Domain.Entities.Majlis", b =>
@@ -679,11 +802,15 @@ namespace NoorLocator.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("NoorLocator.Domain.Entities.Center", b =>
                 {
+                    b.Navigation("CenterImages");
+
                     b.Navigation("CenterLanguageSuggestions");
 
                     b.Navigation("CenterLanguages");
 
                     b.Navigation("CenterManagers");
+
+                    b.Navigation("EventAnnouncements");
 
                     b.Navigation("Majalis");
 
@@ -714,6 +841,8 @@ namespace NoorLocator.Infrastructure.Persistence.Migrations
 
                     b.Navigation("CreatedMajalis");
 
+                    b.Navigation("EventAnnouncements");
+
                     b.Navigation("ManagedCenters");
 
                     b.Navigation("ManagerRequests");
@@ -721,6 +850,8 @@ namespace NoorLocator.Infrastructure.Persistence.Migrations
                     b.Navigation("RefreshTokens");
 
                     b.Navigation("Suggestions");
+
+                    b.Navigation("UploadedCenterImages");
                 });
 #pragma warning restore 612, 618
         }

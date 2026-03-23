@@ -24,6 +24,10 @@ public class Center : AuditableEntity
 
     public ICollection<Majlis> Majalis { get; set; } = new List<Majlis>();
 
+    public ICollection<EventAnnouncement> EventAnnouncements { get; set; } = new List<EventAnnouncement>();
+
+    public ICollection<CenterImage> CenterImages { get; set; } = new List<CenterImage>();
+
     public ICollection<CenterLanguage> CenterLanguages { get; set; } = new List<CenterLanguage>();
 
     public ICollection<CenterLanguageSuggestion> CenterLanguageSuggestions { get; set; } = new List<CenterLanguageSuggestion>();

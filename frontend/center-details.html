@@ -26,7 +26,8 @@
                 <p id="center-detail-message" class="message"></p>
             </div>
             <aside class="hero__panel hero__panel--stack">
-                <img class="hero__logo hero__logo--detail" src="assets/logo.svg" alt="NoorLocator logo">
+                <img id="center-hero-image" class="hero__banner" src="" alt="" hidden loading="lazy">
+                <img id="center-logo-fallback" class="hero__logo hero__logo--detail" src="assets/logo.svg" alt="NoorLocator logo">
                 <div id="center-info-grid" class="info-grid"></div>
             </aside>
         </section>
@@ -43,6 +44,23 @@
                     <h3>Upcoming majalis</h3>
                     <div id="center-majalis" class="stack-list">
                         <div class="empty-state">Loading upcoming majalis...</div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="detail-grid detail-grid--public">
+                <article class="panel">
+                    <h3>Photo gallery</h3>
+                    <div id="center-gallery" class="gallery-grid">
+                        <div class="empty-state">Loading center gallery...</div>
+                    </div>
+                </article>
+                <article class="panel">
+                    <h3>Event announcements</h3>
+                    <div id="center-announcements" class="stack-list">
+                        <div class="empty-state">Loading center announcements...</div>
                     </div>
                 </article>
             </div>

@@ -5,7 +5,7 @@ window.NoorLocatorApi = (() => {
         const headers = new Headers(options.headers || {});
         const token = window.NoorLocatorAuth?.getToken?.();
 
-        if (options.body && !headers.has("Content-Type")) {
+        if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
             headers.set("Content-Type", "application/json");
         }
 
@@ -110,8 +110,50 @@ window.NoorLocatorApi = (() => {
         getCenterMajalis(id) {
             return request(`/api/centers/${id}/majalis`);
         },
+        getCenterImages(id) {
+            return request(`/api/centers/${id}/images`);
+        },
         getCenterLanguages(id) {
             return request(`/api/centers/${id}/languages`);
+        },
+        getEventAnnouncements(centerId) {
+            return request(`/api/event-announcements${toQueryString({ centerId })}`);
+        },
+        getEventAnnouncement(id) {
+            return request(`/api/event-announcements/${id}`);
+        },
+        createEventAnnouncement(payload) {
+            return request("/api/event-announcements", {
+                method: "POST",
+                body: payload
+            });
+        },
+        updateEventAnnouncement(id, payload) {
+            return request(`/api/event-announcements/${id}`, {
+                method: "PUT",
+                body: payload
+            });
+        },
+        deleteEventAnnouncement(id) {
+            return request(`/api/event-announcements/${id}`, {
+                method: "DELETE"
+            });
+        },
+        uploadCenterImage(payload) {
+            return request("/api/center-images/upload", {
+                method: "POST",
+                body: payload
+            });
+        },
+        deleteCenterImage(id) {
+            return request(`/api/center-images/${id}`, {
+                method: "DELETE"
+            });
+        },
+        setPrimaryCenterImage(id) {
+            return request(`/api/center-images/${id}/set-primary`, {
+                method: "PUT"
+            });
         },
         getLanguages() {
             return request("/api/languages");

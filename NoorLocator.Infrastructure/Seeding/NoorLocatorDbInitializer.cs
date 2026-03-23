@@ -138,6 +138,8 @@ public class NoorLocatorDbInitializer(NoorLocatorDbContext dbContext, PasswordHa
         {
             await EnsureMajlisAsync(definition, centers[definition.CenterName], manager.Id, languages, cancellationToken);
         }
+
+        await SeedEventAnnouncementsAndImagesAsync(centers, manager.Id, cancellationToken);
     }
 
     private async Task EnsureUserAsync(string name, string email, string password, UserRole role, CancellationToken cancellationToken)
@@ -294,6 +296,115 @@ public class NoorLocatorDbInitializer(NoorLocatorDbContext dbContext, PasswordHa
             dbContext.MajlisLanguages.AddRange(missingLanguageLinks);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
+    }
+
+    private async Task SeedEventAnnouncementsAndImagesAsync(
+        IReadOnlyDictionary<string, Center> centers,
+        int managerUserId,
+        CancellationToken cancellationToken)
+    {
+        const string placeholderImageUrl = "/assets/center-photo-placeholder.svg";
+
+        await EnsureCenterImageAsync(centers["Imam Ali Islamic Center"].Id, placeholderImageUrl, managerUserId, isPrimary: true, cancellationToken);
+        await EnsureCenterImageAsync(centers["Ahlulbayt Cultural Center"].Id, placeholderImageUrl, managerUserId, isPrimary: true, cancellationToken);
+
+        await EnsureEventAnnouncementAsync(
+            centers["Imam Ali Islamic Center"].Id,
+            managerUserId,
+            "Community Open House This Weekend",
+            "Meet local volunteers, explore the center, and help families discover NoorLocator through a welcoming open house.",
+            EventAnnouncementStatus.Published,
+            placeholderImageUrl,
+            cancellationToken);
+
+        await EnsureEventAnnouncementAsync(
+            centers["Ahlulbayt Cultural Center"].Id,
+            managerUserId,
+            "Ramadan Preparation Bulletin",
+            "A draft manager announcement seeded to demonstrate direct publishing and status management in the manager workspace.",
+            EventAnnouncementStatus.Draft,
+            null,
+            cancellationToken);
+    }
+
+    private async Task EnsureEventAnnouncementAsync(
+        int centerId,
+        int managerUserId,
+        string title,
+        string description,
+        EventAnnouncementStatus status,
+        string? imageUrl,
+        CancellationToken cancellationToken)
+    {
+        var announcement = await dbContext.EventAnnouncements
+            .SingleOrDefaultAsync(currentAnnouncement => currentAnnouncement.CenterId == centerId && currentAnnouncement.Title == title, cancellationToken);
+
+        if (announcement is null)
+        {
+            dbContext.EventAnnouncements.Add(new EventAnnouncement
+            {
+                CenterId = centerId,
+                CreatedByManagerId = managerUserId,
+                Title = title,
+                Description = description,
+                Status = status,
+                ImageUrl = imageUrl,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            announcement.Description = description;
+            announcement.Status = status;
+            announcement.ImageUrl = imageUrl;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task EnsureCenterImageAsync(
+        int centerId,
+        string imageUrl,
+        int managerUserId,
+        bool isPrimary,
+        CancellationToken cancellationToken)
+    {
+        var centerImage = await dbContext.CenterImages
+            .SingleOrDefaultAsync(
+                currentImage => currentImage.CenterId == centerId && currentImage.ImageUrl == imageUrl,
+                cancellationToken);
+
+        if (centerImage is null)
+        {
+            centerImage = new CenterImage
+            {
+                CenterId = centerId,
+                ImageUrl = imageUrl,
+                UploadedByManagerId = managerUserId,
+                CreatedAt = DateTime.UtcNow,
+                IsPrimary = isPrimary
+            };
+
+            dbContext.CenterImages.Add(centerImage);
+        }
+        else
+        {
+            centerImage.IsPrimary = isPrimary;
+        }
+
+        if (isPrimary)
+        {
+            var otherImages = await dbContext.CenterImages
+                .Where(currentImage => currentImage.CenterId == centerId && currentImage.Id != centerImage.Id)
+                .ToArrayAsync(cancellationToken);
+
+            foreach (var otherImage in otherImages)
+            {
+                otherImage.IsPrimary = false;
+            }
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     private sealed record CenterSeed(

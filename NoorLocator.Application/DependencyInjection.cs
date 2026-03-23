@@ -1,8 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using NoorLocator.Application.Authentication.Dtos;
 using NoorLocator.Application.Authentication.Validators;
+using NoorLocator.Application.CenterImages.Dtos;
+using NoorLocator.Application.CenterImages.Validators;
 using NoorLocator.Application.Centers.Dtos;
 using NoorLocator.Application.Centers.Validators;
+using NoorLocator.Application.EventAnnouncements.Dtos;
+using NoorLocator.Application.EventAnnouncements.Validators;
 using NoorLocator.Application.Languages.Dtos;
 using NoorLocator.Application.Languages.Validators;
 using NoorLocator.Application.Management.Dtos;
@@ -28,6 +32,9 @@ public static class DependencyInjection
         services.AddScoped<IValidator<CenterSearchQueryDto>, CenterSearchQueryValidator>();
         services.AddScoped<IValidator<CreateMajlisDto>, CreateMajlisValidator>();
         services.AddScoped<IValidator<UpdateMajlisDto>, UpdateMajlisValidator>();
+        services.AddScoped<IValidator<CreateEventAnnouncementDto>, CreateEventAnnouncementValidator>();
+        services.AddScoped<IValidator<UpdateEventAnnouncementDto>, UpdateEventAnnouncementValidator>();
+        services.AddScoped<IValidator<UploadCenterImageDto>, UploadCenterImageValidator>();
         services.AddScoped<IValidator<CreateCenterLanguageSuggestionDto>, CreateCenterLanguageSuggestionValidator>();
         services.AddScoped<IValidator<ManagerRequestDto>, ManagerRequestValidator>();
         services.AddScoped<IValidator<CreateSuggestionDto>, CreateSuggestionValidator>();

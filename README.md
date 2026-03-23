@@ -1,17 +1,18 @@
-# NoorLocator
+﻿# NoorLocator
 
-NoorLocator is a moderated web platform for discovering Shia Islamic centers, browsing upcoming majalis, and contributing community updates through role-based workflows.
+NoorLocator is a moderated web platform for discovering Shia Islamic centers, browsing upcoming majalis, publishing manager-led center updates, and contributing trusted community information through role-based workflows.
 
 Driven by موكب خدام اهل البيت (عليهم السلام), Copenhagen, Denmark.
 
 ## What Is Included
 
-- Public center discovery with nearest-center lookup, search, filtering, and center detail pages
+- Public center discovery with nearest-center lookup, search, filters, gallery images, and center detail pages
 - JWT authentication with `Guest`, `User`, `Manager`, and `Admin` roles
-- Moderation-first contribution workflows for center requests, language suggestions, manager requests, and product feedback
+- Moderation-first user contribution workflows for center requests, language suggestions, manager requests, and product feedback
 - Manager-only majlis CRUD with center assignment enforcement
+- Manager-published event announcements with direct publish or draft status
+- Manager-owned center gallery upload, primary image management, and secure image validation
 - Admin moderation dashboard, center management, user visibility, and audit logs
-- Richer seeded demo data for centers, languages, and majalis
 - Swagger/OpenAPI documentation
 - Docker support for the API and MySQL
 - Unit and integration tests
@@ -23,6 +24,7 @@ Driven by موكب خدام اهل البيت (عليهم السلام), Copenha
 - Backend: ASP.NET Core Web API
 - Database: MySQL with EF Core and Pomelo
 - Auth: JWT
+- Media storage: local file storage for development with a storage abstraction for production providers
 - Tests: xUnit
 
 ## Architecture
@@ -46,7 +48,7 @@ NoorLocator.sln
 - `NoorLocator.Domain`
   Holds the core entities and enums.
 - `NoorLocator.Infrastructure`
-  Implements EF Core, MySQL setup, migrations, seeding, JWT generation, password hashing, auditing, and concrete services.
+  Implements EF Core, MySQL setup, migrations, seeding, JWT generation, password hashing, auditing, media storage, and concrete services.
 - `frontend`
   Contains the branded static client that consumes only the live API.
 - `tests`
@@ -55,13 +57,13 @@ NoorLocator.sln
 ## Roles
 
 - `Guest`
-  Unauthenticated public visitor who can browse published centers and majalis.
+  Unauthenticated public visitor who can browse published centers, public majalis, center images, and published announcements.
 - `User`
   Authenticated community member who can submit moderated contributions.
 - `Manager`
-  Authenticated user assigned to one or more approved centers and allowed to manage majalis there.
+  Authenticated user assigned to one or more approved centers and allowed to manage majalis, event announcements, and center gallery media there.
 - `Admin`
-  Full moderation and management access across the platform.
+  Full moderation and management access across the platform, including override deletion for announcements and media.
 
 ## Seeded Accounts
 
@@ -75,6 +77,7 @@ NoorLocator.sln
 - Demo centers in Copenhagen, Stockholm, Helsinki, Oslo, and Aarhus
 - Approved manager assignments for the seeded manager account
 - Multiple public demo majalis across the seeded centers
+- Seeded center gallery images and manager-authored announcements for the public discovery experience
 
 ## Local Setup
 
@@ -126,6 +129,20 @@ dotnet ef migrations add YourMigrationName --project .\NoorLocator.Infrastructur
 dotnet ef database update --project .\NoorLocator.Infrastructure\NoorLocator.Infrastructure.csproj --startup-project .\NoorLocator.Api\NoorLocator.Api.csproj
 ```
 
+Phase 8 adds:
+
+- `AddEventAnnouncementsAndCenterImages`
+
+## Media Storage
+
+- Development uploads use local storage under `frontend/uploads`
+- Only generated file names are stored and served
+- Supported formats: `jpg`, `jpeg`, `png`, `webp`
+- Max upload size: `5MB`
+- The database stores only image URLs
+
+For production, keep the `IMediaStorageService` abstraction and swap the local implementation for Azure Blob Storage, AWS S3, or another managed provider.
+
 ## Docker
 
 Build and run the app with MySQL:
@@ -152,7 +169,7 @@ Important:
 
 ## Swagger And API Coverage
 
-Swagger now includes:
+Swagger includes:
 
 - XML-comment summaries for the API surface
 - JWT bearer security definition
@@ -162,9 +179,9 @@ Swagger now includes:
 Main endpoint groups:
 
 - Auth: `/api/auth/*`
-- Public discovery: `/api/centers/*`, `/api/languages`, `/api/majalis`
+- Public discovery: `/api/centers/*`, `/api/languages`, `/api/majalis`, `/api/event-announcements`
 - User contributions: `/api/center-requests`, `/api/suggestions`, `/api/center-language-suggestions`, `/api/manager/request`
-- Manager: `/api/manager/*`, `/api/majalis/*`
+- Manager: `/api/manager/*`, `/api/majalis/*`, `/api/event-announcements`, `/api/center-images/*`
 - Admin: `/api/admin/*`
 
 ## Testing
@@ -177,8 +194,8 @@ dotnet test NoorLocator.sln
 
 Included coverage:
 
-- Unit tests for center discovery and center request workflows
-- Integration tests for registration, protected routes, public center search, and admin authorization
+- Unit tests for center discovery, center requests, and local media validation
+- Integration tests for registration, protected routes, public center search, admin authorization, announcement visibility, and gallery upload flows
 
 Test projects:
 
@@ -189,19 +206,21 @@ Test projects:
 
 - The frontend consumes only the live API
 - Auth state is stored in `localStorage`
-- The navbar updates by role and now includes a mobile toggle
-- Toasts, loading states, empty states, and responsive layouts were polished in Phase 7
+- The navbar updates by role and includes a mobile toggle
+- Toasts, loading states, empty states, and responsive layouts are used across public, user, manager, and admin pages
+- Center detail pages now show a primary banner image, gallery grid, and event announcement feed
 - PWA basics are included through `site.webmanifest` and `service-worker.js`
 
 ## Production-Readiness Notes
 
-- Unhandled exceptions are now returned through a consistent API response shape
+- Unhandled exceptions are returned through a consistent API response shape
 - Validation failures include trace-friendly metadata
-- Admin access is enforced server-side through policy-based authorization
+- Admin and manager write access are enforced server-side through policy-based authorization and center ownership checks
 - DTO-based write endpoints reduce overposting risk
 - JWT configuration is validated more strictly outside development
 - Open CORS is allowed only in development and testing when origins are not explicitly configured
-- Published API output now includes the static frontend assets for container and publish scenarios
+- Uploaded files are validated by extension and file signature, not MIME type alone
+- Published API output includes the static frontend assets for container and publish scenarios
 
 ## Future Roadmap
 
@@ -210,7 +229,8 @@ Test projects:
 - Favorites or saved centers
 - Calendar-style public majalis browsing
 - Nearby majalis and notification scaffolding
-- Media uploads and richer center profiles
+- Scheduled announcement publishing, expiry dates, and pinned highlights
+- Managed cloud media storage with image resizing and compression
 - CI pipelines and deployment environments
 
 ## Attribution
