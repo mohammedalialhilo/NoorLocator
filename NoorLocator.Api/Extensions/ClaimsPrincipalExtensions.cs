@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace NoorLocator.Api.Extensions;
 
@@ -22,4 +23,9 @@ public static class ClaimsPrincipalExtensions
     }
 
     public static bool IsAdmin(this ClaimsPrincipal principal) => principal.IsInRole("Admin");
+
+    public static string? TryGetSessionId(this ClaimsPrincipal principal)
+    {
+        return principal.FindFirstValue(JwtRegisteredClaimNames.Sid);
+    }
 }

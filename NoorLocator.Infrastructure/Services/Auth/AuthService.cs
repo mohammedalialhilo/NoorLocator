@@ -105,14 +105,66 @@ public class AuthService(
         return OperationResult<AuthResponseDto>.Success(response, "Registration successful.", 201);
     }
 
+    public async Task<OperationResult> LogoutAsync(int userId, string? sessionId, string? refreshToken, CancellationToken cancellationToken = default)
+    {
+        var activeTokensQuery = dbContext.RefreshTokens
+            .Where(token => token.UserId == userId && token.RevokedAtUtc == null);
+
+        List<RefreshToken> tokensToRevoke;
+        if (!string.IsNullOrWhiteSpace(sessionId))
+        {
+            tokensToRevoke = await activeTokensQuery
+                .Where(token => token.SessionId == sessionId)
+                .ToListAsync(cancellationToken);
+        }
+        else if (!string.IsNullOrWhiteSpace(refreshToken))
+        {
+            var tokenHash = passwordHashingService.HashToken(refreshToken);
+            tokensToRevoke = await activeTokensQuery
+                .Where(token => token.TokenHash == tokenHash)
+                .ToListAsync(cancellationToken);
+        }
+        else
+        {
+            tokensToRevoke = await activeTokensQuery.ToListAsync(cancellationToken);
+        }
+
+        var revokedAtUtc = DateTime.UtcNow;
+        foreach (var token in tokensToRevoke)
+        {
+            token.RevokedAtUtc = revokedAtUtc;
+        }
+
+        if (tokensToRevoke.Count > 0)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        await auditLogger.WriteAsync(
+            action: "auth.logout.succeeded",
+            entityName: nameof(User),
+            entityId: userId.ToString(),
+            userId: userId,
+            metadata: new
+            {
+                SessionId = sessionId ?? string.Empty,
+                RevokedSessions = tokensToRevoke.Count
+            },
+            cancellationToken);
+
+        return OperationResult.Success("Logout successful.");
+    }
+
     private async Task<AuthResponseDto> BuildAuthResponseAsync(User user, string message, CancellationToken cancellationToken)
     {
-        var (token, expiresAtUtc) = jwtTokenFactory.CreateAccessToken(user);
+        var sessionId = jwtTokenFactory.CreateSessionId();
+        var (token, expiresAtUtc) = jwtTokenFactory.CreateAccessToken(user, sessionId);
         var (refreshToken, refreshTokenExpiresAt) = jwtTokenFactory.CreateRefreshToken();
 
         dbContext.RefreshTokens.Add(new RefreshToken
         {
             UserId = user.Id,
+            SessionId = sessionId,
             TokenHash = passwordHashingService.HashToken(refreshToken),
             ExpiresAtUtc = refreshTokenExpiresAt,
             CreatedAt = DateTime.UtcNow

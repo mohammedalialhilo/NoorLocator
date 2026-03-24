@@ -11,9 +11,15 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
         builder.ToTable("RefreshTokens");
         builder.HasKey(refreshToken => refreshToken.Id);
 
+        builder.Property(refreshToken => refreshToken.SessionId)
+            .HasMaxLength(64)
+            .IsRequired();
+
         builder.Property(refreshToken => refreshToken.TokenHash)
             .HasMaxLength(256)
             .IsRequired();
+
+        builder.HasIndex(refreshToken => refreshToken.SessionId);
 
         builder.HasIndex(refreshToken => refreshToken.TokenHash)
             .IsUnique();

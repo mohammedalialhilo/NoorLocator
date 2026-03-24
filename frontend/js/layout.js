@@ -52,8 +52,9 @@ window.NoorLocatorLayout = (() => {
 
         const logoutLink = mount.querySelector("[data-logout-link]");
         if (logoutLink) {
-            logoutLink.addEventListener("click", () => {
-                window.NoorLocatorAuth.clearSession();
+            logoutLink.addEventListener("click", event => {
+                event.preventDefault();
+                window.NoorLocatorAuth.logout();
             });
         }
 

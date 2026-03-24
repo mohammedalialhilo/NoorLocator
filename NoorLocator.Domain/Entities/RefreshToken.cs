@@ -6,6 +6,8 @@ public class RefreshToken : AuditableEntity
 {
     public int UserId { get; set; }
 
+    public string SessionId { get; set; } = string.Empty;
+
     public string TokenHash { get; set; } = string.Empty;
 
     public DateTime ExpiresAtUtc { get; set; }

@@ -26,6 +26,7 @@
         </section>
     </main>
 
+    <script src="js/config.js"></script>
     <script>
         (async () => {
             const status = document.getElementById("logout-status");
@@ -36,7 +37,32 @@
                 } catch {
                     // Ignore storage cleanup errors on logout.
                 }
+
+                try {
+                    window.sessionStorage.removeItem(key);
+                } catch {
+                    // Ignore session storage cleanup errors on logout.
+                }
             };
+
+            const token = window.localStorage.getItem("noorlocator.auth.token") || window.sessionStorage.getItem("noorlocator.auth.token") || "";
+            const refreshToken = window.localStorage.getItem("noorlocator.auth.refreshToken") || window.sessionStorage.getItem("noorlocator.auth.refreshToken") || "";
+
+            if (token) {
+                try {
+                    await window.NoorLocatorConfig.fetchApi("/api/auth/logout", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ refreshToken }),
+                        keepalive: true
+                    });
+                } catch {
+                    // Ignore logout API failures and continue clearing local state.
+                }
+            }
 
             removeKey("noorlocator.auth.token");
             removeKey("noorlocator.auth.refreshToken");

@@ -1,19 +1,49 @@
 window.NoorLocatorAuth = (() => {
-    const apiBaseUrl = document.body?.dataset.apiBaseUrl ?? "";
     const tokenKey = "noorlocator.auth.token";
     const refreshTokenKey = "noorlocator.auth.refreshToken";
     const userKey = "noorlocator.auth.user";
 
+    function readStorage(key) {
+        try {
+            return localStorage.getItem(key) || sessionStorage.getItem(key) || "";
+        } catch {
+            return "";
+        }
+    }
+
+    function writeStorage(key, value) {
+        try {
+            localStorage.setItem(key, value);
+            sessionStorage.removeItem(key);
+        } catch {
+            // Ignore storage write issues and continue with in-memory behavior.
+        }
+    }
+
+    function removeStorage(key) {
+        try {
+            localStorage.removeItem(key);
+        } catch {
+            // Ignore local storage cleanup errors.
+        }
+
+        try {
+            sessionStorage.removeItem(key);
+        } catch {
+            // Ignore session storage cleanup errors.
+        }
+    }
+
     function getToken() {
-        return localStorage.getItem(tokenKey) || "";
+        return readStorage(tokenKey);
     }
 
     function getRefreshToken() {
-        return localStorage.getItem(refreshTokenKey) || "";
+        return readStorage(refreshTokenKey);
     }
 
     function getUser() {
-        const rawUser = localStorage.getItem(userKey);
+        const rawUser = readStorage(userKey);
         if (!rawUser) {
             return null;
         }
@@ -47,20 +77,39 @@ window.NoorLocatorAuth = (() => {
             return;
         }
 
-        localStorage.setItem(tokenKey, authResponse.token);
-        localStorage.setItem(refreshTokenKey, authResponse.refreshToken || "");
-        localStorage.setItem(userKey, JSON.stringify(authResponse.user));
+        writeStorage(tokenKey, authResponse.token);
+        writeStorage(refreshTokenKey, authResponse.refreshToken || "");
+        writeStorage(userKey, JSON.stringify(authResponse.user));
         notifyChange();
     }
 
     function clearSession() {
-        localStorage.removeItem(tokenKey);
-        localStorage.removeItem(refreshTokenKey);
-        localStorage.removeItem(userKey);
+        removeStorage(tokenKey);
+        removeStorage(refreshTokenKey);
+        removeStorage(userKey);
         notifyChange();
     }
 
-    function logout(redirectPath = "index.html") {
+    async function logout(redirectPath = "index.html?loggedOut=1") {
+        const token = getToken();
+        const refreshToken = getRefreshToken();
+
+        if (token) {
+            try {
+                await window.NoorLocatorConfig.fetchApi("/api/auth/logout", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ refreshToken }),
+                    keepalive: true
+                });
+            } catch {
+                // Ignore logout transport errors and continue clearing the local session.
+            }
+        }
+
         clearSession();
         window.location.replace(redirectPath);
     }
@@ -76,11 +125,12 @@ window.NoorLocatorAuth = (() => {
         }
 
         try {
-            const response = await fetch(`${apiBaseUrl}/api/auth/me`, {
+            const fetchResult = await window.NoorLocatorConfig.fetchApi("/api/auth/me", {
                 headers: {
                     Authorization: `Bearer ${requestedToken}`
                 }
             });
+            const response = fetchResult.response;
 
             if (!response.ok) {
                 if (response.status === 401 || response.status === 403) {
@@ -96,7 +146,8 @@ window.NoorLocatorAuth = (() => {
                     return getSessionUser();
                 }
 
-                localStorage.setItem(userKey, JSON.stringify(payload.data));
+                writeStorage(userKey, JSON.stringify(payload.data));
+                window.NoorLocatorConfig.rememberApiBaseUrl(fetchResult.baseUrl);
                 notifyChange();
                 return payload.data;
             }

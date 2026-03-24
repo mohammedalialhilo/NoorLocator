@@ -1,6 +1,4 @@
 window.NoorLocatorApi = (() => {
-    const apiBaseUrl = document.body?.dataset.apiBaseUrl ?? "";
-
     async function request(path, options = {}) {
         const headers = new Headers(options.headers || {});
         const token = window.NoorLocatorAuth?.getToken?.();
@@ -13,10 +11,10 @@ window.NoorLocatorApi = (() => {
             headers.set("Authorization", `Bearer ${token}`);
         }
 
-        let response;
+        let fetchResult;
 
         try {
-            response = await fetch(`${apiBaseUrl}${path}`, {
+            fetchResult = await window.NoorLocatorConfig.fetchApi(path, {
                 ...options,
                 headers
             });
@@ -29,6 +27,7 @@ window.NoorLocatorApi = (() => {
             };
         }
 
+        const response = fetchResult.response;
         const contentType = response.headers.get("content-type") || "";
         const payload = contentType.includes("application/json") ? await response.json() : null;
         const normalized = {
@@ -298,6 +297,12 @@ window.NoorLocatorApi = (() => {
             return request("/api/auth/register", {
                 method: "POST",
                 body: JSON.stringify(payload)
+            });
+        },
+        logout(payload) {
+            return request("/api/auth/logout", {
+                method: "POST",
+                body: JSON.stringify(payload || {})
             });
         }
     };

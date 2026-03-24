@@ -3,15 +3,18 @@ using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using NoorLocator.Api.Extensions;
 using NoorLocator.Api.Middleware;
 using NoorLocator.Api.OpenApi;
 using NoorLocator.Application;
 using NoorLocator.Application.Common.Configuration;
 using NoorLocator.Application.Common.Models;
 using NoorLocator.Infrastructure;
+using NoorLocator.Infrastructure.Persistence;
 using NoorLocator.Infrastructure.Seeding;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -71,6 +74,37 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(2)
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var principal = context.Principal;
+                var userId = principal?.TryGetUserId();
+                var sessionId = principal?.TryGetSessionId();
+
+                if (!userId.HasValue || string.IsNullOrWhiteSpace(sessionId))
+                {
+                    context.Fail("The authenticated session is invalid.");
+                    return;
+                }
+
+                var dbContext = context.HttpContext.RequestServices.GetRequiredService<NoorLocatorDbContext>();
+                var sessionIsActive = await dbContext.RefreshTokens
+                    .AsNoTracking()
+                    .AnyAsync(
+                        refreshToken =>
+                            refreshToken.UserId == userId.Value &&
+                            refreshToken.SessionId == sessionId &&
+                            refreshToken.RevokedAtUtc == null &&
+                            refreshToken.ExpiresAtUtc > DateTime.UtcNow,
+                        context.HttpContext.RequestAborted);
+
+                if (!sessionIsActive)
+                {
+                    context.Fail("The authenticated session is no longer active.");
+                }
+            }
         };
     });
 

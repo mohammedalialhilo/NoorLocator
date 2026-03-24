@@ -1,47 +1,32 @@
-﻿# NoorLocator
+# NoorLocator
 
-NoorLocator is a moderated web platform for discovering Shia Islamic centers, browsing upcoming majalis, publishing manager-led center updates, and contributing trusted community information through role-based workflows.
+NoorLocator is a moderated platform for discovering Shia centers, browsing majalis, publishing manager-owned center updates, and contributing trusted community information through clear role-based workflows.
 
 Driven by موكب خدام أهل البيت (عليهم السلام), Copenhagen, Denmark.
 
-## Project Purpose & Vision
+## Project Overview
 
-NoorLocator is grounded in a simple manifesto-driven purpose: no follower of Ahlulbayt (AS) should feel disconnected from their community, no matter where they are in the world.
+NoorLocator is built around a simple purpose: no follower of Ahlulbayt (AS) should feel disconnected from their community.
 
-The project exists to:
+The platform focuses on:
 
-- help people find nearby Shia centers
-- make majalis and center activities easier to discover
-- reduce language barriers in diaspora communities
-- empower community contribution without sacrificing trust or authenticity
+- public center discovery with location-aware relevance
+- multi-language accessibility for diaspora communities
+- community contribution with moderation-first trust controls
+- manager-owned operational content for approved centers
+- clear identity, mission, and attribution across the product
 
-This is why the platform is location-aware, moderation-first, role-based, and strict about structured language data.
-
-## What Is Included
-
-- Public center discovery with nearest-center lookup, search, filters, gallery images, and center detail pages
-- JWT authentication with `Guest`, `User`, `Manager`, and `Admin` roles
-- Moderation-first user contribution workflows for center requests, language suggestions, manager requests, and product feedback
-- Manager-only majlis CRUD with center assignment enforcement
-- Manager-published event announcements with direct publish or draft status
-- Manager-owned center gallery upload, primary image management, and secure image validation
-- Manifesto-backed About page, identity-focused homepage, and reusable content API for site purpose
-- Admin moderation dashboard, center management, user visibility, and audit logs
-- Swagger/OpenAPI documentation
-- Docker support for the API and MySQL
-- Unit and integration tests
-- PWA basics with a web manifest and service worker shell caching
-
-## Stack
+## Tech Stack
 
 - Frontend: HTML, CSS, JavaScript
 - Backend: ASP.NET Core Web API
 - Database: MySQL with EF Core and Pomelo
-- Auth: JWT
-- Media storage: local file storage for development with a storage abstraction for production providers
-- Tests: xUnit
+- Authentication: JWT
+- Media storage: local file storage in development behind a storage abstraction
+- Testing: xUnit unit tests and integration tests
+- Documentation: Swagger / OpenAPI with XML comments
 
-## Architecture
+## Architecture Summary
 
 ```text
 NoorLocator.sln
@@ -50,34 +35,109 @@ NoorLocator.sln
 |-- NoorLocator.Domain
 |-- NoorLocator.Infrastructure
 |-- frontend
-`-- tests
-    |-- NoorLocator.UnitTests
-    `-- NoorLocator.IntegrationTests
+|-- tests
+|   |-- NoorLocator.UnitTests
+|   `-- NoorLocator.IntegrationTests
+`-- scripts
 ```
 
 - `NoorLocator.Api`
-  Hosts controllers, auth setup, exception handling, Swagger, static frontend hosting, and startup initialization.
+  Hosts controllers, authentication, authorization, Swagger, middleware, and the static frontend.
 - `NoorLocator.Application`
-  Contains DTOs, service contracts, validation, and shared response models.
+  Defines DTOs, interfaces, validation, and shared response models.
 - `NoorLocator.Domain`
-  Holds the core entities and enums.
+  Contains entities and enums only.
 - `NoorLocator.Infrastructure`
-  Implements EF Core, MySQL setup, migrations, seeding, JWT generation, password hashing, auditing, media storage, and concrete services.
+  Implements EF Core persistence, migrations, seed data, auth services, auditing, media storage, and business services.
 - `frontend`
-  Contains the branded static client that consumes only the live API.
+  Static branded UI that consumes only the live API.
 - `tests`
-  Covers service-level logic and key HTTP flows.
+  Unit and integration coverage for service logic and key HTTP flows.
+- `scripts`
+  Developer automation such as end-to-end verification.
+
+## Core Capabilities
+
+- Public center discovery with search, nearest-center lookup, distance calculation, languages, images, announcements, and center detail pages
+- JWT authentication with `User`, `Manager`, and `Admin` roles
+- Session-backed logout with immediate server-side session invalidation
+- User contribution workflows for center requests, suggestions, language suggestions, and manager requests
+- Manager workflows for majalis CRUD, event announcements, and center gallery management
+- Admin moderation for approvals, rejections, reviews, center management, user summaries, and audit logs
+- Manifesto-driven identity content through `/about` and `/api/content/about`
 
 ## Roles
 
 - `Guest`
-  Unauthenticated public visitor who can browse published centers, public majalis, center images, and published announcements.
+  Public visitor. Can browse published centers, languages, majalis, images, announcements, and About content.
 - `User`
-  Authenticated community member who can submit moderated contributions.
+  Authenticated contributor. Can submit moderated requests and suggestions.
 - `Manager`
-  Authenticated user assigned to one or more approved centers and allowed to manage majalis, event announcements, and center gallery media there.
+  Authenticated user approved for one or more centers. Can manage majalis, announcements, and images for assigned centers only.
 - `Admin`
-  Full moderation and management access across the platform, including override deletion for announcements and media.
+  Full moderation and governance access, including approval, rejection, review, delete, audit visibility, and override powers.
+
+## Setup
+
+### Prerequisites
+
+- .NET SDK 10
+- MySQL 8.x
+
+### Configuration
+
+Safe shared defaults and placeholders live in:
+
+- `NoorLocator.Api/appsettings.json`
+- `NoorLocator.Api/appsettings.Development.json`
+- `NoorLocator.Api/appsettings.Production.json`
+
+Do not commit real secrets. Override them with environment variables or user-secrets.
+
+Useful environment variables:
+
+```powershell
+$env:ConnectionStrings__DefaultConnection = "Server=127.0.0.1;Port=3306;Database=Noorlocator;User=root;Password=YOUR_PASSWORD;"
+$env:Jwt__Key = "a-secure-random-string-with-at-least-32-characters"
+```
+
+### Restore And Build
+
+```powershell
+cd C:\Users\alhil\Desktop\NoorLocator\NoorLocator
+dotnet restore
+dotnet build NoorLocator.sln
+```
+
+### Database Migration Steps
+
+Apply migrations with the API project as the startup project:
+
+```powershell
+dotnet ef database update --project .\NoorLocator.Infrastructure\NoorLocator.Infrastructure.csproj --startup-project .\NoorLocator.Api\NoorLocator.Api.csproj
+```
+
+Create a new migration:
+
+```powershell
+dotnet ef migrations add YourMigrationName --project .\NoorLocator.Infrastructure\NoorLocator.Infrastructure.csproj --startup-project .\NoorLocator.Api\NoorLocator.Api.csproj
+```
+
+### Run The Application
+
+The frontend is served by the API, so one process starts the whole app:
+
+```powershell
+dotnet run --project .\NoorLocator.Api\NoorLocator.Api.csproj
+```
+
+Default local endpoints:
+
+- App: `https://localhost:7132/`
+- HTTP fallback: `http://localhost:5141/`
+- Swagger: `https://localhost:7132/swagger`
+- Health: `https://localhost:7132/api/health`
+- About page: `https://localhost:7132/about`
 
 ## Seeded Accounts
 
@@ -88,175 +148,197 @@ NoorLocator.sln
 ## Seeded Demo Data
 
 - Languages: Arabic, Swedish, English, Farsi, Urdu
-- Demo centers in Copenhagen, Stockholm, Helsinki, Oslo, and Aarhus
-- Approved manager assignments for the seeded manager account
-- Multiple public demo majalis across the seeded centers
-- Seeded center gallery images and manager-authored announcements for the public discovery experience
+- Published demo centers across Copenhagen, Stockholm, Helsinki, Oslo, and Aarhus
+- Demo majalis
+- Approved manager assignments
+- Public center images
+- Published event announcements
+- Manifesto-backed site content for the home page and About page
 
-## Local Setup
+## API Overview
 
-### Prerequisites
+Authentication:
 
-- .NET SDK 10
-- MySQL 8.x
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/auth/me`
+- `POST /api/auth/logout`
 
-### Development Configuration
+Public discovery:
 
-Development settings live in:
+- `GET /api/centers`
+- `GET /api/centers/{id}`
+- `GET /api/centers/nearest`
+- `GET /api/centers/search`
+- `GET /api/centers/{id}/majalis`
+- `GET /api/centers/{id}/languages`
+- `GET /api/centers/{id}/images`
+- `GET /api/majalis`
+- `GET /api/majalis/{id}`
+- `GET /api/event-announcements`
+- `GET /api/event-announcements/{id}`
+- `GET /api/languages`
+- `GET /api/content/about`
 
-- `NoorLocator.Api/appsettings.Development.json`
+User contribution:
 
-Safer shared defaults and production placeholders live in:
+- `POST /api/center-requests`
+- `GET /api/center-requests/my`
+- `POST /api/suggestions`
+- `POST /api/center-language-suggestions`
+- `POST /api/manager/request`
 
-- `NoorLocator.Api/appsettings.json`
-- `NoorLocator.Api/appsettings.Production.json`
+Manager:
 
-For production-style deployments, prefer environment variables or user-secrets over committed credentials.
+- `GET /api/manager/my-centers`
+- `POST /api/majalis`
+- `PUT /api/majalis/{id}`
+- `DELETE /api/majalis/{id}`
+- `POST /api/event-announcements`
+- `PUT /api/event-announcements/{id}`
+- `DELETE /api/event-announcements/{id}`
+- `POST /api/center-images/upload`
+- `PUT /api/center-images/{id}/set-primary`
+- `DELETE /api/center-images/{id}`
 
-### Run Locally
+Admin:
 
-```powershell
-cd C:\Users\alhil\Desktop\NoorLocator\NoorLocator
-dotnet restore
-dotnet build NoorLocator.sln
-dotnet ef database update --project .\NoorLocator.Infrastructure\NoorLocator.Infrastructure.csproj --startup-project .\NoorLocator.Api\NoorLocator.Api.csproj
-dotnet run --project .\NoorLocator.Api\NoorLocator.Api.csproj
-```
+- `GET /api/admin/dashboard`
+- `GET /api/admin/center-requests`
+- `POST /api/admin/center-requests/{id}/approve`
+- `POST /api/admin/center-requests/{id}/reject`
+- `GET /api/admin/manager-requests`
+- `POST /api/admin/manager-requests/{id}/approve`
+- `POST /api/admin/manager-requests/{id}/reject`
+- `GET /api/admin/center-language-suggestions`
+- `POST /api/admin/center-language-suggestions/{id}/approve`
+- `POST /api/admin/center-language-suggestions/{id}/reject`
+- `GET /api/admin/suggestions`
+- `PUT /api/admin/suggestions/{id}/review`
+- `GET /api/admin/users`
+- `GET /api/admin/centers`
+- `PUT /api/admin/centers/{id}`
+- `DELETE /api/admin/centers/{id}`
+- `GET /api/admin/audit-logs`
 
-### Default URLs
+## Swagger
 
-- App: `https://localhost:7132/`
-- HTTP fallback: `http://localhost:5141/`
-- Swagger: `https://localhost:7132/swagger`
-- Health: `https://localhost:7132/api/health`
+Swagger is enabled in development and can also be enabled by configuration:
 
-## Migrations
+- `NoorLocator.Api/Program.cs`
+- `NoorLocator.Api/OpenApi/SwaggerDefaultResponsesOperationFilter.cs`
+- `NoorLocator.Api/OpenApi/SwaggerSchemaIdFormatter.cs`
 
-Migration files live in:
+It includes:
 
-- `NoorLocator.Infrastructure/Persistence/Migrations`
-
-Useful commands:
-
-```powershell
-dotnet ef migrations add YourMigrationName --project .\NoorLocator.Infrastructure\NoorLocator.Infrastructure.csproj --startup-project .\NoorLocator.Api\NoorLocator.Api.csproj
-dotnet ef database update --project .\NoorLocator.Infrastructure\NoorLocator.Infrastructure.csproj --startup-project .\NoorLocator.Api\NoorLocator.Api.csproj
-```
-
-Phase 8 adds:
-
-- `AddEventAnnouncementsAndCenterImages`
-
-Phase 9 adds:
-
-- `AddAppContentIdentityLayer`
-
-## Media Storage
-
-- Development uploads use local storage under `frontend/uploads`
-- Only generated file names are stored and served
-- Supported formats: `jpg`, `jpeg`, `png`, `webp`
-- Max upload size: `5MB`
-- The database stores only image URLs
-
-For production, keep the `IMediaStorageService` abstraction and swap the local implementation for Azure Blob Storage, AWS S3, or another managed provider.
-
-## Docker
-
-Build and run the app with MySQL:
-
-```powershell
-docker compose up --build
-```
-
-Docker services:
-
-- API: `http://localhost:8080`
-- MySQL: `localhost:3306`
-
-Files:
-
-- `Dockerfile`
-- `docker-compose.yml`
-- `.dockerignore`
-
-Important:
-
-- Replace `Jwt__Key` in `docker-compose.yml` before using it beyond local development.
-- The container uses `Frontend__RelativeRootPath=frontend`, and the frontend assets are copied into the publish output automatically.
-
-## Swagger And API Coverage
-
-Swagger includes:
-
-- XML-comment summaries for the API surface
-- JWT bearer security definition
-- Default error response documentation
-- Documented public, authenticated, manager, and admin endpoints
-
-Main endpoint groups:
-
-- Auth: `/api/auth/*`
-- Public discovery: `/api/centers/*`, `/api/languages`, `/api/majalis`, `/api/event-announcements`, `/api/content/about`
-- User contributions: `/api/center-requests`, `/api/suggestions`, `/api/center-language-suggestions`, `/api/manager/request`
-- Manager: `/api/manager/*`, `/api/majalis/*`, `/api/event-announcements`, `/api/center-images/*`
-- Admin: `/api/admin/*`
+- grouped XML-comment documentation
+- bearer-token security metadata
+- standardized error responses
+- DTO-based request and response shapes
 
 ## Testing
 
-Run all tests:
+Run all automated tests:
 
 ```powershell
 dotnet test NoorLocator.sln
 ```
 
-Included coverage:
+Current automated coverage:
 
-- Unit tests for center discovery, center requests, and local media validation
-- Integration tests for registration, protected routes, public center search, admin authorization, announcement visibility, and gallery upload flows
+- `6` unit tests
+- `14` integration tests
+- `20` passing tests total at the time of the final integration pass
 
-Test projects:
+Important test areas:
 
-- `tests/NoorLocator.UnitTests`
-- `tests/NoorLocator.IntegrationTests`
+- auth registration, login, and logout invalidation
+- public discovery endpoints
+- admin authorization
+- user contribution workflows
+- manager majalis workflows
+- announcements and image uploads
+- admin approval flows
 
-## Frontend Notes
+## End-To-End Verification
 
-- The frontend consumes only the live API
-- Auth state is stored in `localStorage`
-- The navbar updates by role and includes a mobile toggle
-- The public About page is available at `/about`
-- Toasts, loading states, empty states, and responsive layouts are used across public, user, manager, and admin pages
-- Center detail pages now show a primary banner image, gallery grid, and event announcement feed
-- The homepage and About page now surface manifesto-backed purpose, mission, principles, and attribution through the content API
-- PWA basics are included through `site.webmanifest` and `service-worker.js`
+A reusable live verification script is included:
 
-## Developer Notes
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\verify-e2e.ps1 -StartApp -ConnectionString "Server=127.0.0.1;Port=3306;Database=Noorlocator;User=root;Password=YOUR_PASSWORD;"
+```
 
-- `DEVELOPER_MANUAL.md` explains the product philosophy and intent behind moderation, roles, language structure, and manager-controlled announcements
+The script verifies:
 
-## Production-Readiness Notes
+- public pages and identity content
+- login and logout behavior
+- protected route invalidation after logout
+- center discovery endpoints
+- user submissions
+- manager majalis workflows
+- manager announcements and gallery uploads
+- admin approvals and audit access
+- public visibility of published content
 
-- Unhandled exceptions are returned through a consistent API response shape
-- Validation failures include trace-friendly metadata
-- Admin and manager write access are enforced server-side through policy-based authorization and center ownership checks
-- DTO-based write endpoints reduce overposting risk
-- JWT configuration is validated more strictly outside development
-- Open CORS is allowed only in development and testing when origins are not explicitly configured
-- Uploaded files are validated by extension and file signature, not MIME type alone
-- Published API output includes the static frontend assets for container and publish scenarios
+See `VERIFICATION_REPORT.md` for the final verification summary.
+
+## Frontend And Backend Run Model
+
+- There is no separate frontend dev server required for normal local use.
+- The API serves the `frontend/` directory as static assets.
+- Protected UI pages rely on client-side auth checks, while all real security is enforced server-side by the API.
+
+## Media Handling
+
+- Development uploads are stored under `frontend/uploads`
+- The database stores URLs only, not binary image data
+- Supported formats: `jpg`, `jpeg`, `png`, `webp`
+- Max upload size: `5 MB`
+- Uploads are validated server-side by extension and file signature
+- Files are stored with generated names rather than raw user filenames
+
+## Docker
+
+```powershell
+docker compose up --build
+```
+
+Default compose services:
+
+- API: `http://localhost:8080`
+- MySQL: `localhost:3306`
+
+Before using Docker outside local experimentation:
+
+- replace placeholder passwords
+- replace `Jwt__Key`
+- review volumes and persistent database settings
+
+## Production Notes
+
+- Move connection strings and JWT secrets to environment variables or a secret store
+- Keep `Swagger:Enabled` disabled outside development unless explicitly required
+- Configure real `Cors:AllowedOrigins`
+- Use a production media storage implementation behind `IMediaStorageService`
+- Keep the new session-backed logout flow intact when modifying auth
 
 ## Future Roadmap
 
-- Refresh token rotation and logout/revocation flows
-- Multi-language UI scaffolding for English, Arabic, and Swedish
-- Favorites or saved centers
-- Calendar-style public majalis browsing
-- Nearby majalis and notification scaffolding
-- Scheduled announcement publishing, expiry dates, and pinned highlights
-- Managed cloud media storage with image resizing and compression
-- CI pipelines and deployment environments
+- refresh token rotation with a dedicated refresh endpoint
+- multilingual UI scaffolding for English, Arabic, and Swedish
+- favorites or saved centers
+- calendar-style majalis browsing
+- nearby majalis and notification scaffolding
+- announcement scheduling, expiry, and pinning
+- managed cloud image resizing and compression
+- CI/CD pipelines and deployment environments
+
+## Additional Documentation
+
+- `DEVELOPER_MANUAL.md`
+- `VERIFICATION_REPORT.md`
+- `scripts/verify-e2e.ps1`
 
 ## Attribution
 
-Driven by موكب خدام اهل البيت (عليهم السلام), Copenhagen, Denmark.
+Driven by موكب خدام أهل البيت (عليهم السلام), Copenhagen, Denmark.

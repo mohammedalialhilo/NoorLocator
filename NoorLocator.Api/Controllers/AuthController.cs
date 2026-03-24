@@ -64,6 +64,19 @@ public class AuthController(
         return this.ToActionResult(result);
     }
 
+    /// <summary>
+    /// Revokes the current authenticated session and clears the associated refresh token.
+    /// </summary>
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<ActionResult<ApiResponse<object?>>> Logout([FromBody] LogoutRequestDto? request, CancellationToken cancellationToken)
+    {
+        var userId = User.GetRequiredUserId();
+        var sessionId = User.TryGetSessionId();
+        var result = await authService.LogoutAsync(userId, sessionId, request?.RefreshToken, cancellationToken);
+        return this.ToActionResult(result);
+    }
+
     private ActionResult? Validate<T>(IValidator<T> validator, T instance)
     {
         var validation = validator.Validate(instance);
