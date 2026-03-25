@@ -62,6 +62,7 @@ NoorLocator.sln
 - JWT authentication with `User`, `Manager`, and `Admin` roles
 - Centralized auth state with session-backed logout and immediate server-side session invalidation
 - Shared self-service profile management for every authenticated user through `profile.html` and `/api/profile/me`
+- Unified frontend branding through `frontend/assets/logo_bkg.png` across the shared shell, auth pages, workspace pages, public hero areas, favicon, and web manifest
 - User contribution workflows for center requests, suggestions, language suggestions, and manager requests
 - Manager workflows for majalis CRUD, event announcements, and center gallery management
 - Admin moderation for approvals, rejections, reviews, center management, center-image cleanup, user summaries, and audit logs
@@ -304,6 +305,7 @@ See `VERIFICATION_REPORT.md` for the final verification summary.
 - Protected UI pages are hidden behind a shared auth bootstrap until `/api/auth/me` confirms the active session.
 - Logout buttons in the navbar, dashboard, manager workspace, and admin workspace all route through the same frontend logout helper.
 - Every authenticated role can open `profile.html` to edit only their own display name and email while keeping role and password fields protected.
+- Frontend branding is standardized on `frontend/assets/logo_bkg.png`, with `frontend/js/layout.js` acting as the shared source for navbar, footer, favicon, and page-level logo hydration.
 - Manager image uploads use a shared multipart upload helper that resolves the API base URL before sending files, so the upload flow stays aligned with the same live API as the rest of the app.
 - Workspace pages, including `profile.html`, are excluded from service-worker precaching and returned with no-store cache headers to reduce stale protected-page restores after logout.
 - All real security is still enforced server-side by the API.

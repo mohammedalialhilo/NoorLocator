@@ -1,8 +1,35 @@
 window.NoorLocatorLayout = (() => {
     const navPanelId = "site-nav-panel";
+    const brandLogoPath = "assets/logo_bkg.png";
+    const brandLogoAlt = "NoorLocator logo";
     const attribution = "Driven by \u0645\u0648\u0643\u0628 \u062e\u062f\u0627\u0645 \u0623\u0647\u0644 \u0627\u0644\u0628\u064a\u062a (\u0639\u0644\u064a\u0647\u0645 \u0627\u0644\u0633\u0644\u0627\u0645), Copenhagen, Denmark.";
     const tagline = "Connecting you to Shia centers and majalis worldwide";
     let serviceWorkerSetupStarted = false;
+
+    function upsertHeadLink(rel, href, type = "") {
+        let link = document.querySelector(`link[rel="${rel}"]`);
+        if (!link) {
+            link = document.createElement("link");
+            link.rel = rel;
+            document.head.appendChild(link);
+        }
+
+        link.href = href;
+        if (type) {
+            link.type = type;
+        }
+    }
+
+    function applyBrandAssets(root = document) {
+        root.querySelectorAll("[data-brand-logo]").forEach(image => {
+            image.setAttribute("src", brandLogoPath);
+            image.setAttribute("alt", image.getAttribute("alt") || brandLogoAlt);
+        });
+
+        upsertHeadLink("icon", brandLogoPath, "image/png");
+        upsertHeadLink("shortcut icon", brandLogoPath, "image/png");
+        upsertHeadLink("apple-touch-icon", brandLogoPath, "image/png");
+    }
 
     function renderHeader() {
         const mount = document.querySelector("[data-site-header]");
@@ -30,8 +57,8 @@ window.NoorLocatorLayout = (() => {
             <header class="site-header">
                 <div class="site-header__inner">
                     <a class="brand" href="index.html" aria-label="NoorLocator home">
-                        <img class="brand__mark" src="assets/logo.svg" alt="NoorLocator logo">
-                        <span>
+                        <img class="site-logo site-logo--nav brand__mark" data-brand-logo src="${brandLogoPath}" alt="${brandLogoAlt}">
+                        <span class="brand__copy">
                             <span class="brand__eyebrow">Community Connection</span>
                             <span class="brand__title">NoorLocator</span>
                         </span>
@@ -91,7 +118,9 @@ window.NoorLocatorLayout = (() => {
                 <div class="site-footer__inner">
                     <div class="site-footer__grid">
                         <div class="site-footer__brand">
-                            <img class="site-footer__logo" src="assets/logo.svg" alt="NoorLocator logo">
+                            <a class="site-footer__brand-link" href="index.html" aria-label="NoorLocator home">
+                                <img class="site-logo site-logo--footer site-footer__logo" data-brand-logo src="${brandLogoPath}" alt="${brandLogoAlt}">
+                            </a>
                             <div>
                                 <p class="site-footer__title">NoorLocator</p>
                                 <p>${tagline}</p>
@@ -172,9 +201,14 @@ window.NoorLocatorLayout = (() => {
     function renderShell() {
         renderHeader();
         renderFooter();
+        applyBrandAssets();
     }
 
     return {
+        branding: {
+            logoPath: brandLogoPath,
+            logoAlt: brandLogoAlt
+        },
         init() {
             renderShell();
 

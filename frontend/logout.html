@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0D2535">
     <title>NoorLocator | Signing Out</title>
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+    <link rel="icon" type="image/png" href="assets/logo_bkg.png">
+    <link rel="manifest" href="site.webmanifest">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body data-page="logout">
@@ -21,18 +22,21 @@
                 </div>
             </div>
             <aside class="hero__panel">
-                <img class="hero__logo" src="assets/logo.svg" alt="NoorLocator logo">
+                <img class="site-logo site-logo--auth hero__logo" data-brand-logo src="assets/logo_bkg.png" alt="NoorLocator logo">
             </aside>
         </section>
     </main>
 
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/layout.js"></script>
     <script>
         const status = document.getElementById("logout-status");
         if (status) {
             status.textContent = "Signing you out of NoorLocator...";
         }
+
+        window.NoorLocatorLayout.init();
 
         window.NoorLocatorAuth.logout({
             redirectPath: "login.html?loggedOut=1"

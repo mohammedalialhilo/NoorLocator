@@ -150,10 +150,16 @@ try {
     }
     $verification.PublicPages = "Verified public and workspace HTML routes."
 
+    $logoAsset = Send-Request -Method "Get" -Path "/assets/logo_bkg.png" -Accept "*/*"
+    Assert-True ($logoAsset.StatusCode -eq 200) "The shared logo asset did not return HTTP 200."
+    Assert-True ($logoAsset.ContentType.StartsWith("image/")) "The shared logo asset did not return an image content type."
+
     $layoutScript = Send-Request -Method "Get" -Path "/js/layout.js" -Accept "text/javascript"
     Assert-True (($layoutScript.Text.Contains("const attribution =")) -and ($layoutScript.Text.Contains("Copenhagen, Denmark."))) "Global attribution text was not found in layout.js."
     Assert-True ($layoutScript.Text.Contains("data-logout-action")) "Shared logout controls were not found in layout.js."
     Assert-True ($layoutScript.Text.Contains('href="profile.html"')) "layout.js is missing the shared profile navigation link."
+    Assert-True ($layoutScript.Text.Contains("assets/logo_bkg.png")) "layout.js is not using the shared logo asset."
+    Assert-True (-not $layoutScript.Text.Contains("assets/logo.svg")) "layout.js still references the legacy SVG logo."
 
     $authScript = Send-Request -Method "Get" -Path "/js/auth.js" -Accept "text/javascript"
     Assert-True ($authScript.Text.Contains("sessionStorage.removeItem")) "auth.js does not clear sessionStorage during logout."
@@ -162,6 +168,15 @@ try {
     Assert-True ($authScript.Text.Contains("handleUnauthorized")) "auth.js does not expose centralized unauthorized handling."
     Assert-True ($authScript.Text.Contains("updateSessionUser")) "auth.js does not expose profile-session refresh support."
 
+    $homePage = Send-Request -Method "Get" -Path "/index.html" -Accept "text/html"
+    $aboutPage = Send-Request -Method "Get" -Path "/about.html" -Accept "text/html"
+    $loginPage = Send-Request -Method "Get" -Path "/login.html" -Accept "text/html"
+    $registerPage = Send-Request -Method "Get" -Path "/register.html" -Accept "text/html"
+    $centerDetailsPage = Send-Request -Method "Get" -Path "/center-details.html?id=1" -Accept "text/html"
+    $manifest = Send-Request -Method "Get" -Path "/site.webmanifest" -Accept "application/manifest+json"
+    Assert-True ($manifest.Text.Contains("assets/logo_bkg.png")) "site.webmanifest is not using the shared PNG logo."
+    Assert-True (-not $manifest.Text.Contains("assets/logo.svg")) "site.webmanifest still references the legacy SVG logo."
+
     $logoutPage = Send-Request -Method "Get" -Path "/logout.html" -Accept "text/html"
     Assert-True ($logoutPage.Text.Contains("window.NoorLocatorAuth.logout")) "logout.html does not use the shared logout helper."
     Assert-True ($logoutPage.Text.Contains("loggedOut=1")) "logout.html does not redirect with a signed-out flag."
@@ -169,6 +184,11 @@ try {
     $profilePage = Send-Request -Method "Get" -Path "/profile.html" -Accept "text/html"
     $managerPage = Send-Request -Method "Get" -Path "/manager.html" -Accept "text/html"
     $adminPage = Send-Request -Method "Get" -Path "/admin.html" -Accept "text/html"
+    foreach ($brandedPage in @($homePage, $aboutPage, $loginPage, $registerPage, $logoutPage, $centerDetailsPage, $dashboardPage, $profilePage, $managerPage, $adminPage)) {
+        Assert-True (($brandedPage.Text.Contains("data-brand-logo")) -or ($brandedPage.Text.Contains("assets/logo_bkg.png"))) "A branded page did not include the shared logo markup."
+        Assert-True ($brandedPage.Text.Contains('rel="icon" type="image/png" href="assets/logo_bkg.png"')) "A branded page is missing the shared PNG favicon reference."
+        Assert-True (-not $brandedPage.Text.Contains("assets/logo.svg")) "A branded page still references the legacy SVG logo."
+    }
     Assert-True ($dashboardPage.Text.Contains('data-auth-required="true"')) "dashboard.html is missing the protected-page auth gate."
     Assert-True ($dashboardPage.Text.Contains('href="profile.html"')) "dashboard.html is missing the profile link."
     Assert-True ($dashboardPage.Text.Contains("data-logout-action")) "dashboard.html is missing its logout button."
@@ -186,6 +206,8 @@ try {
     $serviceWorkerScript = Send-Request -Method "Get" -Path "/service-worker.js" -Accept "text/javascript"
     Assert-True ($serviceWorkerScript.Text.Contains("NON_CACHEABLE_PATHS")) "service-worker.js is not protecting workspace pages from cache reuse."
     Assert-True ($serviceWorkerScript.Text.Contains("/profile.html")) "service-worker.js is not excluding the profile page from cache reuse."
+    Assert-True ($serviceWorkerScript.Text.Contains("/assets/logo_bkg.png")) "service-worker.js is not caching the shared PNG logo."
+    Assert-True (-not $serviceWorkerScript.Text.Contains("/assets/logo.svg")) "service-worker.js still references the legacy SVG logo."
     Assert-True ($serviceWorkerScript.Text.Contains('requestUrl.pathname.startsWith("/api/") || NON_CACHEABLE_PATHS.has(requestUrl.pathname)')) "service-worker.js is still caching protected workspace routes."
     $appScript = Send-Request -Method "Get" -Path "/js/app.js" -Accept "text/javascript"
     Assert-True ($appScript.Text.Contains("majlis-card__image")) "app.js is not rendering majlis images."
@@ -193,6 +215,7 @@ try {
     Assert-True ($appScript.Text.Contains("initProfilePage")) "app.js is missing the shared profile page flow."
     Assert-True ($appScript.Text.Contains("updateMyProfile")) "app.js is not calling the profile update API."
     $verification.FrontendLogoutAssets = "Verified centralized logout wiring, protected-page auth gates, and protected-page cache exclusions."
+    $verification.FrontendBranding = "Verified the shared logo asset, PNG favicon/manifest wiring, navbar and footer branding source, and page-level brand logo markup across public, auth, and workspace pages."
 
     $aboutContent = Send-Request -Method "Get" -Path "/api/content/about"
     Assert-True ($aboutContent.StatusCode -eq 200) "About content API failed."

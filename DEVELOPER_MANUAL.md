@@ -299,6 +299,22 @@ Swagger is the live reference for DTO shapes and status codes.
 - show loading states, empty states, and friendly errors
 - never act as the source of truth for security
 
+### Frontend Branding
+
+- the official frontend logo asset is `frontend/assets/logo_bkg.png`
+- `frontend/js/layout.js` is the shared branding source for navbar logo, footer logo, favicon links, and any `[data-brand-logo]` image placeholders
+- the logo is intentionally used in:
+  - the shared navbar and footer
+  - landing and About hero panels
+  - login, register, and logout identity panels
+  - dashboard, manager, admin, and profile workspace hero panels
+  - the center-details fallback hero image when a center does not yet have a primary photo
+- keep logo sizing reusable through shared classes in `frontend/css/style.css`, especially `.site-logo`, `.site-logo--nav`, `.site-logo--footer`, `.site-logo--auth`, `.site-logo--hero`, `.site-logo--workspace`, and `.site-logo--detail`
+- when replacing the brand in the future:
+  - replace `frontend/assets/logo_bkg.png` with a new image that keeps a safe aspect ratio
+  - review `frontend/js/layout.js`, `frontend/site.webmanifest`, and `frontend/service-worker.js` together so the shell, favicon, manifest, and cached asset list stay aligned
+  - verify all public, auth, and protected pages render the updated logo without broken images or layout shifts
+
 ## 11. Authentication, Profile, And Logout
 
 ### How Login Works
