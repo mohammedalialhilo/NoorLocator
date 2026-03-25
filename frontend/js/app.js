@@ -33,6 +33,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         case "register":
             initRegisterPage();
             break;
+        case "profile":
+            initProfilePage();
+            break;
         case "dashboard":
             initDashboardPage();
             break;
@@ -1247,6 +1250,166 @@ function initRegisterPage() {
     bindAuthForm("register-form", async formData => window.NoorLocatorApi.register(formData));
 }
 
+function initProfilePage() {
+    if (!window.NoorLocatorAuth.requireAuth()) {
+        return;
+    }
+
+    const pageMessage = document.getElementById("profile-page-message");
+    const cardsContainer = document.getElementById("profile-cards");
+    const form = document.getElementById("profile-form");
+    const formMessage = document.querySelector('[data-form-message="profile-form"]');
+    const nameInput = document.querySelector('#profile-form input[name="name"]');
+    const emailInput = document.querySelector('#profile-form input[name="email"]');
+    const roleBadge = document.getElementById("profile-role-badge");
+    const createdAt = document.getElementById("profile-created-at");
+    const roleDisplay = document.getElementById("profile-role-display");
+    const centerCount = document.getElementById("profile-center-count");
+    const workspaceLink = document.getElementById("profile-workspace-link");
+    const state = {
+        profile: window.NoorLocatorAuth.getSessionUser()
+    };
+
+    if (!pageMessage || !cardsContainer || !form || !formMessage || !nameInput || !emailInput || !roleBadge || !createdAt || !roleDisplay || !centerCount || !workspaceLink) {
+        return;
+    }
+
+    setCardLoadingState(cardsContainer, 3);
+    setMessage(pageMessage, "Loading your profile...");
+
+    function getWorkspaceTarget(profile) {
+        if (profile?.role === "Admin") {
+            return {
+                href: "admin.html",
+                label: "Back to admin workspace"
+            };
+        }
+
+        if (profile?.role === "Manager") {
+            return {
+                href: "manager.html",
+                label: "Back to manager workspace"
+            };
+        }
+
+        return {
+            href: "dashboard.html",
+            label: "Back to dashboard"
+        };
+    }
+
+    function renderProfile(profile) {
+        if (!profile) {
+            return;
+        }
+
+        nameInput.value = profile.name || "";
+        emailInput.value = profile.email || "";
+        roleBadge.textContent = profile.role || "User";
+        roleDisplay.textContent = profile.role || "User";
+        createdAt.textContent = profile.createdAt ? formatDateTime(profile.createdAt) : "Unknown";
+
+        const assignedCenterCount = (profile.assignedCenterIds || []).length;
+        centerCount.textContent = `${assignedCenterCount} center${assignedCenterCount === 1 ? "" : "s"}`;
+
+        const workspaceTarget = getWorkspaceTarget(profile);
+        workspaceLink.href = workspaceTarget.href;
+        workspaceLink.textContent = workspaceTarget.label;
+    }
+
+    function refreshOverviewCards() {
+        const profile = state.profile || window.NoorLocatorAuth.getSessionUser() || { name: "Member", role: "User", email: "" };
+        const assignedCenterCount = (profile.assignedCenterIds || []).length;
+
+        populateCards("profile-cards", [
+            {
+                title: "Signed in as",
+                body: `${profile.name} is currently authenticated as ${profile.role}. Profile edits update personal details only and do not change permissions.`
+            },
+            {
+                title: "Email on file",
+                body: profile.email
+                    ? `${profile.email} is the account email NoorLocator currently uses for sign-in and account contact.`
+                    : "No account email is available right now."
+            },
+            {
+                title: "Assigned centers",
+                body: assignedCenterCount
+                    ? `${assignedCenterCount} approved center assignment${assignedCenterCount === 1 ? "" : "s"} are linked to this account.`
+                    : "No approved center assignments are currently linked to this account."
+            }
+        ]);
+    }
+
+    async function loadProfile(successMessage = "Your profile is ready to edit.") {
+        try {
+            const [userResponse, profileResponse] = await Promise.all([
+                window.NoorLocatorAuth.syncCurrentUser(),
+                window.NoorLocatorApi.getMyProfile()
+            ]);
+
+            state.profile = profileResponse.data || userResponse || window.NoorLocatorAuth.getSessionUser();
+            renderProfile(state.profile);
+            refreshOverviewCards();
+            setMessage(pageMessage, successMessage, "success");
+        } catch (error) {
+            const message = normalizeErrorMessage(error, "Your profile could not be loaded right now.");
+            setMessage(pageMessage, message, "error");
+            setMessage(formMessage, message, "error");
+            showToast(message, "error");
+        }
+    }
+
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+        setSubmitButtonState(form, true, "Saving profile...");
+        setMessage(formMessage, "Saving your profile...");
+
+        const values = getTrimmedFormValues(form);
+        const payload = {
+            name: values.name,
+            email: values.email
+        };
+
+        try {
+            const response = await window.NoorLocatorApi.updateMyProfile(payload);
+            state.profile = response.data || state.profile;
+
+            if (state.profile) {
+                window.NoorLocatorAuth.updateSessionUser(state.profile);
+                renderProfile(state.profile);
+                refreshOverviewCards();
+            }
+
+            setMessage(formMessage, response.message || "Profile updated successfully.", "success");
+            setMessage(pageMessage, response.message || "Profile updated successfully.", "success");
+            showToast(response.message || "Profile updated successfully.", "success");
+        } catch (error) {
+            const message = normalizeErrorMessage(error, "Your profile could not be updated.");
+            setMessage(formMessage, message, "error");
+            setMessage(pageMessage, message, "error");
+            showToast(message, "error");
+        } finally {
+            setSubmitButtonState(form, false, "Saving profile...");
+        }
+    });
+
+    window.addEventListener("noorlocator:auth-changed", event => {
+        if (!event.detail) {
+            return;
+        }
+
+        state.profile = {
+            ...state.profile,
+            ...event.detail
+        };
+        renderProfile(state.profile);
+        refreshOverviewCards();
+    });
+
+    loadProfile();
+}
+
 function bindAuthForm(formId, submitAction) {
     const form = document.getElementById(formId);
     const message = document.querySelector(`[data-form-message="${formId}"]`);
@@ -1341,6 +1504,15 @@ function initDashboardPage() {
             }
         ]);
     }
+
+    window.addEventListener("noorlocator:auth-changed", event => {
+        if (!event.detail) {
+            return;
+        }
+
+        state.user = event.detail;
+        refreshOverviewCards();
+    });
 
     function refreshSelects() {
         populateSelectOptions(centerSelects, state.centers, {
@@ -1890,6 +2062,15 @@ function initManagerPage() {
             }
         ]);
     }
+
+    window.addEventListener("noorlocator:auth-changed", event => {
+        if (!event.detail) {
+            return;
+        }
+
+        state.user = event.detail;
+        refreshOverviewCards();
+    });
 
     function syncCenterSelection(centerId) {
         const validCenterId = state.centers.some(center => center.id === centerId)
@@ -2836,6 +3017,15 @@ function initAdminPage() {
             }
         ]);
     }
+
+    window.addEventListener("noorlocator:auth-changed", event => {
+        if (!event.detail) {
+            return;
+        }
+
+        state.user = event.detail;
+        refreshOverviewCards();
+    });
 
     function syncAdminImageCenterSelection(centerId) {
         const validCenterId = state.centers.some(center => center.id === centerId)

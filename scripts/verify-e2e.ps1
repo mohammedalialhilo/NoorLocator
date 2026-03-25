@@ -136,6 +136,7 @@ try {
         @{ Path = "/login.html"; Expect = "Login" },
         @{ Path = "/register.html"; Expect = "Register" },
         @{ Path = "/dashboard.html"; Expect = "Dashboard" },
+        @{ Path = "/profile.html"; Expect = "My Profile" },
         @{ Path = "/manager.html"; Expect = "Manager" },
         @{ Path = "/admin.html"; Expect = "Admin" },
         @{ Path = "/about"; Expect = "About NoorLocator" },
@@ -152,32 +153,45 @@ try {
     $layoutScript = Send-Request -Method "Get" -Path "/js/layout.js" -Accept "text/javascript"
     Assert-True (($layoutScript.Text.Contains("const attribution =")) -and ($layoutScript.Text.Contains("Copenhagen, Denmark."))) "Global attribution text was not found in layout.js."
     Assert-True ($layoutScript.Text.Contains("data-logout-action")) "Shared logout controls were not found in layout.js."
+    Assert-True ($layoutScript.Text.Contains('href="profile.html"')) "layout.js is missing the shared profile navigation link."
 
     $authScript = Send-Request -Method "Get" -Path "/js/auth.js" -Accept "text/javascript"
     Assert-True ($authScript.Text.Contains("sessionStorage.removeItem")) "auth.js does not clear sessionStorage during logout."
     Assert-True ($authScript.Text.Contains("/api/auth/logout")) "auth.js does not call the logout endpoint."
     Assert-True ($authScript.Text.Contains("bootstrapPageAuth")) "auth.js does not expose the centralized page auth bootstrap."
     Assert-True ($authScript.Text.Contains("handleUnauthorized")) "auth.js does not expose centralized unauthorized handling."
+    Assert-True ($authScript.Text.Contains("updateSessionUser")) "auth.js does not expose profile-session refresh support."
 
     $logoutPage = Send-Request -Method "Get" -Path "/logout.html" -Accept "text/html"
     Assert-True ($logoutPage.Text.Contains("window.NoorLocatorAuth.logout")) "logout.html does not use the shared logout helper."
     Assert-True ($logoutPage.Text.Contains("loggedOut=1")) "logout.html does not redirect with a signed-out flag."
     $dashboardPage = Send-Request -Method "Get" -Path "/dashboard.html" -Accept "text/html"
+    $profilePage = Send-Request -Method "Get" -Path "/profile.html" -Accept "text/html"
     $managerPage = Send-Request -Method "Get" -Path "/manager.html" -Accept "text/html"
     $adminPage = Send-Request -Method "Get" -Path "/admin.html" -Accept "text/html"
     Assert-True ($dashboardPage.Text.Contains('data-auth-required="true"')) "dashboard.html is missing the protected-page auth gate."
+    Assert-True ($dashboardPage.Text.Contains('href="profile.html"')) "dashboard.html is missing the profile link."
     Assert-True ($dashboardPage.Text.Contains("data-logout-action")) "dashboard.html is missing its logout button."
+    Assert-True ($profilePage.Text.Contains('data-auth-required="true"')) "profile.html is missing the protected-page auth gate."
+    Assert-True ($profilePage.Text.Contains('id="profile-form"')) "profile.html is missing the profile edit form."
+    Assert-True ($profilePage.Text.Contains('name="name"')) "profile.html is missing the editable display-name field."
+    Assert-True ($profilePage.Text.Contains('name="email"')) "profile.html is missing the editable email field."
     Assert-True ($managerPage.Text.Contains('data-auth-roles="Manager,Admin"')) "manager.html is missing role-aware auth guard metadata."
+    Assert-True ($managerPage.Text.Contains('href="profile.html"')) "manager.html is missing the profile link."
     Assert-True ($managerPage.Text.Contains("data-logout-action")) "manager.html is missing its logout button."
     Assert-True ($managerPage.Text.Contains("Add a poster or banner image for this majlis.")) "manager.html is missing the majlis image upload field."
     Assert-True ($adminPage.Text.Contains('data-auth-roles="Admin"')) "admin.html is missing the admin auth guard metadata."
+    Assert-True ($adminPage.Text.Contains('href="profile.html"')) "admin.html is missing the profile link."
     Assert-True ($adminPage.Text.Contains("data-logout-action")) "admin.html is missing its logout button."
     $serviceWorkerScript = Send-Request -Method "Get" -Path "/service-worker.js" -Accept "text/javascript"
     Assert-True ($serviceWorkerScript.Text.Contains("NON_CACHEABLE_PATHS")) "service-worker.js is not protecting workspace pages from cache reuse."
+    Assert-True ($serviceWorkerScript.Text.Contains("/profile.html")) "service-worker.js is not excluding the profile page from cache reuse."
     Assert-True ($serviceWorkerScript.Text.Contains('requestUrl.pathname.startsWith("/api/") || NON_CACHEABLE_PATHS.has(requestUrl.pathname)')) "service-worker.js is still caching protected workspace routes."
     $appScript = Send-Request -Method "Get" -Path "/js/app.js" -Accept "text/javascript"
     Assert-True ($appScript.Text.Contains("majlis-card__image")) "app.js is not rendering majlis images."
     Assert-True ($appScript.Text.Contains("getMajlisImageValidationError")) "app.js is missing majlis image validation."
+    Assert-True ($appScript.Text.Contains("initProfilePage")) "app.js is missing the shared profile page flow."
+    Assert-True ($appScript.Text.Contains("updateMyProfile")) "app.js is not calling the profile update API."
     $verification.FrontendLogoutAssets = "Verified centralized logout wiring, protected-page auth gates, and protected-page cache exclusions."
 
     $aboutContent = Send-Request -Method "Get" -Path "/api/content/about"
@@ -249,10 +263,100 @@ try {
 
     $adminUnauthorized = Send-Request -Method "Get" -Path "/api/admin/dashboard"
     Assert-True ($adminUnauthorized.StatusCode -eq 401) "Anonymous admin dashboard access did not return 401."
+    $anonymousProfileGet = Send-Request -Method "Get" -Path "/api/profile/me"
+    Assert-True ($anonymousProfileGet.StatusCode -eq 401) "Anonymous profile access did not return 401."
+    $anonymousProfilePut = Send-Request -Method "Put" -Path "/api/profile/me" -Body @{
+        name = "Anonymous"
+        email = "anonymous@test.local"
+    }
+    Assert-True ($anonymousProfilePut.StatusCode -eq 401) "Anonymous profile update did not return 401."
 
     $adminForbidden = Send-Request -Method "Get" -Path "/api/admin/dashboard" -Token $managerAuth.Token
     Assert-True ($adminForbidden.StatusCode -eq 403) "Manager access to admin dashboard did not return 403."
     $verification.Authorization = "Verified 401 and 403 behavior on admin endpoints."
+
+    $currentProfile = Send-Request -Method "Get" -Path "/api/profile/me" -Token $userAuth.Token
+    Assert-True ($currentProfile.StatusCode -eq 200) "Authenticated user profile lookup failed."
+    Assert-True ($currentProfile.Json.data.email -eq $userEmail) "Authenticated user profile returned the wrong email."
+
+    $updatedUserName = "E2E Profile $suffix"
+    $updatedUserEmail = "profile-$suffix@noorlocator.local"
+    $updateProfile = Send-Request -Method "Put" -Path "/api/profile/me" -Token $userAuth.Token -Body @{
+        name = $updatedUserName
+        email = $updatedUserEmail
+        role = "Admin"
+        passwordHash = "InjectedHash"
+    }
+    Assert-True ($updateProfile.StatusCode -eq 200) "Authenticated user profile update failed."
+    Assert-True ($updateProfile.Json.data.name -eq $updatedUserName) "Profile update did not return the updated display name."
+    Assert-True ($updateProfile.Json.data.email -eq $updatedUserEmail) "Profile update did not return the updated email."
+    Assert-True ($updateProfile.Json.data.role -eq "User") "Profile update changed the user's role."
+
+    $profileAfterUpdate = Send-Request -Method "Get" -Path "/api/profile/me" -Token $userAuth.Token
+    Assert-True ($profileAfterUpdate.StatusCode -eq 200) "Updated user profile lookup failed."
+    Assert-True ($profileAfterUpdate.Json.data.name -eq $updatedUserName) "Updated profile did not persist the display name."
+    Assert-True ($profileAfterUpdate.Json.data.email -eq $updatedUserEmail) "Updated profile did not persist the email."
+
+    $meAfterProfileUpdate = Send-Request -Method "Get" -Path "/api/auth/me" -Token $userAuth.Token
+    Assert-True ($meAfterProfileUpdate.StatusCode -eq 200) "Authenticated /api/auth/me failed after profile update."
+    Assert-True ($meAfterProfileUpdate.Json.data.name -eq $updatedUserName) "Current-user API did not reflect the updated display name."
+    Assert-True ($meAfterProfileUpdate.Json.data.email -eq $updatedUserEmail) "Current-user API did not reflect the updated email."
+    Assert-True ($meAfterProfileUpdate.Json.data.role -eq "User") "Current-user API role changed after profile update."
+
+    $invalidProfileUpdate = Send-Request -Method "Put" -Path "/api/profile/me" -Token $userAuth.Token -Body @{
+        name = ""
+        email = "not-an-email"
+    }
+    Assert-True ($invalidProfileUpdate.StatusCode -eq 400) "Invalid profile payload did not return HTTP 400."
+
+    $duplicateProfileUpdate = Send-Request -Method "Put" -Path "/api/profile/me" -Token $userAuth.Token -Body @{
+        name = $updatedUserName
+        email = "admin@noorlocator.local"
+    }
+    Assert-True ($duplicateProfileUpdate.StatusCode -eq 409) "Duplicate profile email did not return HTTP 409."
+
+    $reloginProfileUser = Login-User -Email $updatedUserEmail -Password $userPassword
+    Assert-True ($reloginProfileUser.Role -eq "User") "Updated user role changed after profile edits."
+    $userEmail = $updatedUserEmail
+    $userAuth = $reloginProfileUser
+    $verification.ProfileManagement = "Verified authenticated profile read/update, persisted name and email changes, invalid-input rejection, duplicate-email rejection, and role protection for a standard user."
+
+    $managerOriginalProfile = Send-Request -Method "Get" -Path "/api/profile/me" -Token $managerAuth.Token
+    Assert-True ($managerOriginalProfile.StatusCode -eq 200) "Manager profile lookup failed."
+    $managerUpdatedName = "Mgr Profile $suffix"
+    $managerProfileUpdate = Send-Request -Method "Put" -Path "/api/profile/me" -Token $managerAuth.Token -Body @{
+        name = $managerUpdatedName
+        email = [string]$managerOriginalProfile.Json.data.email
+    }
+    Assert-True ($managerProfileUpdate.StatusCode -eq 200) "Manager profile update failed."
+    Assert-True ($managerProfileUpdate.Json.data.name -eq $managerUpdatedName) "Manager profile name did not update."
+    Assert-True ($managerProfileUpdate.Json.data.role -eq "Manager") "Manager profile update changed the role."
+    $managerAuthMe = Send-Request -Method "Get" -Path "/api/auth/me" -Token $managerAuth.Token
+    Assert-True ($managerAuthMe.Json.data.name -eq $managerUpdatedName) "Manager auth state did not reflect the updated display name."
+    $managerProfileRestore = Send-Request -Method "Put" -Path "/api/profile/me" -Token $managerAuth.Token -Body @{
+        name = [string]$managerOriginalProfile.Json.data.name
+        email = [string]$managerOriginalProfile.Json.data.email
+    }
+    Assert-True ($managerProfileRestore.StatusCode -eq 200) "Manager profile restore failed."
+
+    $adminOriginalProfile = Send-Request -Method "Get" -Path "/api/profile/me" -Token $adminAuth.Token
+    Assert-True ($adminOriginalProfile.StatusCode -eq 200) "Admin profile lookup failed."
+    $adminUpdatedName = "Admin Profile $suffix"
+    $adminProfileUpdate = Send-Request -Method "Put" -Path "/api/profile/me" -Token $adminAuth.Token -Body @{
+        name = $adminUpdatedName
+        email = [string]$adminOriginalProfile.Json.data.email
+    }
+    Assert-True ($adminProfileUpdate.StatusCode -eq 200) "Admin profile update failed."
+    Assert-True ($adminProfileUpdate.Json.data.name -eq $adminUpdatedName) "Admin profile name did not update."
+    Assert-True ($adminProfileUpdate.Json.data.role -eq "Admin") "Admin profile update changed the role."
+    $adminAuthMe = Send-Request -Method "Get" -Path "/api/auth/me" -Token $adminAuth.Token
+    Assert-True ($adminAuthMe.Json.data.name -eq $adminUpdatedName) "Admin auth state did not reflect the updated display name."
+    $adminProfileRestore = Send-Request -Method "Put" -Path "/api/profile/me" -Token $adminAuth.Token -Body @{
+        name = [string]$adminOriginalProfile.Json.data.name
+        email = [string]$adminOriginalProfile.Json.data.email
+    }
+    Assert-True ($adminProfileRestore.StatusCode -eq 200) "Admin profile restore failed."
+    $verification.RoleAwareProfiles = "Verified manager and admin accounts can update their own profiles without changing roles or losing session access."
 
     $managerCenters = Send-Request -Method "Get" -Path "/api/manager/my-centers" -Token $managerAuth.Token
     Assert-True ($managerCenters.StatusCode -eq 200) "Manager my-centers endpoint failed."

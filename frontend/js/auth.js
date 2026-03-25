@@ -145,6 +145,17 @@ window.NoorLocatorAuth = (() => {
         refreshSessionFromStorage();
     }
 
+    function updateSessionUser(user) {
+        if (!session.token || !user) {
+            return null;
+        }
+
+        persistUser(user);
+        setProtectedPageReady(true);
+        notifyChange();
+        return session.user;
+    }
+
     function setSession(authResponse) {
         if (!authResponse?.token || !authResponse?.user) {
             return;
@@ -458,6 +469,7 @@ window.NoorLocatorAuth = (() => {
         logout,
         requireAuth,
         setSession,
-        syncCurrentUser
+        syncCurrentUser,
+        updateSessionUser
     };
 })();

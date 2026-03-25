@@ -61,6 +61,7 @@ NoorLocator.sln
 - Public center discovery with search, nearest-center lookup, distance calculation, languages, images, announcements, and center detail pages
 - JWT authentication with `User`, `Manager`, and `Admin` roles
 - Centralized auth state with session-backed logout and immediate server-side session invalidation
+- Shared self-service profile management for every authenticated user through `profile.html` and `/api/profile/me`
 - User contribution workflows for center requests, suggestions, language suggestions, and manager requests
 - Manager workflows for majalis CRUD, event announcements, and center gallery management
 - Admin moderation for approvals, rejections, reviews, center management, center-image cleanup, user summaries, and audit logs
@@ -164,6 +165,11 @@ Authentication:
 - `GET /api/auth/me`
 - `POST /api/auth/logout`
 
+Profile:
+
+- `GET /api/profile/me`
+- `PUT /api/profile/me`
+
 Public discovery:
 
 - `GET /api/centers`
@@ -247,12 +253,13 @@ dotnet test NoorLocator.sln
 Current automated coverage:
 
 - `8` unit tests
-- `23` integration tests
-- `31` passing tests total at the time of the Phase 11 image-upload verification pass
+- `28` integration tests
+- `36` passing tests total at the time of the Phase 12 profile-management verification pass
 
 Important test areas:
 
 - auth registration, login, and logout invalidation
+- self-service profile read/update, invalid-input rejection, duplicate-email protection, and role protection
 - expired-token rejection and refresh-token-backed session revocation
 - public discovery endpoints
 - admin authorization
@@ -274,6 +281,7 @@ The script verifies:
 
 - public pages and identity content
 - login and logout behavior
+- profile read/update behavior for user, manager, and admin accounts
 - protected route invalidation after logout
 - manager and admin token invalidation after logout
 - center discovery endpoints
@@ -295,8 +303,9 @@ See `VERIFICATION_REPORT.md` for the final verification summary.
 - The API serves the `frontend/` directory as static assets.
 - Protected UI pages are hidden behind a shared auth bootstrap until `/api/auth/me` confirms the active session.
 - Logout buttons in the navbar, dashboard, manager workspace, and admin workspace all route through the same frontend logout helper.
+- Every authenticated role can open `profile.html` to edit only their own display name and email while keeping role and password fields protected.
 - Manager image uploads use a shared multipart upload helper that resolves the API base URL before sending files, so the upload flow stays aligned with the same live API as the rest of the app.
-- Workspace pages are excluded from service-worker precaching and returned with no-store cache headers to reduce stale protected-page restores after logout.
+- Workspace pages, including `profile.html`, are excluded from service-worker precaching and returned with no-store cache headers to reduce stale protected-page restores after logout.
 - All real security is still enforced server-side by the API.
 
 ## Media Handling
@@ -335,7 +344,7 @@ Before using Docker outside local experimentation:
 - Keep `Swagger:Enabled` disabled outside development unless explicitly required
 - Configure real `Cors:AllowedOrigins`
 - Use a production media storage implementation behind `IMediaStorageService`
-- Keep the centralized session-backed logout flow, protected-page auth bootstrap, and no-store workspace caching rules intact when modifying auth
+- Keep the centralized session-backed logout flow, profile session-refresh helper, protected-page auth bootstrap, and no-store workspace caching rules intact when modifying auth
 
 ## Phase 10 Verification
 
@@ -359,6 +368,22 @@ Phase 11 center-image upload verification was completed against the live MySQL-b
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\verify-e2e.ps1 -StartApp -BaseUrl http://127.0.0.1:5210 -ConnectionString \"Server=127.0.0.1;Port=3306;Database=Noorlocator;User=root;Password=...;\"`
 - Headless Edge verification against `http://127.0.0.1:5210` confirmed:
   - manager and admin login API calls succeeded before the browser workflows were bootstrapped
+
+## Phase 12 Verification
+
+Phase 12 profile-management verification was completed against the live MySQL-backed app and the automated test suite.
+
+- `dotnet build NoorLocator.sln`
+- `dotnet test NoorLocator.sln --no-build`
+- `powershell -ExecutionPolicy Bypass -File .\\scripts\\verify-e2e.ps1 -StartApp -BaseUrl http://127.0.0.1:5210 -ConnectionString \"Server=127.0.0.1;Port=3306;Database=Noorlocator;User=root;Password=...;\"`
+- Verified outcomes:
+  - authenticated users can load `/api/profile/me`
+  - authenticated users can update their own display name and email through `PUT /api/profile/me`
+  - updated profile data persists and is reflected by `/api/auth/me`
+  - invalid profile input returns clear `400` errors and duplicate emails return `409`
+  - anonymous requests to the profile endpoints return `401`
+  - overposted `role` and `passwordHash` fields do not change the stored role or password hash
+  - manager and admin accounts can update their own profiles without losing their role or session access
   - the manager gallery UI rejected invalid file types and oversized images with clear messages
   - valid manager uploads completed without the old "can't reach api" failure and refreshed the gallery
   - the public center details page rendered a prominent hero image plus gallery items from uploaded media

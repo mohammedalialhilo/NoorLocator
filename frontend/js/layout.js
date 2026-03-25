@@ -20,6 +20,7 @@ window.NoorLocatorLayout = (() => {
             ? `
                 <div class="utility-row utility-row--panel">
                     <span class="card__meta">${user.name} | ${user.role}</span>
+                    <a class="button button--secondary" href="profile.html">My profile</a>
                     <a class="button button--ghost" href="logout.html" data-logout-action data-logout-redirect="login.html?loggedOut=1">Logout</a>
                 </div>
             `
@@ -150,6 +151,7 @@ window.NoorLocatorLayout = (() => {
 
         if (user) {
             items.push({ href: "dashboard.html", label: "Dashboard", page: "dashboard" });
+            items.push({ href: "profile.html", label: "Profile", page: "profile" });
 
             if (user.role === "Manager" || user.role === "Admin") {
                 items.push({ href: "manager.html", label: "Manager", page: "manager" });

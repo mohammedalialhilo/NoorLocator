@@ -191,6 +191,7 @@ public class AuthService(
             Name = user.Name,
             Email = user.Email,
             Role = user.Role.ToString(),
+            CreatedAt = user.CreatedAt,
             AssignedCenterIds = user.ManagedCenters
                 .Where(centerManager => centerManager.Approved)
                 .Select(centerManager => centerManager.CenterId)

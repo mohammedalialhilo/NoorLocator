@@ -368,6 +368,15 @@ window.NoorLocatorApi = (() => {
         me() {
             return request("/api/auth/me");
         },
+        getMyProfile() {
+            return request("/api/profile/me");
+        },
+        updateMyProfile(payload) {
+            return request("/api/profile/me", {
+                method: "PUT",
+                body: JSON.stringify(payload)
+            });
+        },
         register(payload) {
             return request("/api/auth/register", {
                 method: "POST",

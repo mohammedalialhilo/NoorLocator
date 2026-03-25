@@ -11,6 +11,7 @@ using NoorLocator.Application.EventAnnouncements.Interfaces;
 using NoorLocator.Application.Languages.Interfaces;
 using NoorLocator.Application.Majalis.Interfaces;
 using NoorLocator.Application.Management.Interfaces;
+using NoorLocator.Application.Profile.Interfaces;
 using NoorLocator.Application.Suggestions.Interfaces;
 using NoorLocator.Infrastructure.Persistence;
 using NoorLocator.Infrastructure.Seeding;
@@ -25,6 +26,7 @@ using NoorLocator.Infrastructure.Services.EventAnnouncements;
 using NoorLocator.Infrastructure.Services.Majalis;
 using NoorLocator.Infrastructure.Services.Media;
 using NoorLocator.Infrastructure.Services.Management;
+using NoorLocator.Infrastructure.Services.Profile;
 using NoorLocator.Infrastructure.Services.Suggestions;
 using NoorLocator.Infrastructure.Services.Languages;
 
@@ -65,6 +67,7 @@ public static class DependencyInjection
         services.AddScoped<IMajlisService, MajlisService>();
         services.AddScoped<IManagerCenterAccessService, ManagerCenterAccessService>();
         services.AddScoped<IManagerService, ManagerService>();
+        services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<ISuggestionService, SuggestionService>();
 
         return services;

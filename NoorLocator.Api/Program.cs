@@ -218,6 +218,7 @@ if (!string.IsNullOrWhiteSpace(frontendPath))
     var nonCacheableFrontendPages = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "/dashboard.html",
+        "/profile.html",
         "/manager.html",
         "/admin.html",
         "/logout.html"

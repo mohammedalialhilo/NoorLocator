@@ -10,5 +10,7 @@ public class CurrentUserDto
 
     public string Role { get; set; } = string.Empty;
 
+    public DateTime CreatedAt { get; set; }
+
     public IReadOnlyCollection<int> AssignedCenterIds { get; set; } = Array.Empty<int>();
 }

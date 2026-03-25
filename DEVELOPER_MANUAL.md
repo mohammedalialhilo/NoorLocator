@@ -180,6 +180,20 @@ Primary entities:
 - `POST /api/auth/logout`
   Revokes the current session server-side and is used by the frontend logout flow.
 
+### Profile
+
+- `GET /api/profile/me`
+  Returns the authenticated user's self-service profile payload.
+- `PUT /api/profile/me`
+  Updates only the authenticated user's editable profile fields.
+- Allowed editable fields:
+  - `Name`
+  - `Email`
+- Protected fields:
+  - `Role`
+  - `PasswordHash`
+  - any other user record outside the authenticated `UserId`
+
 ### Public Discovery
 
 - `GET /api/centers`
@@ -277,13 +291,15 @@ Swagger is the live reference for DTO shapes and status codes.
 - store auth state through the shared `frontend/js/auth.js` helper
 - render role-aware navigation
 - verify protected pages before rendering them
+- expose the shared `profile.html` page to every authenticated role
+- refresh stored session user data after profile edits so navbar and workspace labels update immediately
 - clear auth state on logout
 - upload manager center images through the shared multipart upload helper in `frontend/js/api.js`
 - show upload progress, gallery refreshes, and clear validation errors for image uploads
 - show loading states, empty states, and friendly errors
 - never act as the source of truth for security
 
-## 11. Authentication And Logout
+## 11. Authentication, Profile, And Logout
 
 ### How Login Works
 
@@ -303,9 +319,20 @@ Swagger is the live reference for DTO shapes and status codes.
 - the frontend also stores the current user profile for role-aware navigation
 - the current in-memory auth state is reloaded from storage and cleared through one shared helper
 
+### How Profile Editing Works
+
+- every authenticated role uses the same self-service page: `frontend/profile.html`
+- the page reads `GET /api/profile/me`
+- the page updates `PUT /api/profile/me`
+- the backend resolves the authenticated `UserId` from the JWT and never accepts a target user id from the client
+- editable fields are limited to `Name` and `Email`
+- `Role` and `PasswordHash` are not exposed as writable DTO fields, which prevents direct role escalation or password-hash overposting
+- email changes are normalized to lowercase and checked for uniqueness before save
+- after a successful save, the frontend updates the cached session user through `updateSessionUser()` so navbar and dashboard labels refresh without forcing logout
+
 ### How Protected Pages Are Verified
 
-- `dashboard.html`, `manager.html`, and `admin.html` declare their auth requirements through `data-auth-*` attributes
+- `dashboard.html`, `profile.html`, `manager.html`, and `admin.html` declare their auth requirements through `data-auth-*` attributes
 - `frontend/js/auth.js` runs `bootstrapPageAuth()` on page load before the workspace initializes
 - the page stays behind an auth gate until `GET /api/auth/me` confirms the active session
 - manager and admin pages also verify required roles before rendering
@@ -326,6 +353,8 @@ Swagger is the live reference for DTO shapes and status codes.
 - clearing browser storage without revoking the server-side session
 - leaving multiple logout implementations that drift out of sync
 - assuming a role change in the database updates an already-issued JWT
+- letting profile update DTOs bind directly to the `User` entity
+- allowing `Role` or `PasswordHash` to flow through the self-service profile endpoint
 - trusting client-side route guards as security controls
 - adding new protected endpoints without policy or role attributes
 
@@ -362,7 +391,7 @@ Swagger is the live reference for DTO shapes and status codes.
 
 - `dotnet build NoorLocator.sln`
 - `dotnet test NoorLocator.sln`
-- current result during the Phase 11 pass: `31/31` tests passing
+- current result during the Phase 12 pass: `36/36` tests passing
 
 ### Live Runtime Verification
 
@@ -370,6 +399,8 @@ Swagger is the live reference for DTO shapes and status codes.
 - verified flows:
   - registration
   - login
+  - self-service profile read and update for authenticated users
+  - manager and admin self-profile edits without role changes
   - logout and token invalidation
   - manager and admin logout invalidation
   - public center browsing
