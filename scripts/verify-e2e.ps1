@@ -149,16 +149,30 @@ try {
 
     $layoutScript = Send-Request -Method "Get" -Path "/js/layout.js" -Accept "text/javascript"
     Assert-True (($layoutScript.Text.Contains("const attribution =")) -and ($layoutScript.Text.Contains("Copenhagen, Denmark."))) "Global attribution text was not found in layout.js."
-    Assert-True ($layoutScript.Text.Contains("window.NoorLocatorAuth.logout()")) "Logout click handler was not found in layout.js."
+    Assert-True ($layoutScript.Text.Contains("data-logout-action")) "Shared logout controls were not found in layout.js."
 
     $authScript = Send-Request -Method "Get" -Path "/js/auth.js" -Accept "text/javascript"
     Assert-True ($authScript.Text.Contains("sessionStorage.removeItem")) "auth.js does not clear sessionStorage during logout."
     Assert-True ($authScript.Text.Contains("/api/auth/logout")) "auth.js does not call the logout endpoint."
+    Assert-True ($authScript.Text.Contains("bootstrapPageAuth")) "auth.js does not expose the centralized page auth bootstrap."
+    Assert-True ($authScript.Text.Contains("handleUnauthorized")) "auth.js does not expose centralized unauthorized handling."
 
     $logoutPage = Send-Request -Method "Get" -Path "/logout.html" -Accept "text/html"
-    Assert-True ($logoutPage.Text.Contains("/api/auth/logout")) "logout.html does not call the logout endpoint."
+    Assert-True ($logoutPage.Text.Contains("window.NoorLocatorAuth.logout")) "logout.html does not use the shared logout helper."
     Assert-True ($logoutPage.Text.Contains("loggedOut=1")) "logout.html does not redirect with a signed-out flag."
-    $verification.FrontendLogoutAssets = "Verified logout wiring in auth.js, layout.js, and logout.html."
+    $dashboardPage = Send-Request -Method "Get" -Path "/dashboard.html" -Accept "text/html"
+    $managerPage = Send-Request -Method "Get" -Path "/manager.html" -Accept "text/html"
+    $adminPage = Send-Request -Method "Get" -Path "/admin.html" -Accept "text/html"
+    Assert-True ($dashboardPage.Text.Contains('data-auth-required="true"')) "dashboard.html is missing the protected-page auth gate."
+    Assert-True ($dashboardPage.Text.Contains("data-logout-action")) "dashboard.html is missing its logout button."
+    Assert-True ($managerPage.Text.Contains('data-auth-roles="Manager,Admin"')) "manager.html is missing role-aware auth guard metadata."
+    Assert-True ($managerPage.Text.Contains("data-logout-action")) "manager.html is missing its logout button."
+    Assert-True ($adminPage.Text.Contains('data-auth-roles="Admin"')) "admin.html is missing the admin auth guard metadata."
+    Assert-True ($adminPage.Text.Contains("data-logout-action")) "admin.html is missing its logout button."
+    $serviceWorkerScript = Send-Request -Method "Get" -Path "/service-worker.js" -Accept "text/javascript"
+    Assert-True ($serviceWorkerScript.Text.Contains("NON_CACHEABLE_PATHS")) "service-worker.js is not protecting workspace pages from cache reuse."
+    Assert-True ($serviceWorkerScript.Text.Contains('requestUrl.pathname.startsWith("/api/") || NON_CACHEABLE_PATHS.has(requestUrl.pathname)')) "service-worker.js is still caching protected workspace routes."
+    $verification.FrontendLogoutAssets = "Verified centralized logout wiring, protected-page auth gates, and protected-page cache exclusions."
 
     $aboutContent = Send-Request -Method "Get" -Path "/api/content/about"
     Assert-True ($aboutContent.StatusCode -eq 200) "About content API failed."
@@ -186,7 +200,7 @@ try {
 
     $protectedAfterLogout = Send-Request -Method "Get" -Path "/api/center-requests/my" -Token $userAuth.Token
     Assert-True ($protectedAfterLogout.StatusCode -eq 401) "Protected endpoint still worked after logout."
-    $verification.AuthLogout = "Verified registration, login, logout, and immediate 401 on protected routes after logout."
+    $verification.AuthLogout = "Verified registration, login, logout, and immediate 401 on protected routes after logout for a user token."
 
     $userAuth = Login-User -Email $userEmail -Password $userPassword
 
@@ -394,6 +408,19 @@ try {
     Assert-True ($publicMajalis.StatusCode -eq 200) "Public center majalis endpoint failed."
     Assert-True ($publicMajalis.Json.data.Count -ge 1) "Public majalis list returned no data."
     $verification.PublicContent = "Verified public display of majalis, event announcements, center images, and center detail content."
+
+    $managerLogout = Send-Request -Method "Post" -Path "/api/auth/logout" -Token $managerAuth.Token -Body @{
+        refreshToken = $managerAuth.RefreshToken
+    }
+    Assert-True ($managerLogout.StatusCode -eq 200) "Manager logout endpoint failed."
+    Assert-True ((Send-Request -Method "Get" -Path "/api/manager/my-centers" -Token $managerAuth.Token).StatusCode -eq 401) "Manager token still worked after logout."
+
+    $adminLogout = Send-Request -Method "Post" -Path "/api/auth/logout" -Token $adminAuth.Token -Body @{
+        refreshToken = $adminAuth.RefreshToken
+    }
+    Assert-True ($adminLogout.StatusCode -eq 200) "Admin logout endpoint failed."
+    Assert-True ((Send-Request -Method "Get" -Path "/api/admin/dashboard" -Token $adminAuth.Token).StatusCode -eq 401) "Admin token still worked after logout."
+    $verification.RoleLogout = "Verified manager and admin sessions are revoked and immediately return 401 after logout."
 
     [pscustomobject]$verification | ConvertTo-Json -Depth 10
 }

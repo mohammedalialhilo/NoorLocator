@@ -2,6 +2,7 @@ window.NoorLocatorLayout = (() => {
     const navPanelId = "site-nav-panel";
     const attribution = "Driven by \u0645\u0648\u0643\u0628 \u062e\u062f\u0627\u0645 \u0623\u0647\u0644 \u0627\u0644\u0628\u064a\u062a (\u0639\u0644\u064a\u0647\u0645 \u0627\u0644\u0633\u0644\u0627\u0645), Copenhagen, Denmark.";
     const tagline = "Connecting you to Shia centers and majalis worldwide";
+    let serviceWorkerSetupStarted = false;
 
     function renderHeader() {
         const mount = document.querySelector("[data-site-header]");
@@ -19,7 +20,7 @@ window.NoorLocatorLayout = (() => {
             ? `
                 <div class="utility-row utility-row--panel">
                     <span class="card__meta">${user.name} | ${user.role}</span>
-                    <a class="button button--ghost" href="logout.html" data-logout-link>Logout</a>
+                    <a class="button button--ghost" href="logout.html" data-logout-action data-logout-redirect="login.html?loggedOut=1">Logout</a>
                 </div>
             `
             : "";
@@ -50,13 +51,7 @@ window.NoorLocatorLayout = (() => {
             </header>
         `;
 
-        const logoutLink = mount.querySelector("[data-logout-link]");
-        if (logoutLink) {
-            logoutLink.addEventListener("click", event => {
-                event.preventDefault();
-                window.NoorLocatorAuth.logout();
-            });
-        }
+        window.NoorLocatorAuth.bindLogoutControls(mount);
 
         const toggleButton = mount.querySelector("[data-nav-toggle]");
         const navPanel = mount.querySelector("[data-nav-panel]");
@@ -172,26 +167,28 @@ window.NoorLocatorLayout = (() => {
         return items;
     }
 
+    function renderShell() {
+        renderHeader();
+        renderFooter();
+    }
+
     return {
         init() {
-            renderHeader();
-            renderFooter();
+            renderShell();
 
-            if (window.NoorLocatorAuth.isAuthenticated()) {
-                window.NoorLocatorAuth.syncCurrentUser().finally(renderHeader);
+            if (!serviceWorkerSetupStarted) {
+                serviceWorkerSetupStarted = true;
+                registerServiceWorker().catch(error => {
+                    console.warn("NoorLocator service worker setup failed.", error);
+                });
             }
-
-            registerServiceWorker().catch(error => {
-                console.warn("NoorLocator service worker setup failed.", error);
-            });
+        },
+        refreshAuthUi() {
+            renderShell();
         }
     };
 })();
 
-document.addEventListener("DOMContentLoaded", () => {
-    window.NoorLocatorLayout.init();
-});
-
 window.addEventListener("noorlocator:auth-changed", () => {
-    window.NoorLocatorLayout.init();
+    window.NoorLocatorLayout.refreshAuthUi();
 });

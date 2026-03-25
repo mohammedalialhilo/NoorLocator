@@ -269,8 +269,9 @@ Swagger is the live reference for DTO shapes and status codes.
 
 - render public pages and dashboards
 - call real API endpoints only
-- store the access token client-side
+- store auth state through the shared `frontend/js/auth.js` helper
 - render role-aware navigation
+- verify protected pages before rendering them
 - clear auth state on logout
 - show loading states, empty states, and friendly errors
 - never act as the source of truth for security
@@ -291,19 +292,32 @@ Swagger is the live reference for DTO shapes and status codes.
 
 - the frontend stores auth state in `localStorage`
 - logout cleanup removes the same keys from both `localStorage` and `sessionStorage`
+- logout cleanup also clears matching auth cookies if they ever exist on the frontend origin
 - the frontend also stores the current user profile for role-aware navigation
+- the current in-memory auth state is reloaded from storage and cleared through one shared helper
+
+### How Protected Pages Are Verified
+
+- `dashboard.html`, `manager.html`, and `admin.html` declare their auth requirements through `data-auth-*` attributes
+- `frontend/js/auth.js` runs `bootstrapPageAuth()` on page load before the workspace initializes
+- the page stays behind an auth gate until `GET /api/auth/me` confirms the active session
+- manager and admin pages also verify required roles before rendering
+- `pageshow` and `storage` listeners re-run the same auth bootstrap so browser back and cross-tab logout do not restore protected UI state incorrectly
 
 ### How Logout Works
 
+- every logout entry point calls the shared frontend `logout()` helper
 - the frontend calls `POST /api/auth/logout`
 - the API revokes the active `RefreshToken` session for the current `sid`
 - JWT bearer validation checks that the session record is still active
 - once the session is revoked, the old JWT immediately fails with `401`
-- the frontend then clears cached auth state and redirects to a public route
+- the frontend then clears cached auth state, cached workspace shell artifacts, and redirects to the login page with success feedback
+- protected workspace HTML is served with no-store headers and excluded from service-worker precaching to reduce stale protected-page restores after logout
 
 ### Common Mistakes
 
 - clearing browser storage without revoking the server-side session
+- leaving multiple logout implementations that drift out of sync
 - assuming a role change in the database updates an already-issued JWT
 - trusting client-side route guards as security controls
 - adding new protected endpoints without policy or role attributes
@@ -314,6 +328,7 @@ Swagger is the live reference for DTO shapes and status codes.
 - preserve the session-backed `sid` validation in `Program.cs`
 - do not bypass DTOs with direct entity binding
 - keep invalid and revoked tokens returning `401`
+- keep protected workspace pages non-cacheable after logout-sensitive changes
 - review any future refresh-token implementation carefully so it preserves revocation guarantees
 
 ## 12. How To Extend The System
@@ -331,7 +346,7 @@ Swagger is the live reference for DTO shapes and status codes.
 - changing route names without updating the frontend API client
 - forgetting to add new entity configuration classes to EF conventions
 - testing manager flows with a user token that has not been reissued after role approval
-- forgetting that static protected pages still need API-backed redirects after load
+- forgetting that static protected pages still need API-backed auth bootstrap before render
 - assuming service worker behavior in local development; NoorLocator disables caching on localhost to reduce stale-auth issues
 
 ## 14. Working Verification
@@ -340,7 +355,7 @@ Swagger is the live reference for DTO shapes and status codes.
 
 - `dotnet build NoorLocator.sln`
 - `dotnet test NoorLocator.sln`
-- current result during the final pass: `20/20` tests passing
+- current result during the Phase 10 pass: `23/23` tests passing
 
 ### Live Runtime Verification
 
@@ -349,6 +364,7 @@ Swagger is the live reference for DTO shapes and status codes.
   - registration
   - login
   - logout and token invalidation
+  - manager and admin logout invalidation
   - public center browsing
   - nearest centers lookup
   - center detail endpoints
@@ -362,15 +378,12 @@ Swagger is the live reference for DTO shapes and status codes.
   - admin approvals and suggestion review
   - public visibility of published content
   - About content API and public pages
-
-### Limitations
-
-- there is no browser automation stack installed in this environment
-- UI behavior was verified through:
-  - live API-backed flows
-  - static page retrieval
-  - logout asset wiring checks
-  - automated endpoint tests
+- additional browser verification was performed against the live app in headless Edge to confirm:
+  - logout buttons render in the navbar and on dashboard, manager, and admin pages
+  - navbar state switches immediately after logout
+  - auth storage stays cleared after page refresh
+  - browser back navigation does not restore authenticated workspace access
+  - direct navigation back to manager and admin pages after logout redirects to login
 
 Future developers should rerun:
 

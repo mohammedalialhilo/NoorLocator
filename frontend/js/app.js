@@ -1,7 +1,14 @@
 const DISCOVERY_LOCATION_KEY = "noorlocator.discovery.location";
 
-document.addEventListener("DOMContentLoaded", () => {
-    notifyIfLoggedOut();
+document.addEventListener("DOMContentLoaded", async () => {
+    const authReady = await window.NoorLocatorAuth.bootstrapPageAuth();
+    if (!authReady && document.body?.dataset.authRequired === "true") {
+        return;
+    }
+
+    window.NoorLocatorLayout.init();
+    window.NoorLocatorAuth.bindLogoutControls(document);
+    notifyAuthStatus();
 
     const page = document.body.dataset.page;
 
@@ -38,20 +45,30 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-function notifyIfLoggedOut() {
+function notifyAuthStatus() {
     const url = new URL(window.location.href);
-    if (url.searchParams.get("loggedOut") !== "1") {
-        return;
+    let message = "";
+    let type = "success";
+
+    if (url.searchParams.get("loggedOut") === "1") {
+        url.searchParams.delete("loggedOut");
+        message = "You have been signed out successfully.";
+    } else if (url.searchParams.get("sessionExpired") === "1") {
+        url.searchParams.delete("sessionExpired");
+        message = "Your session ended. Please sign in again.";
+        type = "error";
     }
 
-    url.searchParams.delete("loggedOut");
+    if (!message) {
+        return;
+    }
 
     if (window.history?.replaceState) {
         const query = url.searchParams.toString();
         window.history.replaceState({}, document.title, `${url.pathname}${query ? `?${query}` : ""}${url.hash}`);
     }
 
-    showToast("You have been signed out successfully.", "success");
+    showToast(message, type);
 }
 
 function setMessage(element, message, type = "") {

@@ -14,7 +14,7 @@
             <div class="page-hero__content">
                 <span class="eyebrow">Signing out</span>
                 <h1>Clearing your NoorLocator session.</h1>
-                <p id="logout-status">Removing cached session data and returning you to the public homepage...</p>
+                <p id="logout-status">Removing your session, clearing cached auth state, and sending you back to the sign-in page...</p>
                 <div class="hero__actions">
                     <a class="button button--secondary" href="index.html">Go to homepage now</a>
                     <a class="button button--ghost" href="login.html">Sign in again</a>
@@ -27,81 +27,16 @@
     </main>
 
     <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
     <script>
-        (async () => {
-            const status = document.getElementById("logout-status");
+        const status = document.getElementById("logout-status");
+        if (status) {
+            status.textContent = "Signing you out of NoorLocator...";
+        }
 
-            const removeKey = key => {
-                try {
-                    window.localStorage.removeItem(key);
-                } catch {
-                    // Ignore storage cleanup errors on logout.
-                }
-
-                try {
-                    window.sessionStorage.removeItem(key);
-                } catch {
-                    // Ignore session storage cleanup errors on logout.
-                }
-            };
-
-            const token = window.localStorage.getItem("noorlocator.auth.token") || window.sessionStorage.getItem("noorlocator.auth.token") || "";
-            const refreshToken = window.localStorage.getItem("noorlocator.auth.refreshToken") || window.sessionStorage.getItem("noorlocator.auth.refreshToken") || "";
-
-            if (token) {
-                try {
-                    await window.NoorLocatorConfig.fetchApi("/api/auth/logout", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${token}`
-                        },
-                        body: JSON.stringify({ refreshToken }),
-                        keepalive: true
-                    });
-                } catch {
-                    // Ignore logout API failures and continue clearing local state.
-                }
-            }
-
-            removeKey("noorlocator.auth.token");
-            removeKey("noorlocator.auth.refreshToken");
-            removeKey("noorlocator.auth.user");
-            removeKey("noorlocator.discovery.location");
-
-            try {
-                if (window.history?.replaceState) {
-                    window.history.replaceState(null, "", "logout.html");
-                }
-            } catch {
-                // Ignore history update failures during logout.
-            }
-
-            try {
-                if ("serviceWorker" in navigator) {
-                    const registrations = await navigator.serviceWorker.getRegistrations();
-                    await Promise.all(registrations.map(registration => registration.unregister()));
-                }
-
-                if ("caches" in window) {
-                    const cacheKeys = await caches.keys();
-                    await Promise.all(
-                        cacheKeys
-                            .filter(key => key.startsWith("noorlocator-"))
-                            .map(key => caches.delete(key)));
-                }
-            } catch {
-                // Ignore cache cleanup failures and continue redirecting.
-            }
-
-            if (status) {
-                status.textContent = "You have been signed out. Redirecting to the public homepage...";
-            }
-
-            window.setTimeout(() => {
-                window.location.replace("index.html?loggedOut=1");
-            }, 300);
-        })();
+        window.NoorLocatorAuth.logout({
+            redirectPath: "login.html?loggedOut=1"
+        });
     </script>
 </body>
 </html>

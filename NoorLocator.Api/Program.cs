@@ -215,6 +215,13 @@ if (!string.IsNullOrWhiteSpace(frontendPath))
 {
     var frontendFileProvider = new PhysicalFileProvider(frontendPath);
     var aboutPagePath = Path.Combine(frontendPath, "about.html");
+    var nonCacheableFrontendPages = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "/dashboard.html",
+        "/manager.html",
+        "/admin.html",
+        "/logout.html"
+    };
 
     app.UseDefaultFiles(new DefaultFilesOptions
     {
@@ -223,7 +230,19 @@ if (!string.IsNullOrWhiteSpace(frontendPath))
 
     app.UseStaticFiles(new StaticFileOptions
     {
-        FileProvider = frontendFileProvider
+        FileProvider = frontendFileProvider,
+        OnPrepareResponse = context =>
+        {
+            var requestPath = context.Context.Request.Path.Value ?? string.Empty;
+            if (!nonCacheableFrontendPages.Contains(requestPath))
+            {
+                return;
+            }
+
+            context.Context.Response.Headers.CacheControl = "no-store, no-cache, must-revalidate";
+            context.Context.Response.Headers.Pragma = "no-cache";
+            context.Context.Response.Headers.Expires = "0";
+        }
     });
 
     if (File.Exists(aboutPagePath))

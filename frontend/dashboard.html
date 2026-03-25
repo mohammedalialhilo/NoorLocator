@@ -9,8 +9,15 @@
     <link rel="manifest" href="site.webmanifest">
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body data-page="dashboard">
+<body data-page="dashboard" data-auth-required="true">
     <div data-site-header></div>
+    <div class="auth-gate" data-auth-gate>
+        <div class="auth-gate__card">
+            <span class="eyebrow">Checking session</span>
+            <h2>Verifying your NoorLocator access.</h2>
+            <p>Your dashboard will load as soon as your authenticated session is confirmed.</p>
+        </div>
+    </div>
 
     <main class="page-shell">
         <section class="page-hero page-hero--split">
@@ -21,6 +28,7 @@
                 <div class="hero__actions">
                     <a class="button button--primary" href="#center-request">Submit a center</a>
                     <a class="button button--secondary" href="#my-requests">View my requests</a>
+                    <a class="button button--ghost" href="logout.html" data-logout-action data-logout-redirect="login.html?loggedOut=1">Log out</a>
                 </div>
                 <p id="dashboard-page-message" class="message">Loading your contribution tools...</p>
             </div>

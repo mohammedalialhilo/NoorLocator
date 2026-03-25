@@ -1,4 +1,4 @@
-const CACHE_NAME = "noorlocator-shell-v4";
+const CACHE_NAME = "noorlocator-shell-v5";
 const SHELL_ASSETS = [
     "/",
     "/about",
@@ -8,10 +8,6 @@ const SHELL_ASSETS = [
     "/center-details.html",
     "/login.html",
     "/register.html",
-    "/logout.html",
-    "/dashboard.html",
-    "/manager.html",
-    "/admin.html",
     "/css/style.css",
     "/js/auth.js",
     "/js/api.js",
@@ -22,6 +18,12 @@ const SHELL_ASSETS = [
     "/assets/center-photo-placeholder.svg",
     "/site.webmanifest"
 ];
+const NON_CACHEABLE_PATHS = new Set([
+    "/dashboard.html",
+    "/manager.html",
+    "/admin.html",
+    "/logout.html"
+]);
 
 self.addEventListener("install", event => {
     event.waitUntil(
@@ -45,7 +47,7 @@ self.addEventListener("fetch", event => {
     }
 
     const requestUrl = new URL(event.request.url);
-    if (requestUrl.pathname.startsWith("/api/")) {
+    if (requestUrl.pathname.startsWith("/api/") || NON_CACHEABLE_PATHS.has(requestUrl.pathname)) {
         return;
     }
 

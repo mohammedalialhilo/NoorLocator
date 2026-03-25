@@ -39,8 +39,8 @@ window.NoorLocatorApi = (() => {
             status: response.status
         };
 
-        if (response.status === 401 && token && !path.startsWith("/api/auth/login") && !path.startsWith("/api/auth/register")) {
-            window.NoorLocatorAuth?.clearSession?.();
+        if (response.status === 401 && token && !path.startsWith("/api/auth/login") && !path.startsWith("/api/auth/register") && !path.startsWith("/api/auth/logout")) {
+            window.NoorLocatorAuth?.handleUnauthorized?.();
         }
 
         if (!response.ok) {

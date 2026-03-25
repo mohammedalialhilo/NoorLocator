@@ -60,7 +60,7 @@ NoorLocator.sln
 
 - Public center discovery with search, nearest-center lookup, distance calculation, languages, images, announcements, and center detail pages
 - JWT authentication with `User`, `Manager`, and `Admin` roles
-- Session-backed logout with immediate server-side session invalidation
+- Centralized auth state with session-backed logout and immediate server-side session invalidation
 - User contribution workflows for center requests, suggestions, language suggestions, and manager requests
 - Manager workflows for majalis CRUD, event announcements, and center gallery management
 - Admin moderation for approvals, rejections, reviews, center management, user summaries, and audit logs
@@ -247,12 +247,13 @@ dotnet test NoorLocator.sln
 Current automated coverage:
 
 - `6` unit tests
-- `14` integration tests
-- `20` passing tests total at the time of the final integration pass
+- `17` integration tests
+- `23` passing tests total at the time of the Phase 10 logout verification pass
 
 Important test areas:
 
 - auth registration, login, and logout invalidation
+- expired-token rejection and refresh-token-backed session revocation
 - public discovery endpoints
 - admin authorization
 - user contribution workflows
@@ -273,6 +274,7 @@ The script verifies:
 - public pages and identity content
 - login and logout behavior
 - protected route invalidation after logout
+- manager and admin token invalidation after logout
 - center discovery endpoints
 - user submissions
 - manager majalis workflows
@@ -286,7 +288,10 @@ See `VERIFICATION_REPORT.md` for the final verification summary.
 
 - There is no separate frontend dev server required for normal local use.
 - The API serves the `frontend/` directory as static assets.
-- Protected UI pages rely on client-side auth checks, while all real security is enforced server-side by the API.
+- Protected UI pages are hidden behind a shared auth bootstrap until `/api/auth/me` confirms the active session.
+- Logout buttons in the navbar, dashboard, manager workspace, and admin workspace all route through the same frontend logout helper.
+- Workspace pages are excluded from service-worker precaching and returned with no-store cache headers to reduce stale protected-page restores after logout.
+- All real security is still enforced server-side by the API.
 
 ## Media Handling
 
@@ -320,7 +325,21 @@ Before using Docker outside local experimentation:
 - Keep `Swagger:Enabled` disabled outside development unless explicitly required
 - Configure real `Cors:AllowedOrigins`
 - Use a production media storage implementation behind `IMediaStorageService`
-- Keep the new session-backed logout flow intact when modifying auth
+- Keep the centralized session-backed logout flow, protected-page auth bootstrap, and no-store workspace caching rules intact when modifying auth
+
+## Phase 10 Verification
+
+Phase 10 logout verification was completed against the live MySQL-backed app and the automated test suite.
+
+- `dotnet build NoorLocator.sln`
+- `dotnet test NoorLocator.sln --no-build`
+- `powershell -ExecutionPolicy Bypass -File .\\scripts\\verify-e2e.ps1 -StartApp -ConnectionString \"Server=127.0.0.1;Port=3306;Database=Noorlocator;User=root;Password=...;\"`
+- Headless Edge browser verification against the live app confirmed:
+  - login succeeds for user, manager, and admin flows
+  - logout buttons are visible in the navbar and on dashboard, manager, and admin pages
+  - logout clears auth storage and updates the navbar to the logged-out state
+  - protected API requests return `401` when replaying the pre-logout token
+  - direct navigation, page refresh, and browser back do not restore authenticated workspace access after logout
 
 ## Future Roadmap
 
