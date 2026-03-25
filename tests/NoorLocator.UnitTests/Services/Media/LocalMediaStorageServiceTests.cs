@@ -30,6 +30,52 @@ public class LocalMediaStorageServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task SaveImageAsync_RejectsUnsupportedExtension()
+    {
+        Directory.CreateDirectory(tempRootPath);
+        var service = CreateService();
+
+        var result = await service.SaveImageAsync(new UploadFilePayload
+        {
+            FileName = "center.gif",
+            ContentType = "image/gif",
+            Content = [0x47, 0x49, 0x46, 0x38]
+        }, "center-images");
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(400, result.StatusCode);
+        Assert.Equal("Only JPG, JPEG, PNG, and WEBP files are allowed.", result.Message);
+    }
+
+    [Fact]
+    public async Task SaveImageAsync_RejectsOversizedFiles()
+    {
+        Directory.CreateDirectory(tempRootPath);
+        var service = CreateService();
+
+        var content = new byte[(5 * 1024 * 1024) + 1];
+        content[0] = 0x89;
+        content[1] = 0x50;
+        content[2] = 0x4E;
+        content[3] = 0x47;
+        content[4] = 0x0D;
+        content[5] = 0x0A;
+        content[6] = 0x1A;
+        content[7] = 0x0A;
+
+        var result = await service.SaveImageAsync(new UploadFilePayload
+        {
+            FileName = "oversized.png",
+            ContentType = "image/png",
+            Content = content
+        }, "center-images");
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(400, result.StatusCode);
+        Assert.Equal("Image files must be 5MB or smaller.", result.Message);
+    }
+
+    [Fact]
     public async Task SaveImageAsync_StoresValidPngAndDeleteFileAsync_RemovesIt()
     {
         Directory.CreateDirectory(tempRootPath);

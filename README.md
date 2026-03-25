@@ -63,7 +63,7 @@ NoorLocator.sln
 - Centralized auth state with session-backed logout and immediate server-side session invalidation
 - User contribution workflows for center requests, suggestions, language suggestions, and manager requests
 - Manager workflows for majalis CRUD, event announcements, and center gallery management
-- Admin moderation for approvals, rejections, reviews, center management, user summaries, and audit logs
+- Admin moderation for approvals, rejections, reviews, center management, center-image cleanup, user summaries, and audit logs
 - Manifesto-driven identity content through `/about` and `/api/content/about`
 
 ## Roles
@@ -246,9 +246,9 @@ dotnet test NoorLocator.sln
 
 Current automated coverage:
 
-- `6` unit tests
-- `17` integration tests
-- `23` passing tests total at the time of the Phase 10 logout verification pass
+- `8` unit tests
+- `23` integration tests
+- `31` passing tests total at the time of the Phase 11 image-upload verification pass
 
 Important test areas:
 
@@ -258,7 +258,8 @@ Important test areas:
 - admin authorization
 - user contribution workflows
 - manager majalis workflows
-- announcements and image uploads
+- announcement publishing
+- center image validation, ownership enforcement, primary-image changes, deletion, and static file reachability
 - admin approval flows
 
 ## End-To-End Verification
@@ -279,6 +280,10 @@ The script verifies:
 - user submissions
 - manager majalis workflows
 - manager announcements and gallery uploads
+- invalid image type and oversized upload rejection
+- manager-center ownership enforcement for uploads
+- primary-image changes plus manager and admin image deletion
+- static uploaded image reachability from the public `/uploads` path
 - admin approvals and audit access
 - public visibility of published content
 
@@ -290,17 +295,22 @@ See `VERIFICATION_REPORT.md` for the final verification summary.
 - The API serves the `frontend/` directory as static assets.
 - Protected UI pages are hidden behind a shared auth bootstrap until `/api/auth/me` confirms the active session.
 - Logout buttons in the navbar, dashboard, manager workspace, and admin workspace all route through the same frontend logout helper.
+- Manager image uploads use a shared multipart upload helper that resolves the API base URL before sending files, so the upload flow stays aligned with the same live API as the rest of the app.
 - Workspace pages are excluded from service-worker precaching and returned with no-store cache headers to reduce stale protected-page restores after logout.
 - All real security is still enforced server-side by the API.
 
 ## Media Handling
 
-- Development uploads are stored under `frontend/uploads`
-- The database stores URLs only, not binary image data
+- Development uploads are stored under `frontend/uploads/center-images`
+- The database stores image URLs only, not binary image data
+- `POST /api/center-images/upload` accepts `multipart/form-data`
 - Supported formats: `jpg`, `jpeg`, `png`, `webp`
 - Max upload size: `5 MB`
-- Uploads are validated server-side by extension and file signature
+- Uploads are validated server-side by presence, extension, size, and file signature
 - Files are stored with generated names rather than raw user filenames
+- Each uploaded image is linked to a center and the manager who uploaded it
+- Managers can upload only for assigned centers, while admins can still delete unsafe or broken images
+- Public center details pages display the primary image in the hero area and the remaining gallery images below it
 
 ## Docker
 
@@ -340,6 +350,19 @@ Phase 10 logout verification was completed against the live MySQL-backed app and
   - logout clears auth storage and updates the navbar to the logged-out state
   - protected API requests return `401` when replaying the pre-logout token
   - direct navigation, page refresh, and browser back do not restore authenticated workspace access after logout
+
+## Phase 11 Verification
+
+Phase 11 center-image upload verification was completed against the live MySQL-backed app, the automated test suite, and a headless Edge browser probe.
+
+- `dotnet test NoorLocator.sln`
+- `powershell -ExecutionPolicy Bypass -File .\\scripts\\verify-e2e.ps1 -StartApp -BaseUrl http://127.0.0.1:5210 -ConnectionString \"Server=127.0.0.1;Port=3306;Database=Noorlocator;User=root;Password=...;\"`
+- Headless Edge verification against `http://127.0.0.1:5210` confirmed:
+  - manager and admin login API calls succeeded before the browser workflows were bootstrapped
+  - the manager gallery UI rejected invalid file types and oversized images with clear messages
+  - valid manager uploads completed without the old "can't reach api" failure and refreshed the gallery
+  - the public center details page rendered a prominent hero image plus gallery items from uploaded media
+  - the admin image moderation section loaded and deleted images successfully
 
 ## Future Roadmap
 

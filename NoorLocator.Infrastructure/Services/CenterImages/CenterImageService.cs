@@ -30,17 +30,9 @@ public class CenterImageService(
             .Where(image => image.CenterId == centerId)
             .OrderByDescending(image => image.IsPrimary)
             .ThenByDescending(image => image.CreatedAt)
-            .Select(image => new CenterImageDto
-            {
-                Id = image.Id,
-                CenterId = image.CenterId,
-                ImageUrl = image.ImageUrl,
-                CreatedAt = image.CreatedAt,
-                IsPrimary = image.IsPrimary
-            })
             .ToArrayAsync(cancellationToken);
 
-        return OperationResult<IReadOnlyCollection<CenterImageDto>>.Success(images);
+        return OperationResult<IReadOnlyCollection<CenterImageDto>>.Success(images.Select(MapCenterImage).ToArray());
     }
 
     public async Task<OperationResult<CenterImageDto>> UploadCenterImageAsync(
@@ -66,57 +58,60 @@ public class CenterImageService(
             return OperationResult<CenterImageDto>.Failure(imageStoreResult.Message, imageStoreResult.StatusCode);
         }
 
+        var storedImage = imageStoreResult.Data!;
+
         var shouldBePrimary = request.IsPrimary ||
                               !await dbContext.CenterImages.AnyAsync(image => image.CenterId == request.CenterId, cancellationToken);
 
-        if (shouldBePrimary)
+        try
         {
-            var existingPrimaryImages = await dbContext.CenterImages
-                .Where(image => image.CenterId == request.CenterId && image.IsPrimary)
-                .ToArrayAsync(cancellationToken);
-
-            foreach (var existingPrimaryImage in existingPrimaryImages)
+            if (shouldBePrimary)
             {
-                existingPrimaryImage.IsPrimary = false;
+                var existingPrimaryImages = await dbContext.CenterImages
+                    .Where(image => image.CenterId == request.CenterId && image.IsPrimary)
+                    .ToArrayAsync(cancellationToken);
+
+                foreach (var existingPrimaryImage in existingPrimaryImages)
+                {
+                    existingPrimaryImage.IsPrimary = false;
+                }
             }
+
+            var centerImage = new CenterImage
+            {
+                CenterId = request.CenterId,
+                ImageUrl = storedImage.PublicUrl,
+                UploadedByManagerId = userId,
+                CreatedAt = DateTime.UtcNow,
+                IsPrimary = shouldBePrimary
+            };
+
+            dbContext.CenterImages.Add(centerImage);
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            await auditLogger.WriteAsync(
+                action: "CenterImageUploaded",
+                entityName: nameof(CenterImage),
+                entityId: centerImage.Id.ToString(),
+                userId: userId,
+                metadata: new
+                {
+                    centerImage.CenterId,
+                    centerImage.ImageUrl,
+                    centerImage.IsPrimary
+                },
+                cancellationToken: cancellationToken);
+
+            return OperationResult<CenterImageDto>.Success(
+                MapCenterImage(centerImage),
+                "Center image uploaded successfully.",
+                201);
         }
-
-        var centerImage = new CenterImage
+        catch
         {
-            CenterId = request.CenterId,
-            ImageUrl = imageStoreResult.Data!.PublicUrl,
-            UploadedByManagerId = userId,
-            CreatedAt = DateTime.UtcNow,
-            IsPrimary = shouldBePrimary
-        };
-
-        dbContext.CenterImages.Add(centerImage);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        await auditLogger.WriteAsync(
-            action: "CenterImageUploaded",
-            entityName: nameof(CenterImage),
-            entityId: centerImage.Id.ToString(),
-            userId: userId,
-            metadata: new
-            {
-                centerImage.CenterId,
-                centerImage.ImageUrl,
-                centerImage.IsPrimary
-            },
-            cancellationToken: cancellationToken);
-
-        return OperationResult<CenterImageDto>.Success(
-            new CenterImageDto
-            {
-                Id = centerImage.Id,
-                CenterId = centerImage.CenterId,
-                ImageUrl = centerImage.ImageUrl,
-                CreatedAt = centerImage.CreatedAt,
-                IsPrimary = centerImage.IsPrimary
-            },
-            "Center image uploaded successfully.",
-            201);
+            await mediaStorageService.DeleteFileAsync(storedImage.PublicUrl, cancellationToken);
+            throw;
+        }
     }
 
     public async Task<OperationResult<CenterImageDto>> SetPrimaryImageAsync(
@@ -162,14 +157,7 @@ public class CenterImageService(
             cancellationToken: cancellationToken);
 
         return OperationResult<CenterImageDto>.Success(
-            new CenterImageDto
-            {
-                Id = centerImage.Id,
-                CenterId = centerImage.CenterId,
-                ImageUrl = centerImage.ImageUrl,
-                CreatedAt = centerImage.CreatedAt,
-                IsPrimary = true
-            },
+            MapCenterImage(centerImage),
             "Primary center image updated successfully.");
     }
 
@@ -195,23 +183,25 @@ public class CenterImageService(
         var centerId = centerImage.CenterId;
         var removedPrimary = centerImage.IsPrimary;
         var removedImageUrl = centerImage.ImageUrl;
-
-        dbContext.CenterImages.Remove(centerImage);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        CenterImage? nextPrimary = null;
 
         if (removedPrimary)
         {
-            var nextPrimary = await dbContext.CenterImages
+            nextPrimary = await dbContext.CenterImages
                 .Where(image => image.CenterId == centerId)
+                .Where(image => image.Id != centerImage.Id)
                 .OrderByDescending(image => image.CreatedAt)
                 .FirstOrDefaultAsync(cancellationToken);
-
-            if (nextPrimary is not null)
-            {
-                nextPrimary.IsPrimary = true;
-                await dbContext.SaveChangesAsync(cancellationToken);
-            }
         }
+
+        dbContext.CenterImages.Remove(centerImage);
+
+        if (nextPrimary is not null)
+        {
+            nextPrimary.IsPrimary = true;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         await mediaStorageService.DeleteFileAsync(removedImageUrl, cancellationToken);
 
@@ -228,5 +218,17 @@ public class CenterImageService(
             cancellationToken: cancellationToken);
 
         return OperationResult.Success("Center image deleted successfully.");
+    }
+
+    private static CenterImageDto MapCenterImage(CenterImage image)
+    {
+        return new CenterImageDto
+        {
+            Id = image.Id,
+            CenterId = image.CenterId,
+            ImageUrl = image.ImageUrl,
+            CreatedAt = image.CreatedAt,
+            IsPrimary = image.IsPrimary
+        };
     }
 }

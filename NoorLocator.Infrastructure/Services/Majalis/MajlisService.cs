@@ -7,16 +7,21 @@ using NoorLocator.Application.Management.Interfaces;
 using NoorLocator.Domain.Entities;
 using NoorLocator.Infrastructure.Persistence;
 using NoorLocator.Infrastructure.Services.Audit;
+using NoorLocator.Infrastructure.Services.Media;
 
 namespace NoorLocator.Infrastructure.Services.Majalis;
 
 public class MajlisService(
     NoorLocatorDbContext dbContext,
     IManagerCenterAccessService managerCenterAccessService,
+    IMediaStorageService mediaStorageService,
     AuditLogger auditLogger) : IMajlisService
 {
+    private const string StorageCategory = "majalis";
+
     public async Task<OperationResult> CreateMajlisAsync(
         CreateMajlisDto request,
+        UploadFilePayload? image,
         int userId,
         bool isAdmin,
         CancellationToken cancellationToken = default)
@@ -37,10 +42,23 @@ public class MajlisService(
             return OperationResult.Failure("Majlis languages must come from the predefined language table.", 400);
         }
 
+        string? imageUrl = null;
+        if (image is not null)
+        {
+            var imageStoreResult = await mediaStorageService.SaveImageAsync(image, StorageCategory, cancellationToken);
+            if (!imageStoreResult.Succeeded)
+            {
+                return OperationResult.Failure(imageStoreResult.Message, imageStoreResult.StatusCode);
+            }
+
+            imageUrl = imageStoreResult.Data!.PublicUrl;
+        }
+
         var majlis = new Majlis
         {
             Title = request.Title.Trim(),
             Description = request.Description.Trim(),
+            ImageUrl = imageUrl,
             Date = request.Date.Date,
             Time = request.Time.Trim(),
             CenterId = request.CenterId,
@@ -64,6 +82,7 @@ public class MajlisService(
                 majlis.Title,
                 majlis.Date,
                 majlis.Time,
+                majlis.ImageUrl,
                 LanguageIds = distinctLanguageIds
             },
             cancellationToken: cancellationToken);
@@ -94,6 +113,7 @@ public class MajlisService(
         dbContext.MajlisLanguages.RemoveRange(majlis.MajlisLanguages);
         dbContext.Majalis.Remove(majlis);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await mediaStorageService.DeleteFileAsync(majlis.ImageUrl, cancellationToken);
 
         await auditLogger.WriteAsync(
             action: "MajlisDeleted",
@@ -153,6 +173,7 @@ public class MajlisService(
     public async Task<OperationResult> UpdateMajlisAsync(
         int id,
         UpdateMajlisDto request,
+        UploadFilePayload? image,
         int userId,
         bool isAdmin,
         CancellationToken cancellationToken = default)
@@ -187,14 +208,41 @@ public class MajlisService(
             return OperationResult.Failure("Majlis languages must come from the predefined language table.", 400);
         }
 
+        string? replacementImageUrl = null;
+        if (image is not null)
+        {
+            var imageStoreResult = await mediaStorageService.SaveImageAsync(image, StorageCategory, cancellationToken);
+            if (!imageStoreResult.Succeeded)
+            {
+                return OperationResult.Failure(imageStoreResult.Message, imageStoreResult.StatusCode);
+            }
+
+            replacementImageUrl = imageStoreResult.Data!.PublicUrl;
+        }
+
+        var previousImageUrl = majlis.ImageUrl;
         majlis.Title = request.Title.Trim();
         majlis.Description = request.Description.Trim();
         majlis.Date = request.Date.Date;
         majlis.Time = request.Time.Trim();
         majlis.CenterId = request.CenterId;
 
+        if (replacementImageUrl is not null)
+        {
+            majlis.ImageUrl = replacementImageUrl;
+        }
+        else if (request.RemoveImage)
+        {
+            majlis.ImageUrl = null;
+        }
+
         await SyncMajlisLanguagesAsync(majlis.Id, distinctLanguageIds, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        if (replacementImageUrl is not null || request.RemoveImage)
+        {
+            await mediaStorageService.DeleteFileAsync(previousImageUrl, cancellationToken);
+        }
 
         await auditLogger.WriteAsync(
             action: "MajlisUpdated",
@@ -207,6 +255,7 @@ public class MajlisService(
                 majlis.Title,
                 majlis.Date,
                 majlis.Time,
+                majlis.ImageUrl,
                 LanguageIds = distinctLanguageIds
             },
             cancellationToken: cancellationToken);
@@ -281,6 +330,7 @@ public class MajlisService(
             Id = majlis.Id,
             Title = majlis.Title,
             Description = majlis.Description,
+            ImageUrl = majlis.ImageUrl,
             Date = majlis.Date,
             Time = majlis.Time,
             CenterId = majlis.CenterId,

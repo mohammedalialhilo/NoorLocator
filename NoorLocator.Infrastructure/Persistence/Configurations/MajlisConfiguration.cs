@@ -18,6 +18,9 @@ public class MajlisConfiguration : IEntityTypeConfiguration<Majlis>
         builder.Property(majlis => majlis.Description)
             .HasMaxLength(2000);
 
+        builder.Property(majlis => majlis.ImageUrl)
+            .HasMaxLength(512);
+
         builder.Property(majlis => majlis.Time)
             .HasMaxLength(50)
             .IsRequired();

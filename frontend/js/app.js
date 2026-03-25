@@ -1,4 +1,6 @@
 const DISCOVERY_LOCATION_KEY = "noorlocator.discovery.location";
+const CENTER_IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+const CENTER_IMAGE_ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 
 document.addEventListener("DOMContentLoaded", async () => {
     const authReady = await window.NoorLocatorAuth.bootstrapPageAuth();
@@ -416,6 +418,7 @@ function renderMajalis(container, majalis) {
 
     container.innerHTML = majalis.map(majlis => `
         <article class="list-card">
+            ${majlis.imageUrl ? `<img class="majlis-card__image" src="${escapeHtml(majlis.imageUrl)}" alt="${escapeHtml(`${majlis.title} image`)}" loading="lazy">` : ""}
             <div class="list-card__head">
                 <h4>${escapeHtml(majlis.title)}</h4>
                 <span class="status-pill">${escapeHtml(formatDateTime(majlis.date))}</span>
@@ -435,6 +438,15 @@ function pickPrimaryCenterImage(images) {
     }
 
     return images.find(image => image.isPrimary) || images[0];
+}
+
+function getSecondaryCenterImages(images) {
+    const primaryImage = pickPrimaryCenterImage(images);
+    if (!primaryImage) {
+        return [];
+    }
+
+    return images.filter(image => image.id !== primaryImage.id);
 }
 
 function applyCenterHeroImage(heroImage, logoFallback, centerName, images) {
@@ -461,15 +473,21 @@ function renderCenterGallery(container, images, options = {}) {
         return;
     }
 
-    if (!images.length) {
-        const emptyMessage = options.emptyMessage || "No public center photos have been uploaded yet.";
+    const manageable = options.manageable === true;
+    const galleryImages = manageable || !options.omitPrimary
+        ? images
+        : getSecondaryCenterImages(images);
+
+    if (!galleryImages.length) {
+        const emptyMessage = options.emptyMessage
+            || (!manageable && images.length
+                ? "The primary center image is shown above. No additional gallery images are available yet."
+                : "No public center photos have been uploaded yet.");
         setContainerMessage(container, emptyMessage, "soft");
         return;
     }
 
-    const manageable = options.manageable === true;
-
-    container.innerHTML = images.map(image => `
+    container.innerHTML = galleryImages.map(image => `
         <article class="gallery-card">
             <img class="gallery-card__image" src="${escapeHtml(image.imageUrl)}" alt="${escapeHtml(options.imageAlt || "Center gallery image")}" loading="lazy">
             <div class="gallery-card__head">
@@ -1143,7 +1161,9 @@ async function initCenterDetailsPage() {
         description.textContent = center.description || "This center has not published a public description yet.";
         renderLanguageChips(languages, centerLanguages);
         renderMajalis(majalis, centerMajalis);
-        renderCenterGallery(gallery, centerImages);
+        renderCenterGallery(gallery, centerImages, {
+            omitPrimary: true
+        });
         renderCenterAnnouncements(announcements, centerAnnouncements);
         applyCenterHeroImage(heroImage, heroFallback, center.name, centerImages);
 
@@ -1513,6 +1533,85 @@ function formatDateForInput(dateValue) {
     return date.toISOString().slice(0, 10);
 }
 
+function formatFileSize(bytes) {
+    if (!Number.isFinite(bytes) || bytes <= 0) {
+        return "0 B";
+    }
+
+    if (bytes < 1024) {
+        return `${bytes} B`;
+    }
+
+    if (bytes < 1024 * 1024) {
+        return `${(bytes / 1024).toFixed(1)} KB`;
+    }
+
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getCenterImageValidationError(file) {
+    return getImageFileValidationError(file, {
+        requiredMessage: "Choose an image file before uploading."
+    });
+}
+
+function getMajlisImageValidationError(file) {
+    return getImageFileValidationError(file);
+}
+
+function getImageFileValidationError(file, options = {}) {
+    const {
+        requiredMessage = ""
+    } = options;
+
+    if (!(file instanceof File)) {
+        return requiredMessage;
+    }
+
+    const extension = file.name.includes(".")
+        ? file.name.slice(file.name.lastIndexOf(".")).toLowerCase()
+        : "";
+
+    if (!CENTER_IMAGE_ALLOWED_EXTENSIONS.has(extension)) {
+        return "Only JPG, JPEG, PNG, and WEBP files are allowed.";
+    }
+
+    if (file.size > CENTER_IMAGE_MAX_SIZE_BYTES) {
+        return "Image files must be 5MB or smaller.";
+    }
+
+    return "";
+}
+
+function setUploadProgress(progressElement, metaElement, percent, message = "") {
+    if (progressElement instanceof HTMLProgressElement) {
+        progressElement.hidden = false;
+
+        if (typeof percent === "number") {
+            progressElement.max = 100;
+            progressElement.value = percent;
+        } else {
+            progressElement.removeAttribute("value");
+        }
+    }
+
+    if (metaElement) {
+        metaElement.textContent = message;
+    }
+}
+
+function resetUploadProgress(progressElement, metaElement) {
+    if (progressElement instanceof HTMLProgressElement) {
+        progressElement.hidden = true;
+        progressElement.max = 100;
+        progressElement.value = 0;
+    }
+
+    if (metaElement) {
+        metaElement.textContent = "";
+    }
+}
+
 function renderManagedCenters(container, centers) {
     if (!container) {
         return;
@@ -1580,6 +1679,7 @@ function renderManagerMajalis(container, majalis) {
 
     container.innerHTML = majalis.map(majlis => `
         <article class="list-card">
+            ${majlis.imageUrl ? `<img class="majlis-card__image" src="${escapeHtml(majlis.imageUrl)}" alt="${escapeHtml(`${majlis.title} image`)}" loading="lazy">` : ""}
             <div class="list-card__head">
                 <div>
                     <h4>${escapeHtml(majlis.title)}</h4>
@@ -1615,6 +1715,42 @@ function renderManagerCenterImages(container, images) {
     });
 }
 
+function renderAdminCenterImages(container, images) {
+    renderCenterGallery(container, images, {
+        manageable: true,
+        emptyMessage: "No gallery images are currently stored for the selected center.",
+        imageAlt: "Admin moderated center gallery image"
+    });
+}
+
+function bindImageGalleryActions(container, handlers) {
+    if (!container) {
+        return;
+    }
+
+    container.querySelectorAll("[data-set-primary-image-id]").forEach(button => {
+        button.addEventListener("click", async () => {
+            const imageId = Number(button.getAttribute("data-set-primary-image-id"));
+            if (!Number.isInteger(imageId) || imageId <= 0 || typeof handlers.onSetPrimary !== "function") {
+                return;
+            }
+
+            await handlers.onSetPrimary(imageId);
+        });
+    });
+
+    container.querySelectorAll("[data-delete-center-image-id]").forEach(button => {
+        button.addEventListener("click", async () => {
+            const imageId = Number(button.getAttribute("data-delete-center-image-id"));
+            if (!Number.isInteger(imageId) || imageId <= 0 || typeof handlers.onDelete !== "function") {
+                return;
+            }
+
+            await handlers.onDelete(imageId);
+        });
+    });
+}
+
 function initManagerPage() {
     if (!window.NoorLocatorAuth.requireAuth(["Manager", "Admin"])) {
         return;
@@ -1639,6 +1775,7 @@ function initManagerPage() {
     const formCenterSelect = document.getElementById("majlis-center-select");
     const filterCenterSelect = document.getElementById("majlis-filter-center");
     const languageOptions = document.getElementById("majlis-language-options");
+    const majlisImageInput = form?.elements?.namedItem("image");
     const announcementForm = document.getElementById("event-announcement-form");
     const announcementFormMessage = document.querySelector('[data-form-message="event-announcement-form"]');
     const announcementFormHeading = document.getElementById("event-announcement-form-heading");
@@ -1649,6 +1786,9 @@ function initManagerPage() {
     const refreshAnnouncementsButton = document.getElementById("refresh-announcements-button");
     const imageUploadForm = document.getElementById("center-image-upload-form");
     const imageUploadFormMessage = document.querySelector('[data-form-message="center-image-upload-form"]');
+    const imageUploadProgress = document.getElementById("center-image-upload-progress");
+    const imageUploadProgressMeta = document.getElementById("center-image-upload-progress-meta");
+    const imageUploadInput = imageUploadForm?.elements?.namedItem("image");
     const imageFormCenterSelect = document.getElementById("center-image-center-select");
     const imageFilterCenterSelect = document.getElementById("center-image-filter-center");
     const refreshCenterImagesButton = document.getElementById("refresh-center-images-button");
@@ -1694,6 +1834,8 @@ function initManagerPage() {
         !refreshAnnouncementsButton ||
         !imageUploadForm ||
         !imageUploadFormMessage ||
+        !imageUploadProgress ||
+        !imageUploadProgressMeta ||
         !imageFormCenterSelect ||
         !imageFilterCenterSelect ||
         !refreshCenterImagesButton
@@ -1791,7 +1933,12 @@ function initManagerPage() {
         }
 
         renderMajlisLanguageOptions(languageOptions, state.languages, []);
-        setMessage(formMessage, "Create a majlis for one of your assigned centers.");
+        const removeImageField = form.elements.namedItem("removeImage");
+        if (removeImageField instanceof HTMLInputElement) {
+            removeImageField.checked = false;
+        }
+
+        setMessage(formMessage, "Create a majlis for one of your assigned centers. You can optionally add a poster image.");
     }
 
     function resetAnnouncementForm(preferredCenterId = null) {
@@ -1813,6 +1960,7 @@ function initManagerPage() {
 
     function resetImageUploadForm(preferredCenterId = null) {
         imageUploadForm.reset();
+        resetUploadProgress(imageUploadProgress, imageUploadProgressMeta);
 
         const fallbackCenterId = preferredCenterId || state.selectedCenterId || state.centers[0]?.id || null;
         if (fallbackCenterId) {
@@ -1870,6 +2018,7 @@ function initManagerPage() {
                     form.elements.namedItem("description").value = majlis.description || "";
                     form.elements.namedItem("date").value = formatDateForInput(majlis.date);
                     form.elements.namedItem("time").value = majlis.time || "";
+                    form.elements.namedItem("removeImage").checked = false;
                     formCenterSelect.value = String(majlis.centerId);
                     syncCenterSelection(majlis.centerId);
                     formHeading.textContent = "Edit majlis";
@@ -1877,7 +2026,12 @@ function initManagerPage() {
                     submitButton.dataset.defaultLabel = "Save changes";
                     cancelButton.hidden = false;
                     renderMajlisLanguageOptions(languageOptions, state.languages, (majlis.languages || []).map(language => language.id));
-                    setMessage(formMessage, `Editing "${majlis.title}".`, "success");
+                    setMessage(
+                        formMessage,
+                        majlis.imageUrl
+                            ? `Editing "${majlis.title}". Leave the image empty to keep the current one, or check remove to clear it.`
+                            : `Editing "${majlis.title}". You can add an optional image before saving.`,
+                        "success");
                     document.getElementById("majlis-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
                 } catch (error) {
                     const message = normalizeErrorMessage(error, "Majlis details could not be loaded.");
@@ -1997,13 +2151,8 @@ function initManagerPage() {
     }
 
     function bindCenterImageActions() {
-        centerImagesContainer.querySelectorAll("[data-set-primary-image-id]").forEach(button => {
-            button.addEventListener("click", async () => {
-                const imageId = Number(button.getAttribute("data-set-primary-image-id"));
-                if (!Number.isInteger(imageId) || imageId <= 0) {
-                    return;
-                }
-
+        bindImageGalleryActions(centerImagesContainer, {
+            onSetPrimary: async imageId => {
                 try {
                     const response = await window.NoorLocatorApi.setPrimaryCenterImage(imageId);
                     await loadCenterImagesForSelectedCenter();
@@ -2016,16 +2165,8 @@ function initManagerPage() {
                     setMessage(pageMessage, message, "error");
                     showToast(message, "error");
                 }
-            });
-        });
-
-        centerImagesContainer.querySelectorAll("[data-delete-center-image-id]").forEach(button => {
-            button.addEventListener("click", async () => {
-                const imageId = Number(button.getAttribute("data-delete-center-image-id"));
-                if (!Number.isInteger(imageId) || imageId <= 0) {
-                    return;
-                }
-
+            },
+            onDelete: async imageId => {
                 if (!window.confirm("Delete this center image from the gallery?")) {
                     return;
                 }
@@ -2042,7 +2183,7 @@ function initManagerPage() {
                     setMessage(pageMessage, message, "error");
                     showToast(message, "error");
                 }
-            });
+            }
         });
     }
 
@@ -2134,24 +2275,37 @@ function initManagerPage() {
         setSubmitButtonState(form, true, state.editingMajlisId ? "Saving changes..." : "Creating majlis...");
         setMessage(formMessage, state.editingMajlisId ? "Saving majlis changes..." : "Creating majlis...");
 
-        const values = getTrimmedFormValues(form);
-        const payload = {
-            title: values.title,
-            description: values.description,
-            date: values.date ? `${values.date}T00:00:00` : "",
-            time: values.time,
-            centerId: Number(values.centerId),
-            languageIds: getSelectedLanguageIds(languageOptions)
-        };
+        const selectedFile = majlisImageInput instanceof HTMLInputElement
+            ? majlisImageInput.files?.[0]
+            : null;
+        const imageValidationError = getMajlisImageValidationError(selectedFile);
+        if (imageValidationError) {
+            setMessage(formMessage, imageValidationError, "error");
+            setSubmitButtonState(form, false, state.editingMajlisId ? "Saving changes..." : "Creating majlis...");
+            return;
+        }
+
+        const formData = new FormData(form);
+        const centerId = Number(formData.get("centerId"));
+        const dateValue = String(formData.get("date") || "").trim();
+        const timeValue = String(formData.get("time") || "").trim();
+
+        formData.set("centerId", Number.isInteger(centerId) && centerId > 0 ? String(centerId) : "");
+        formData.set("date", dateValue ? `${dateValue}T00:00:00` : "");
+        formData.set("time", timeValue);
+        formData.delete("languageIds");
+
+        getSelectedLanguageIds(languageOptions)
+            .forEach(languageId => formData.append("languageIds", String(languageId)));
 
         try {
             const response = state.editingMajlisId
-                ? await window.NoorLocatorApi.updateMajlis(state.editingMajlisId, payload)
-                : await window.NoorLocatorApi.createMajlis(payload);
+                ? await window.NoorLocatorApi.updateMajlis(state.editingMajlisId, formData)
+                : await window.NoorLocatorApi.createMajlis(formData);
 
-            syncCenterSelection(payload.centerId);
+            syncCenterSelection(centerId);
             await refreshSelectedCenterWorkspace(response.message);
-            resetMajlisForm(payload.centerId);
+            resetMajlisForm(centerId);
             setMessage(formMessage, response.message, "success");
             showToast(response.message, "success");
         } catch (error) {
@@ -2162,6 +2316,30 @@ function initManagerPage() {
             setSubmitButtonState(form, false, state.editingMajlisId ? "Saving changes..." : "Creating majlis...");
         }
     });
+
+    if (majlisImageInput instanceof HTMLInputElement) {
+        majlisImageInput.addEventListener("change", () => {
+            const file = majlisImageInput.files?.[0];
+
+            if (!file) {
+                setMessage(
+                    formMessage,
+                    state.editingMajlisId
+                        ? "Leave the image empty to keep the current one, or choose a new file to replace it."
+                        : "Create a majlis for one of your assigned centers. You can optionally add a poster image.");
+                return;
+            }
+
+            const validationError = getMajlisImageValidationError(file);
+            if (validationError) {
+                majlisImageInput.value = "";
+                setMessage(formMessage, validationError, "error");
+                return;
+            }
+
+            setMessage(formMessage, `${file.name} is ready to upload with this majlis (${formatFileSize(file.size)}).`);
+        });
+    }
 
     cancelButton.addEventListener("click", () => {
         resetMajlisForm(state.selectedCenterId);
@@ -2207,17 +2385,59 @@ function initManagerPage() {
         resetAnnouncementForm(state.selectedCenterId);
     });
 
+    if (imageUploadInput instanceof HTMLInputElement) {
+        imageUploadInput.addEventListener("change", () => {
+            const file = imageUploadInput.files?.[0];
+            resetUploadProgress(imageUploadProgress, imageUploadProgressMeta);
+
+            if (!file) {
+                setMessage(imageUploadFormMessage, "Upload JPG, PNG, or WEBP files up to 5MB.");
+                return;
+            }
+
+            const validationError = getCenterImageValidationError(file);
+            if (validationError) {
+                imageUploadInput.value = "";
+                setMessage(imageUploadFormMessage, validationError, "error");
+                return;
+            }
+
+            setMessage(
+                imageUploadFormMessage,
+                `${file.name} is ready to upload (${formatFileSize(file.size)}).`);
+        });
+    }
+
     imageUploadForm.addEventListener("submit", async event => {
         event.preventDefault();
 
+        const selectedFile = imageUploadInput instanceof HTMLInputElement
+            ? imageUploadInput.files?.[0]
+            : null;
+        const validationError = getCenterImageValidationError(selectedFile);
+        if (validationError) {
+            setMessage(imageUploadFormMessage, validationError, "error");
+            return;
+        }
+
         setSubmitButtonState(imageUploadForm, true, "Uploading image...");
         setMessage(imageUploadFormMessage, "Uploading center image...");
+        setUploadProgress(imageUploadProgress, imageUploadProgressMeta, 0, "Starting upload...");
 
         const formData = new FormData(imageUploadForm);
         const centerId = Number(formData.get("centerId"));
 
         try {
-            const response = await window.NoorLocatorApi.uploadCenterImage(formData);
+            const response = await window.NoorLocatorApi.uploadCenterImage(formData, {
+                onProgress: percent => {
+                    if (typeof percent === "number") {
+                        setUploadProgress(imageUploadProgress, imageUploadProgressMeta, percent, `Uploading image... ${percent}%`);
+                        return;
+                    }
+
+                    setUploadProgress(imageUploadProgress, imageUploadProgressMeta, null, "Uploading image...");
+                }
+            });
             syncCenterSelection(centerId);
             await refreshSelectedCenterWorkspace(response.message);
             resetImageUploadForm(centerId);
@@ -2225,6 +2445,7 @@ function initManagerPage() {
             showToast(response.message, "success");
         } catch (error) {
             const message = normalizeErrorMessage(error, "Center image upload could not be completed.");
+            resetUploadProgress(imageUploadProgress, imageUploadProgressMeta);
             setMessage(imageUploadFormMessage, message, "error");
             showToast(message, "error");
         } finally {
@@ -2554,6 +2775,10 @@ function initAdminPage() {
     const languageSuggestionsContainer = document.getElementById("admin-language-suggestions");
     const suggestionsContainer = document.getElementById("admin-suggestions");
     const centersContainer = document.getElementById("admin-centers");
+    const adminCenterImagesMessage = document.getElementById("admin-center-images-message");
+    const adminCenterImagesContainer = document.getElementById("admin-center-images");
+    const adminCenterImageFilterCenter = document.getElementById("admin-center-image-filter-center");
+    const refreshAdminCenterImagesButton = document.getElementById("refresh-admin-center-images-button");
     const usersTableContainer = document.getElementById("admin-users-table");
     const auditLogsTableContainer = document.getElementById("admin-audit-logs-table");
     const centerForm = document.getElementById("admin-center-form");
@@ -2570,11 +2795,13 @@ function initAdminPage() {
         suggestions: [],
         users: [],
         centers: [],
+        centerImages: [],
         auditLogs: [],
-        editingCenterId: null
+        editingCenterId: null,
+        selectedImageCenterId: null
     };
 
-    if (!pageMessage || !pendingCount || !auditCount || !cardsContainer || !centerRequestsContainer || !managerRequestsContainer || !languageSuggestionsContainer || !suggestionsContainer || !centersContainer || !usersTableContainer || !auditLogsTableContainer || !centerForm || !centerFormHeading || !centerFormMessage || !centerSubmitButton || !centerCancelButton) {
+    if (!pageMessage || !pendingCount || !auditCount || !cardsContainer || !centerRequestsContainer || !managerRequestsContainer || !languageSuggestionsContainer || !suggestionsContainer || !centersContainer || !adminCenterImagesMessage || !adminCenterImagesContainer || !adminCenterImageFilterCenter || !refreshAdminCenterImagesButton || !usersTableContainer || !auditLogsTableContainer || !centerForm || !centerFormHeading || !centerFormMessage || !centerSubmitButton || !centerCancelButton) {
         return;
     }
 
@@ -2610,6 +2837,95 @@ function initAdminPage() {
         ]);
     }
 
+    function syncAdminImageCenterSelection(centerId) {
+        const validCenterId = state.centers.some(center => center.id === centerId)
+            ? centerId
+            : (state.centers[0]?.id || null);
+
+        state.selectedImageCenterId = validCenterId;
+        adminCenterImageFilterCenter.value = validCenterId ? String(validCenterId) : "";
+    }
+
+    function populateAdminImageControls() {
+        populateSelectOptions(
+            [adminCenterImageFilterCenter],
+            state.centers,
+            {
+                placeholder: state.centers.length ? "Select a center" : "No centers available",
+                getValue: center => String(center.id),
+                getLabel: center => `${center.name} (${center.city}, ${center.country})`
+            });
+
+        if (!state.centers.length) {
+            state.selectedImageCenterId = null;
+            return;
+        }
+
+        syncAdminImageCenterSelection(state.selectedImageCenterId || state.editingCenterId || state.centers[0].id);
+    }
+
+    async function loadAdminCenterImages() {
+        populateAdminImageControls();
+
+        if (!state.selectedImageCenterId) {
+            state.centerImages = [];
+            setMessage(adminCenterImagesMessage, "Choose a center to review its gallery and moderate images if needed.");
+            setContainerMessage(adminCenterImagesContainer, "No center images can be reviewed until a center is selected.", "soft");
+            return;
+        }
+
+        setMessage(adminCenterImagesMessage, "Loading the selected center gallery...");
+        setContainerMessage(adminCenterImagesContainer, "Loading center gallery...", "soft");
+
+        try {
+            const response = await window.NoorLocatorApi.getCenterImages(state.selectedImageCenterId);
+            state.centerImages = response.data || [];
+            renderAdminCenterImages(adminCenterImagesContainer, state.centerImages);
+            bindAdminImageActions();
+            setMessage(adminCenterImagesMessage, "Admin gallery moderation tools are ready.", "success");
+        } catch (error) {
+            const message = normalizeErrorMessage(error, "Center images could not be loaded for moderation.");
+            state.centerImages = [];
+            setMessage(adminCenterImagesMessage, message, "error");
+            setContainerMessage(adminCenterImagesContainer, message, "error");
+        }
+    }
+
+    function bindAdminImageActions() {
+        bindImageGalleryActions(adminCenterImagesContainer, {
+            onSetPrimary: async imageId => {
+                try {
+                    const response = await window.NoorLocatorApi.setPrimaryCenterImage(imageId);
+                    await loadAdminCenterImages();
+                    setMessage(adminCenterImagesMessage, response.message || "Primary image updated successfully.", "success");
+                    setMessage(pageMessage, response.message || "Primary image updated successfully.", "success");
+                    showToast(response.message || "Primary image updated successfully.", "success");
+                } catch (error) {
+                    const message = normalizeErrorMessage(error, "Primary image could not be updated.");
+                    setMessage(adminCenterImagesMessage, message, "error");
+                    showToast(message, "error");
+                }
+            },
+            onDelete: async imageId => {
+                if (!window.confirm("Delete this center image from the public gallery?")) {
+                    return;
+                }
+
+                try {
+                    const response = await window.NoorLocatorApi.deleteCenterImage(imageId);
+                    await loadAdminCenterImages();
+                    setMessage(adminCenterImagesMessage, response.message || "Center image deleted successfully.", "success");
+                    setMessage(pageMessage, response.message || "Center image deleted successfully.", "success");
+                    showToast(response.message || "Center image deleted successfully.", "success");
+                } catch (error) {
+                    const message = normalizeErrorMessage(error, "Center image could not be deleted.");
+                    setMessage(adminCenterImagesMessage, message, "error");
+                    showToast(message, "error");
+                }
+            }
+        });
+    }
+
     function resetCenterForm() {
         state.editingCenterId = null;
         centerForm.reset();
@@ -2638,6 +2954,10 @@ function initAdminPage() {
         centerSubmitButton.disabled = false;
         centerCancelButton.hidden = false;
         setMessage(centerFormMessage, `Editing "${center.name}".`, "success");
+        syncAdminImageCenterSelection(center.id);
+        loadAdminCenterImages().catch(() => {
+            setMessage(adminCenterImagesMessage, "Center images could not be loaded for moderation.", "error");
+        });
         document.getElementById("center-management")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
@@ -2647,6 +2967,7 @@ function initAdminPage() {
         renderAdminLanguageSuggestions(languageSuggestionsContainer, state.languageSuggestions);
         renderAdminSuggestions(suggestionsContainer, state.suggestions);
         renderAdminCenters(centersContainer, state.centers);
+        populateAdminImageControls();
         renderAdminUsersTable(usersTableContainer, state.users);
         renderAdminAuditLogsTable(auditLogsTableContainer, state.auditLogs);
         updateCounters();
@@ -2671,6 +2992,8 @@ function initAdminPage() {
             setContainerMessage(languageSuggestionsContainer, "Loading language suggestions...", "soft");
             setContainerMessage(suggestionsContainer, "Loading app suggestions...", "soft");
             setContainerMessage(centersContainer, "Loading centers...", "soft");
+            setMessage(adminCenterImagesMessage, "Loading center gallery moderation tools...");
+            setContainerMessage(adminCenterImagesContainer, "Loading center gallery...", "soft");
             usersTableContainer.innerHTML = `<div class="empty-state empty-state--soft">Loading users...</div>`;
             auditLogsTableContainer.innerHTML = `<div class="empty-state empty-state--soft">Loading audit logs...</div>`;
         }
@@ -2708,6 +3031,7 @@ function initAdminPage() {
         state.auditLogs = auditLogsResponse.data || [];
 
         renderAllSections();
+        await loadAdminCenterImages();
         setMessage(pageMessage, "Admin workspace loaded from the secured API.", "success");
     }
 
@@ -2870,6 +3194,16 @@ function initAdminPage() {
         resetCenterForm();
     });
 
+    adminCenterImageFilterCenter.addEventListener("change", async event => {
+        const selectedCenterId = Number(event.target.value);
+        syncAdminImageCenterSelection(Number.isInteger(selectedCenterId) && selectedCenterId > 0 ? selectedCenterId : null);
+        await loadAdminCenterImages();
+    });
+
+    refreshAdminCenterImagesButton.addEventListener("click", async () => {
+        await loadAdminCenterImages();
+    });
+
     loadAdminWorkspace(true).catch(error => {
         const message = normalizeErrorMessage(error, "The admin workspace could not be loaded right now.");
         setMessage(pageMessage, message, "error");
@@ -2878,6 +3212,8 @@ function initAdminPage() {
         setContainerMessage(languageSuggestionsContainer, message, "error");
         setContainerMessage(suggestionsContainer, message, "error");
         setContainerMessage(centersContainer, message, "error");
+        setMessage(adminCenterImagesMessage, message, "error");
+        setContainerMessage(adminCenterImagesContainer, message, "error");
         usersTableContainer.innerHTML = `<div class="empty-state empty-state--error">${escapeHtml(message)}</div>`;
         auditLogsTableContainer.innerHTML = `<div class="empty-state empty-state--error">${escapeHtml(message)}</div>`;
         showToast(message, "error");

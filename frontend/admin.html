@@ -54,6 +54,7 @@
                 <a class="dashboard-nav__link" href="#language-suggestions">Language suggestions</a>
                 <a class="dashboard-nav__link" href="#app-suggestions">App suggestions</a>
                 <a class="dashboard-nav__link" href="#center-management">Centers</a>
+                <a class="dashboard-nav__link" href="#image-moderation">Images</a>
                 <a class="dashboard-nav__link" href="#user-management">Users</a>
                 <a class="dashboard-nav__link" href="#audit-logs">Audit logs</a>
             </nav>
@@ -153,6 +154,31 @@
                     <h3>Edit or delete public centers</h3>
                     <div id="admin-centers" class="stack-list">
                         <div class="empty-state">Loading centers...</div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="section section-stack" id="image-moderation">
+            <div class="detail-grid detail-grid--dashboard">
+                <article class="panel">
+                    <span class="card__meta">Image moderation</span>
+                    <h3>Review and moderate center galleries</h3>
+                    <div class="toolbar-row">
+                        <label class="form__group toolbar-row__control">
+                            <span class="form__label">Center gallery</span>
+                            <select id="admin-center-image-filter-center" class="form__control form__control--compact"></select>
+                        </label>
+                        <button id="refresh-admin-center-images-button" class="button button--secondary" type="button">Refresh gallery</button>
+                    </div>
+                    <p id="admin-center-images-message" class="message">Choose a center to review its gallery and moderate images if needed.</p>
+                </article>
+
+                <article class="panel">
+                    <span class="card__meta">Gallery items</span>
+                    <h3>Set primary images or remove inappropriate uploads</h3>
+                    <div id="admin-center-images" class="gallery-grid">
+                        <div class="empty-state">Loading center gallery...</div>
                     </div>
                 </article>
             </div>

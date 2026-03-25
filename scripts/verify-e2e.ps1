@@ -62,6 +62,7 @@ function Send-Request {
 
     [pscustomobject]@{
         StatusCode = [int]$response.StatusCode
+        ContentType = if ($response.Content.Headers.ContentType) { [string]$response.Content.Headers.ContentType.MediaType } else { "" }
         Text = $text
         Json = $json
     }
@@ -126,6 +127,7 @@ try {
     $suggestionMessage = "E2E suggestion $suffix"
     $announcementTitle = "E2E Announcement $suffix"
     $majlisTitle = "E2E Majlis $suffix"
+    $imageBytes = [Convert]::FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5+9FoAAAAASUVORK5CYII=")
 
     $publicPages = @(
         @{ Path = "/"; Expect = "NoorLocator" },
@@ -167,11 +169,15 @@ try {
     Assert-True ($dashboardPage.Text.Contains("data-logout-action")) "dashboard.html is missing its logout button."
     Assert-True ($managerPage.Text.Contains('data-auth-roles="Manager,Admin"')) "manager.html is missing role-aware auth guard metadata."
     Assert-True ($managerPage.Text.Contains("data-logout-action")) "manager.html is missing its logout button."
+    Assert-True ($managerPage.Text.Contains("Add a poster or banner image for this majlis.")) "manager.html is missing the majlis image upload field."
     Assert-True ($adminPage.Text.Contains('data-auth-roles="Admin"')) "admin.html is missing the admin auth guard metadata."
     Assert-True ($adminPage.Text.Contains("data-logout-action")) "admin.html is missing its logout button."
     $serviceWorkerScript = Send-Request -Method "Get" -Path "/service-worker.js" -Accept "text/javascript"
     Assert-True ($serviceWorkerScript.Text.Contains("NON_CACHEABLE_PATHS")) "service-worker.js is not protecting workspace pages from cache reuse."
     Assert-True ($serviceWorkerScript.Text.Contains('requestUrl.pathname.startsWith("/api/") || NON_CACHEABLE_PATHS.has(requestUrl.pathname)')) "service-worker.js is still caching protected workspace routes."
+    $appScript = Send-Request -Method "Get" -Path "/js/app.js" -Accept "text/javascript"
+    Assert-True ($appScript.Text.Contains("majlis-card__image")) "app.js is not rendering majlis images."
+    Assert-True ($appScript.Text.Contains("getMajlisImageValidationError")) "app.js is missing majlis image validation."
     $verification.FrontendLogoutAssets = "Verified centralized logout wiring, protected-page auth gates, and protected-page cache exclusions."
 
     $aboutContent = Send-Request -Method "Get" -Path "/api/content/about"
@@ -253,6 +259,8 @@ try {
     Assert-True ($managerCenters.Json.data.Count -ge 1) "Seeded manager has no assigned centers."
     $managedCenter = $managerCenters.Json.data[0]
     $managedCenterId = [int]$managedCenter.id
+    $unmanagedCenter = @($publicCenters.Json.data | Where-Object { [int]$_.id -ne $managedCenterId }) | Select-Object -First 1
+    Assert-True ($null -ne $unmanagedCenter) "No unmanaged center was available to verify ownership enforcement."
 
     $assignedCenterLanguages = Send-Request -Method "Get" -Path "/api/centers/$managedCenterId/languages"
     $assignedLanguageIds = @($assignedCenterLanguages.Json.data | ForEach-Object { [int]$_.id })
@@ -306,33 +314,77 @@ try {
     Assert-True (@($myRequests.Json.data | Where-Object { $_.name -eq $centerRequestName }).Count -ge 1) "Submitted center request was not returned in my requests."
     $verification.UserContribution = "Verified center request, suggestion, center-language suggestion, manager request, and my-requests workflows."
 
-    $createMajlis = Send-Request -Method "Post" -Path "/api/majalis" -Token $managerAuth.Token -Body @{
-        title = $majlisTitle
-        description = "E2E majlis lifecycle."
-        date = [DateTime]::UtcNow.Date.AddDays(14).ToString("o")
-        time = "20:00"
-        centerId = $managedCenterId
-        languageIds = @([int]$assignedCenterLanguages.Json.data[0].id)
-    }
+    $createMajlisForm = [System.Net.Http.MultipartFormDataContent]::new()
+    $createMajlisForm.Add([System.Net.Http.StringContent]::new($majlisTitle), "Title")
+    $createMajlisForm.Add([System.Net.Http.StringContent]::new("E2E majlis lifecycle."), "Description")
+    $createMajlisForm.Add([System.Net.Http.StringContent]::new([DateTime]::UtcNow.Date.AddDays(14).ToString("o")), "Date")
+    $createMajlisForm.Add([System.Net.Http.StringContent]::new("20:00"), "Time")
+    $createMajlisForm.Add([System.Net.Http.StringContent]::new([string]$managedCenterId), "CenterId")
+    $createMajlisForm.Add([System.Net.Http.StringContent]::new([string][int]$assignedCenterLanguages.Json.data[0].id), "LanguageIds")
+    $createMajlisImageContent = [System.Net.Http.ByteArrayContent]::new($imageBytes)
+    $createMajlisImageContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse("image/png")
+    $createMajlisForm.Add($createMajlisImageContent, "Image", "e2e-majlis-create.png")
+
+    $createMajlis = Send-Request -Method "Post" -Path "/api/majalis" -Token $managerAuth.Token -Content $createMajlisForm
     Assert-True ($createMajlis.StatusCode -eq 201) "Manager majlis creation failed."
 
     $majalisForCenter = Send-Request -Method "Get" -Path "/api/majalis?centerId=$managedCenterId"
     $createdMajlis = @($majalisForCenter.Json.data | Where-Object { $_.title -eq $majlisTitle }) | Select-Object -First 1
     Assert-True ($null -ne $createdMajlis) "Created majlis was not returned from the API."
+    Assert-True (-not [string]::IsNullOrWhiteSpace([string]$createdMajlis.imageUrl)) "Created majlis did not include an image URL."
+    $createdMajlisImageUrl = [string]$createdMajlis.imageUrl
 
-    $updateMajlis = Send-Request -Method "Put" -Path "/api/majalis/$($createdMajlis.id)" -Token $managerAuth.Token -Body @{
-        title = "$majlisTitle Updated"
-        description = "E2E majlis updated."
-        date = [DateTime]::UtcNow.Date.AddDays(15).ToString("o")
-        time = "21:00"
-        centerId = $managedCenterId
-        languageIds = @([int]$assignedCenterLanguages.Json.data[0].id)
-    }
+    $createdMajlisImage = Send-Request -Method "Get" -Path $createdMajlisImageUrl -Accept "*/*"
+    Assert-True ($createdMajlisImage.StatusCode -eq 200) "Created majlis image was not reachable through static file hosting."
+    Assert-True ($createdMajlisImage.ContentType.StartsWith("image/")) "Created majlis image did not return an image content type."
+
+    $updateMajlisForm = [System.Net.Http.MultipartFormDataContent]::new()
+    $updateMajlisForm.Add([System.Net.Http.StringContent]::new("$majlisTitle Updated"), "Title")
+    $updateMajlisForm.Add([System.Net.Http.StringContent]::new("E2E majlis updated."), "Description")
+    $updateMajlisForm.Add([System.Net.Http.StringContent]::new([DateTime]::UtcNow.Date.AddDays(15).ToString("o")), "Date")
+    $updateMajlisForm.Add([System.Net.Http.StringContent]::new("21:00"), "Time")
+    $updateMajlisForm.Add([System.Net.Http.StringContent]::new([string]$managedCenterId), "CenterId")
+    $updateMajlisForm.Add([System.Net.Http.StringContent]::new([string][int]$assignedCenterLanguages.Json.data[0].id), "LanguageIds")
+    $updateMajlisImageContent = [System.Net.Http.ByteArrayContent]::new($imageBytes)
+    $updateMajlisImageContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse("image/png")
+    $updateMajlisForm.Add($updateMajlisImageContent, "Image", "e2e-majlis-update.png")
+
+    $updateMajlis = Send-Request -Method "Put" -Path "/api/majalis/$($createdMajlis.id)" -Token $managerAuth.Token -Content $updateMajlisForm
     Assert-True ($updateMajlis.StatusCode -eq 200) "Manager majlis update failed."
+
+    $updatedMajlis = Send-Request -Method "Get" -Path "/api/majalis/$($createdMajlis.id)"
+    Assert-True ($updatedMajlis.StatusCode -eq 200) "Updated majlis could not be fetched."
+    Assert-True (-not [string]::IsNullOrWhiteSpace([string]$updatedMajlis.Json.data.imageUrl)) "Updated majlis did not include an image URL."
+    Assert-True ([string]$updatedMajlis.Json.data.imageUrl -ne $createdMajlisImageUrl) "Updated majlis image URL did not change after replacement."
+
+    $updatedMajlisImage = Send-Request -Method "Get" -Path ([string]$updatedMajlis.Json.data.imageUrl) -Accept "*/*"
+    Assert-True ($updatedMajlisImage.StatusCode -eq 200) "Updated majlis image was not reachable through static file hosting."
+
+    $oldMajlisImageAfterReplace = Send-Request -Method "Get" -Path $createdMajlisImageUrl -Accept "*/*"
+    Assert-True ($oldMajlisImageAfterReplace.StatusCode -eq 404) "Replaced majlis image was still reachable."
+
+    $removeMajlisImageForm = [System.Net.Http.MultipartFormDataContent]::new()
+    $removeMajlisImageForm.Add([System.Net.Http.StringContent]::new("$majlisTitle Updated"), "Title")
+    $removeMajlisImageForm.Add([System.Net.Http.StringContent]::new("E2E majlis updated without image."), "Description")
+    $removeMajlisImageForm.Add([System.Net.Http.StringContent]::new([DateTime]::UtcNow.Date.AddDays(16).ToString("o")), "Date")
+    $removeMajlisImageForm.Add([System.Net.Http.StringContent]::new("21:30"), "Time")
+    $removeMajlisImageForm.Add([System.Net.Http.StringContent]::new([string]$managedCenterId), "CenterId")
+    $removeMajlisImageForm.Add([System.Net.Http.StringContent]::new([string][int]$assignedCenterLanguages.Json.data[0].id), "LanguageIds")
+    $removeMajlisImageForm.Add([System.Net.Http.StringContent]::new("true"), "RemoveImage")
+
+    $removeMajlisImage = Send-Request -Method "Put" -Path "/api/majalis/$($createdMajlis.id)" -Token $managerAuth.Token -Content $removeMajlisImageForm
+    Assert-True ($removeMajlisImage.StatusCode -eq 200) "Removing a majlis image failed."
+
+    $majlisWithoutImage = Send-Request -Method "Get" -Path "/api/majalis/$($createdMajlis.id)"
+    Assert-True ($majlisWithoutImage.StatusCode -eq 200) "Majlis without image could not be fetched."
+    Assert-True ([string]::IsNullOrWhiteSpace([string]$majlisWithoutImage.Json.data.imageUrl)) "Majlis image was not cleared."
+
+    $removedUpdatedMajlisImage = Send-Request -Method "Get" -Path ([string]$updatedMajlis.Json.data.imageUrl) -Accept "*/*"
+    Assert-True ($removedUpdatedMajlisImage.StatusCode -eq 404) "Removed majlis image was still reachable."
 
     $deleteMajlis = Send-Request -Method "Delete" -Path "/api/majalis/$($createdMajlis.id)" -Token $managerAuth.Token
     Assert-True ($deleteMajlis.StatusCode -eq 200) "Manager majlis delete failed."
-    $verification.ManagerMajalis = "Verified manager majlis create, update, and delete flows."
+    $verification.ManagerMajalis = "Verified manager majlis create, update, image replacement, image removal, static image reachability, and delete flows."
 
     $announcementForm = [System.Net.Http.MultipartFormDataContent]::new()
     $announcementForm.Add([System.Net.Http.StringContent]::new($announcementTitle), "Title")
@@ -344,21 +396,96 @@ try {
     Assert-True ($announcementResponse.StatusCode -eq 201) "Manager event announcement creation failed."
     $announcementId = [int]$announcementResponse.Json.data.id
 
-    $imageBytes = [Convert]::FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5+9FoAAAAASUVORK5CYII=")
-    $imageForm = [System.Net.Http.MultipartFormDataContent]::new()
-    $imageForm.Add([System.Net.Http.StringContent]::new([string]$managedCenterId), "CenterId")
-    $imageForm.Add([System.Net.Http.StringContent]::new("false"), "IsPrimary")
-    $imageContent = [System.Net.Http.ByteArrayContent]::new($imageBytes)
-    $imageContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse("image/png")
-    $imageForm.Add($imageContent, "Image", "e2e-center.png")
+    $firstImageForm = [System.Net.Http.MultipartFormDataContent]::new()
+    $firstImageForm.Add([System.Net.Http.StringContent]::new([string]$managedCenterId), "CenterId")
+    $firstImageForm.Add([System.Net.Http.StringContent]::new("false"), "IsPrimary")
+    $firstImageContent = [System.Net.Http.ByteArrayContent]::new($imageBytes)
+    $firstImageContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse("image/png")
+    $firstImageForm.Add($firstImageContent, "Image", "e2e-center-primary-one.png")
 
-    $uploadImage = Send-Request -Method "Post" -Path "/api/center-images/upload" -Token $managerAuth.Token -Content $imageForm
-    Assert-True ($uploadImage.StatusCode -eq 201) "Manager center image upload failed."
-    $imageId = [int]$uploadImage.Json.data.id
+    $uploadFirstImage = Send-Request -Method "Post" -Path "/api/center-images/upload" -Token $managerAuth.Token -Content $firstImageForm
+    Assert-True ($uploadFirstImage.StatusCode -eq 201) "Manager center image upload failed."
+    $firstImageId = [int]$uploadFirstImage.Json.data.id
 
-    $setPrimary = Send-Request -Method "Put" -Path "/api/center-images/$imageId/set-primary" -Token $managerAuth.Token
+    $invalidImageForm = [System.Net.Http.MultipartFormDataContent]::new()
+    $invalidImageForm.Add([System.Net.Http.StringContent]::new([string]$managedCenterId), "CenterId")
+    $invalidImageForm.Add([System.Net.Http.StringContent]::new("false"), "IsPrimary")
+    $invalidImageContent = [System.Net.Http.ByteArrayContent]::new([System.Text.Encoding]::UTF8.GetBytes("not-an-image"))
+    $invalidImageContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse("text/plain")
+    $invalidImageForm.Add($invalidImageContent, "Image", "invalid.txt")
+
+    $invalidImageResponse = Send-Request -Method "Post" -Path "/api/center-images/upload" -Token $managerAuth.Token -Content $invalidImageForm
+    Assert-True ($invalidImageResponse.StatusCode -eq 400) "Invalid image type did not return HTTP 400."
+    Assert-True ($invalidImageResponse.Json.message -eq "Only JPG, JPEG, PNG, and WEBP files are allowed.") "Invalid image type rejection message changed unexpectedly."
+
+    $oversizedBytes = New-Object byte[] ((5 * 1024 * 1024) + 1)
+    $oversizedBytes[0] = 0x89
+    $oversizedBytes[1] = 0x50
+    $oversizedBytes[2] = 0x4E
+    $oversizedBytes[3] = 0x47
+    $oversizedBytes[4] = 0x0D
+    $oversizedBytes[5] = 0x0A
+    $oversizedBytes[6] = 0x1A
+    $oversizedBytes[7] = 0x0A
+    $oversizedImageForm = [System.Net.Http.MultipartFormDataContent]::new()
+    $oversizedImageForm.Add([System.Net.Http.StringContent]::new([string]$managedCenterId), "CenterId")
+    $oversizedImageForm.Add([System.Net.Http.StringContent]::new("false"), "IsPrimary")
+    $oversizedImageContent = [System.Net.Http.ByteArrayContent]::new($oversizedBytes)
+    $oversizedImageContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse("image/png")
+    $oversizedImageForm.Add($oversizedImageContent, "Image", "oversized.png")
+
+    $oversizedImageResponse = Send-Request -Method "Post" -Path "/api/center-images/upload" -Token $managerAuth.Token -Content $oversizedImageForm
+    Assert-True ($oversizedImageResponse.StatusCode -eq 400) "Oversized image did not return HTTP 400."
+    Assert-True ($oversizedImageResponse.Json.message -eq "Image files must be 5MB or smaller.") "Oversized image rejection message changed unexpectedly."
+
+    $forbiddenImageForm = [System.Net.Http.MultipartFormDataContent]::new()
+    $forbiddenImageForm.Add([System.Net.Http.StringContent]::new([string]([int]$unmanagedCenter.id)), "CenterId")
+    $forbiddenImageForm.Add([System.Net.Http.StringContent]::new("false"), "IsPrimary")
+    $forbiddenImageContent = [System.Net.Http.ByteArrayContent]::new($imageBytes)
+    $forbiddenImageContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse("image/png")
+    $forbiddenImageForm.Add($forbiddenImageContent, "Image", "forbidden.png")
+
+    $forbiddenImageResponse = Send-Request -Method "Post" -Path "/api/center-images/upload" -Token $managerAuth.Token -Content $forbiddenImageForm
+    Assert-True ($forbiddenImageResponse.StatusCode -eq 403) "Uploading to an unmanaged center did not return HTTP 403."
+    Assert-True ($forbiddenImageResponse.Json.message -eq "Managers can only manage images for assigned centers.") "Unmanaged-center rejection message changed unexpectedly."
+
+    $secondImageForm = [System.Net.Http.MultipartFormDataContent]::new()
+    $secondImageForm.Add([System.Net.Http.StringContent]::new([string]$managedCenterId), "CenterId")
+    $secondImageForm.Add([System.Net.Http.StringContent]::new("false"), "IsPrimary")
+    $secondImageContent = [System.Net.Http.ByteArrayContent]::new($imageBytes)
+    $secondImageContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse("image/png")
+    $secondImageForm.Add($secondImageContent, "Image", "e2e-center-primary-two.png")
+
+    $uploadSecondImage = Send-Request -Method "Post" -Path "/api/center-images/upload" -Token $managerAuth.Token -Content $secondImageForm
+    Assert-True ($uploadSecondImage.StatusCode -eq 201) "Second manager center image upload failed."
+    $secondImageId = [int]$uploadSecondImage.Json.data.id
+
+    $setPrimary = Send-Request -Method "Put" -Path "/api/center-images/$secondImageId/set-primary" -Token $managerAuth.Token
     Assert-True ($setPrimary.StatusCode -eq 200) "Setting the primary center image failed."
-    $verification.ManagerAnnouncementsMedia = "Verified manager announcement publishing, center image upload, and primary-image management."
+
+    $publicImagesAfterPrimary = Send-Request -Method "Get" -Path "/api/centers/$managedCenterId/images"
+    Assert-True ($publicImagesAfterPrimary.StatusCode -eq 200) "Public center images endpoint failed after upload."
+    Assert-True (@($publicImagesAfterPrimary.Json.data | Where-Object { [int]$_.id -eq $secondImageId -and $_.isPrimary -eq $true }).Count -ge 1) "Uploaded primary image was not visible publicly."
+    Assert-True (@($publicImagesAfterPrimary.Json.data | Where-Object { [int]$_.id -eq $firstImageId }).Count -ge 1) "Uploaded gallery image was not visible publicly."
+
+    $publicPrimaryImage = @($publicImagesAfterPrimary.Json.data | Where-Object { [int]$_.id -eq $secondImageId }) | Select-Object -First 1
+    $publicPrimaryAsset = Send-Request -Method "Get" -Path ([string]$publicPrimaryImage.imageUrl) -Accept "*/*"
+    Assert-True ($publicPrimaryAsset.StatusCode -eq 200) "Uploaded image file was not reachable through static file hosting."
+    Assert-True ($publicPrimaryAsset.ContentType.StartsWith("image/")) "Uploaded image did not return an image content type."
+
+    $managerDeleteImage = Send-Request -Method "Delete" -Path "/api/center-images/$firstImageId" -Token $managerAuth.Token
+    Assert-True ($managerDeleteImage.StatusCode -eq 200) "Manager could not delete a center image."
+    $publicImagesAfterManagerDelete = Send-Request -Method "Get" -Path "/api/centers/$managedCenterId/images"
+    Assert-True (@($publicImagesAfterManagerDelete.Json.data | Where-Object { [int]$_.id -eq $firstImageId }).Count -eq 0) "Deleted manager image still appeared in the public gallery."
+
+    $adminDeleteImage = Send-Request -Method "Delete" -Path "/api/center-images/$secondImageId" -Token $adminAuth.Token
+    Assert-True ($adminDeleteImage.StatusCode -eq 200) "Admin could not moderate-delete a center image."
+    $publicImagesAfterAdminDelete = Send-Request -Method "Get" -Path "/api/centers/$managedCenterId/images"
+    Assert-True (@($publicImagesAfterAdminDelete.Json.data | Where-Object { [int]$_.id -eq $secondImageId }).Count -eq 0) "Admin-deleted image still appeared in the public gallery."
+    if ($publicImagesAfterAdminDelete.Json.data.Count -ge 1) {
+        Assert-True (@($publicImagesAfterAdminDelete.Json.data | Where-Object { $_.isPrimary -eq $true }).Count -ge 1) "A remaining center gallery did not retain any primary image after deleting the primary image."
+    }
+    $verification.ManagerAnnouncementsMedia = "Verified manager announcement publishing, reachable image upload endpoint, invalid-type and oversized upload rejection, ownership enforcement, primary-image changes, manager deletion, and admin moderation deletion."
 
     $adminCenterRequests = Send-Request -Method "Get" -Path "/api/admin/center-requests" -Token $adminAuth.Token
     $centerRequestItem = @($adminCenterRequests.Json.data | Where-Object { $_.name -eq $centerRequestName -and $_.status -eq "Pending" }) | Select-Object -First 1
@@ -400,14 +527,15 @@ try {
     Assert-True ($publicAnnouncements.StatusCode -eq 200) "Public announcement feed failed."
     Assert-True (@($publicAnnouncements.Json.data | Where-Object { $_.title -eq $announcementTitle }).Count -ge 1) "Published announcement was not visible publicly."
 
-    $publicImages = Send-Request -Method "Get" -Path "/api/centers/$managedCenterId/images"
-    Assert-True ($publicImages.StatusCode -eq 200) "Public center images endpoint failed."
-    Assert-True (@($publicImages.Json.data | Where-Object { [int]$_.id -eq $imageId -and $_.isPrimary -eq $true }).Count -ge 1) "Uploaded primary image was not visible publicly."
+    $publicCenterPage = Send-Request -Method "Get" -Path "/center-details.html?id=$managedCenterId" -Accept "text/html"
+    Assert-True ($publicCenterPage.StatusCode -eq 200) "Public center details page failed."
+    Assert-True ($publicCenterPage.Text.Contains("center-hero-image")) "Public center details page is missing the primary image placeholder."
+    Assert-True ($publicCenterPage.Text.Contains("center-gallery")) "Public center details page is missing the gallery container."
 
     $publicMajalis = Send-Request -Method "Get" -Path "/api/centers/$managedCenterId/majalis"
     Assert-True ($publicMajalis.StatusCode -eq 200) "Public center majalis endpoint failed."
     Assert-True ($publicMajalis.Json.data.Count -ge 1) "Public majalis list returned no data."
-    $verification.PublicContent = "Verified public display of majalis, event announcements, center images, and center detail content."
+    $verification.PublicContent = "Verified public display of majalis, event announcements, center image API output, static image reachability, and center-detail gallery placeholders."
 
     $managerLogout = Send-Request -Method "Post" -Path "/api/auth/logout" -Token $managerAuth.Token -Body @{
         refreshToken = $managerAuth.RefreshToken

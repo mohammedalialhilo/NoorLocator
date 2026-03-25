@@ -6,6 +6,8 @@ namespace NoorLocator.IntegrationTests;
 
 public class WorkflowEndpointsTests
 {
+    private static readonly byte[] ValidPngBytes = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5+9FoAAAAASUVORK5CYII=");
+
     [Fact]
     public async Task UserContributionWorkflow_SubmitsPendingItemsVisibleToAdmin()
     {
@@ -73,42 +75,77 @@ public class WorkflowEndpointsTests
     {
         using var factory = new NoorLocatorWebApplicationFactory();
         using var managerClient = factory.CreateClient();
+        using var publicClient = factory.CreateClient();
 
         var managerAuth = await LoginAsync(managerClient, "manager@test.local", "Manager123!Pass");
         managerClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", managerAuth.Token);
 
         var title = $"Integration Majlis {Guid.NewGuid():N}"[..26];
-        var createResponse = await managerClient.PostAsJsonAsync("/api/majalis", new
-        {
-            title,
-            description = "Majlis lifecycle test.",
-            date = DateTime.UtcNow.Date.AddDays(10),
-            time = "20:15",
-            centerId = 1,
-            languageIds = new[] { 1, 2 }
-        });
+        using var createContent = BuildMajlisContent(
+            title: title,
+            description: "Majlis lifecycle test.",
+            date: DateTime.UtcNow.Date.AddDays(10),
+            time: "20:15",
+            centerId: 1,
+            languageIds: [1, 2],
+            imageBytes: ValidPngBytes,
+            fileName: "majlis-create.png");
+        var createResponse = await managerClient.PostAsync("/api/majalis", createContent);
 
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
 
         var majalisAfterCreate = await ReadEnvelopeAsync<List<MajlisTestDto>>(managerClient, "/api/majalis?centerId=1");
         var createdMajlis = Assert.Single(majalisAfterCreate, majlis => majlis.Title == title);
         Assert.Equal(2, createdMajlis.Languages.Count);
+        Assert.False(string.IsNullOrWhiteSpace(createdMajlis.ImageUrl));
 
-        var updateResponse = await managerClient.PutAsJsonAsync($"/api/majalis/{createdMajlis.Id}", new
-        {
-            title = $"{title} Updated",
-            description = "Updated majlis lifecycle test.",
-            date = DateTime.UtcNow.Date.AddDays(11),
-            time = "21:00",
-            centerId = 1,
-            languageIds = new[] { 2 }
-        });
+        var createdImageResponse = await publicClient.GetAsync(createdMajlis.ImageUrl);
+        Assert.Equal(HttpStatusCode.OK, createdImageResponse.StatusCode);
+        Assert.StartsWith("image/", createdImageResponse.Content.Headers.ContentType?.MediaType);
+
+        var originalImageUrl = createdMajlis.ImageUrl;
+        using var updateContent = BuildMajlisContent(
+            title: $"{title} Updated",
+            description: "Updated majlis lifecycle test.",
+            date: DateTime.UtcNow.Date.AddDays(11),
+            time: "21:00",
+            centerId: 1,
+            languageIds: [2],
+            imageBytes: ValidPngBytes,
+            fileName: "majlis-update.png");
+        var updateResponse = await managerClient.PutAsync($"/api/majalis/{createdMajlis.Id}", updateContent);
         Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
 
         var updatedMajlis = await ReadEnvelopeAsync<MajlisTestDto>(managerClient, $"/api/majalis/{createdMajlis.Id}");
         Assert.Equal($"{title} Updated", updatedMajlis.Title);
         Assert.Single(updatedMajlis.Languages);
         Assert.Equal("English", updatedMajlis.Languages[0].Name);
+        Assert.False(string.IsNullOrWhiteSpace(updatedMajlis.ImageUrl));
+        Assert.NotEqual(originalImageUrl, updatedMajlis.ImageUrl);
+
+        var replacedImageResponse = await publicClient.GetAsync(updatedMajlis.ImageUrl);
+        Assert.Equal(HttpStatusCode.OK, replacedImageResponse.StatusCode);
+        Assert.StartsWith("image/", replacedImageResponse.Content.Headers.ContentType?.MediaType);
+
+        var removedOriginalImageResponse = await publicClient.GetAsync(originalImageUrl);
+        Assert.Equal(HttpStatusCode.NotFound, removedOriginalImageResponse.StatusCode);
+
+        using var removeImageContent = BuildMajlisContent(
+            title: $"{title} Updated",
+            description: "Updated majlis lifecycle test without image.",
+            date: DateTime.UtcNow.Date.AddDays(12),
+            time: "21:30",
+            centerId: 1,
+            languageIds: [2],
+            removeImage: true);
+        var removeImageResponse = await managerClient.PutAsync($"/api/majalis/{createdMajlis.Id}", removeImageContent);
+        Assert.Equal(HttpStatusCode.OK, removeImageResponse.StatusCode);
+
+        var majlisWithoutImage = await ReadEnvelopeAsync<MajlisTestDto>(managerClient, $"/api/majalis/{createdMajlis.Id}");
+        Assert.Null(majlisWithoutImage.ImageUrl);
+
+        var removedReplacementImageResponse = await publicClient.GetAsync(updatedMajlis.ImageUrl);
+        Assert.Equal(HttpStatusCode.NotFound, removedReplacementImageResponse.StatusCode);
 
         var forbiddenCreateResponse = await managerClient.PostAsJsonAsync("/api/majalis", new
         {
@@ -210,6 +247,42 @@ public class WorkflowEndpointsTests
         Assert.NotNull(payload!.Data);
         return payload.Data!;
     }
+
+    private static MultipartFormDataContent BuildMajlisContent(
+        string title,
+        string description,
+        DateTime date,
+        string time,
+        int centerId,
+        IReadOnlyCollection<int> languageIds,
+        byte[]? imageBytes = null,
+        string fileName = "majlis.png",
+        bool removeImage = false)
+    {
+        var content = new MultipartFormDataContent
+        {
+            { new StringContent(title), "Title" },
+            { new StringContent(description), "Description" },
+            { new StringContent(date.ToString("o")), "Date" },
+            { new StringContent(time), "Time" },
+            { new StringContent(centerId.ToString()), "CenterId" },
+            { new StringContent(removeImage ? "true" : "false"), "RemoveImage" }
+        };
+
+        foreach (var languageId in languageIds)
+        {
+            content.Add(new StringContent(languageId.ToString()), "LanguageIds");
+        }
+
+        if (imageBytes is not null)
+        {
+            var imageContent = new ByteArrayContent(imageBytes);
+            imageContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+            content.Add(imageContent, "Image", fileName);
+        }
+
+        return content;
+    }
 }
 
 public sealed class AdminCenterRequestTestDto
@@ -257,6 +330,8 @@ public sealed class MajlisTestDto
     public int Id { get; set; }
 
     public string Title { get; set; } = string.Empty;
+
+    public string? ImageUrl { get; set; }
 
     public List<LanguageTestDto> Languages { get; set; } = [];
 }

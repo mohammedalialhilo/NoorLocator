@@ -45,17 +45,25 @@ window.NoorLocatorConfig = (() => {
 
     function getApiBaseCandidates() {
         const configured = normalizeBaseUrl(document.body?.dataset.apiBaseUrl);
-        const stored = readStoredBaseUrl();
         const sameOrigin = getSameOriginCandidate();
+        const stored = readStoredBaseUrl();
 
         return [
             configured,
-            stored,
             sameOrigin,
+            stored,
+            "http://localhost:8080",
+            "http://127.0.0.1:8080",
+            "http://localhost:5210",
+            "http://127.0.0.1:5210",
+            "http://localhost:5181",
+            "http://127.0.0.1:5181",
             "http://localhost:5141",
             "https://localhost:7132",
             "http://127.0.0.1:5141",
-            "https://127.0.0.1:7132"
+            "https://127.0.0.1:7132",
+            "https://localhost:7284",
+            "https://127.0.0.1:7284"
         ].filter((value, index, values) => value && values.indexOf(value) === index);
     }
 
@@ -88,10 +96,20 @@ window.NoorLocatorConfig = (() => {
         throw lastError ?? new Error("NoorLocator could not reach the API.");
     }
 
+    async function resolveApiBaseUrl() {
+        const fetchResult = await fetchApi("/api/health/ping", {
+            cache: "no-store"
+        });
+
+        rememberApiBaseUrl(fetchResult.baseUrl);
+        return fetchResult.baseUrl;
+    }
+
     return {
         buildApiUrl,
         fetchApi,
         getApiBaseCandidates,
-        rememberApiBaseUrl
+        rememberApiBaseUrl,
+        resolveApiBaseUrl
     };
 })();

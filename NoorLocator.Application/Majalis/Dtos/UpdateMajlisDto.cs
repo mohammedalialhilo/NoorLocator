@@ -22,4 +22,6 @@ public class UpdateMajlisDto
     public int CenterId { get; set; }
 
     public IReadOnlyCollection<int> LanguageIds { get; set; } = Array.Empty<int>();
+
+    public bool RemoveImage { get; set; }
 }

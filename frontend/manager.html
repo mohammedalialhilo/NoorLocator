@@ -89,7 +89,7 @@
                 <article class="panel" id="majlis-editor">
                     <span class="card__meta">Majlis editor</span>
                     <h3 id="majlis-form-heading">Create a new majlis</h3>
-                    <form id="majlis-form" class="form">
+                    <form id="majlis-form" class="form" enctype="multipart/form-data">
                         <input type="hidden" name="majlisId">
 
                         <label class="form__group">
@@ -116,6 +116,21 @@
                             <span class="form__label">Description</span>
                             <textarea class="form__control" name="description" placeholder="Share the majlis details that should appear publicly."></textarea>
                         </label>
+
+                        <div class="filter-grid">
+                            <label class="form__group">
+                                <span class="form__label">Optional image</span>
+                                <input class="form__control" type="file" name="image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                                <span class="form__hint">Add a poster or banner image for this majlis. Accepted formats: JPG, PNG, WEBP. Maximum size: 5MB.</span>
+                            </label>
+                            <div class="form__group form__group--checkbox">
+                                <span class="form__label">Image actions</span>
+                                <label class="checkbox">
+                                    <input type="checkbox" name="removeImage">
+                                    <span>Remove the current image when saving</span>
+                                </label>
+                            </div>
+                        </div>
 
                         <fieldset class="form__group">
                             <legend class="form__label">Languages</legend>
@@ -248,6 +263,7 @@
                             <label class="form__group">
                                 <span class="form__label">Image file</span>
                                 <input class="form__control" type="file" name="image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" required>
+                                <span class="form__hint">Accepted formats: JPG, PNG, WEBP. Maximum size: 5MB.</span>
                             </label>
                             <div class="form__group form__group--checkbox">
                                 <span class="form__label">Gallery options</span>
@@ -259,6 +275,10 @@
                         </div>
 
                         <button class="button button--primary" type="submit">Upload image</button>
+                        <div class="upload-progress" aria-live="polite">
+                            <progress id="center-image-upload-progress" class="upload-progress__bar" max="100" value="0" hidden></progress>
+                            <p id="center-image-upload-progress-meta" class="upload-progress__meta"></p>
+                        </div>
                         <p data-form-message="center-image-upload-form" class="message"></p>
                     </form>
                 </article>

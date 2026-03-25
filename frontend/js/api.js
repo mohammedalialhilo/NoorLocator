@@ -1,4 +1,57 @@
 window.NoorLocatorApi = (() => {
+    function buildNetworkError(message) {
+        return {
+            success: false,
+            message,
+            data: null,
+            errors: [],
+            traceId: "",
+            status: 0
+        };
+    }
+
+    function defaultNetworkMessage() {
+        return "NoorLocator could not reach the API. Check that the backend is running and try again.";
+    }
+
+    function parsePayloadFromText(responseLike, responseText) {
+        const contentType = responseLike.headers?.get?.("content-type")
+            || responseLike.getResponseHeader?.("content-type")
+            || "";
+
+        if (!responseText || !contentType.includes("application/json")) {
+            return null;
+        }
+
+        try {
+            return JSON.parse(responseText);
+        } catch {
+            return null;
+        }
+    }
+
+    function normalizeResponse(responseLike, payload) {
+        const status = Number(responseLike.status || 0);
+        const ok = "ok" in responseLike ? Boolean(responseLike.ok) : status >= 200 && status < 300;
+
+        return {
+            success: payload?.success ?? ok,
+            message: payload?.message ?? defaultStatusMessage(responseLike),
+            data: payload?.data ?? null,
+            errors: payload?.data?.errors ?? [],
+            traceId: payload?.data?.traceId ?? "",
+            status
+        };
+    }
+
+    function handleUnauthorized(path, status, token) {
+        if (status !== 401 || !token || path.startsWith("/api/auth/login") || path.startsWith("/api/auth/register") || path.startsWith("/api/auth/logout")) {
+            return;
+        }
+
+        window.NoorLocatorAuth?.handleUnauthorized?.();
+    }
+
     async function request(path, options = {}) {
         const headers = new Headers(options.headers || {});
         const token = window.NoorLocatorAuth?.getToken?.();
@@ -19,29 +72,14 @@ window.NoorLocatorApi = (() => {
                 headers
             });
         } catch {
-            throw {
-                success: false,
-                message: "NoorLocator could not reach the API. Check that the backend is running and try again.",
-                data: null,
-                status: 0
-            };
+            throw buildNetworkError(defaultNetworkMessage());
         }
 
         const response = fetchResult.response;
-        const contentType = response.headers.get("content-type") || "";
-        const payload = contentType.includes("application/json") ? await response.json() : null;
-        const normalized = {
-            success: payload?.success ?? response.ok,
-            message: payload?.message ?? defaultStatusMessage(response),
-            data: payload?.data ?? null,
-            errors: payload?.data?.errors ?? [],
-            traceId: payload?.data?.traceId ?? "",
-            status: response.status
-        };
+        const payload = parsePayloadFromText(response, await response.text());
+        const normalized = normalizeResponse(response, payload);
 
-        if (response.status === 401 && token && !path.startsWith("/api/auth/login") && !path.startsWith("/api/auth/register") && !path.startsWith("/api/auth/logout")) {
-            window.NoorLocatorAuth?.handleUnauthorized?.();
-        }
+        handleUnauthorized(path, response.status, token);
 
         if (!response.ok) {
             throw normalized;
@@ -50,24 +88,64 @@ window.NoorLocatorApi = (() => {
         return normalized;
     }
 
+    async function uploadRequest(path, formData, options = {}) {
+        const headers = new Headers(options.headers || {});
+        const token = window.NoorLocatorAuth?.getToken?.();
+
+        if (token && !headers.has("Authorization")) {
+            headers.set("Authorization", `Bearer ${token}`);
+        }
+
+        options.onProgress?.(null);
+
+        let fetchResult;
+
+        try {
+            fetchResult = await window.NoorLocatorConfig.fetchApi(path, {
+                method: options.method || "POST",
+                body: formData,
+                headers,
+                cache: "no-store"
+            });
+        } catch {
+            throw buildNetworkError("NoorLocator could not reach the upload API. Check the API URL, backend status, and browser network access, then try again.");
+        }
+
+        const response = fetchResult.response;
+        const payload = parsePayloadFromText(response, await response.text());
+        const normalized = normalizeResponse(response, payload);
+
+        handleUnauthorized(path, response.status, token);
+
+        if (!response.ok) {
+            throw normalized;
+        }
+
+        options.onProgress?.(100);
+        return normalized;
+    }
+
     function defaultStatusMessage(response) {
-        if (response.ok) {
+        const status = Number(response.status || 0);
+        const ok = "ok" in response ? Boolean(response.ok) : status >= 200 && status < 300;
+
+        if (ok) {
             return "Request completed.";
         }
 
-        if (response.status === 401) {
+        if (status === 401) {
             return "Your session is no longer valid. Please sign in again.";
         }
 
-        if (response.status === 403) {
+        if (status === 403) {
             return "You do not have permission to perform this action.";
         }
 
-        if (response.status >= 500) {
+        if (status >= 500) {
             return "NoorLocator hit a server error while processing the request.";
         }
 
-        return `Request failed with status ${response.status}.`;
+        return `Request failed with status ${status}.`;
     }
 
     function toQueryString(params) {
@@ -141,11 +219,8 @@ window.NoorLocatorApi = (() => {
                 method: "DELETE"
             });
         },
-        uploadCenterImage(payload) {
-            return request("/api/center-images/upload", {
-                method: "POST",
-                body: payload
-            });
+        uploadCenterImage(payload, options = {}) {
+            return uploadRequest("/api/center-images/upload", payload, options);
         },
         deleteCenterImage(id) {
             return request(`/api/center-images/${id}`, {
@@ -270,13 +345,13 @@ window.NoorLocatorApi = (() => {
         createMajlis(payload) {
             return request("/api/majalis", {
                 method: "POST",
-                body: JSON.stringify(payload)
+                body: payload instanceof FormData ? payload : JSON.stringify(payload)
             });
         },
         updateMajlis(id, payload) {
             return request(`/api/majalis/${id}`, {
                 method: "PUT",
-                body: JSON.stringify(payload)
+                body: payload instanceof FormData ? payload : JSON.stringify(payload)
             });
         },
         deleteMajlis(id) {

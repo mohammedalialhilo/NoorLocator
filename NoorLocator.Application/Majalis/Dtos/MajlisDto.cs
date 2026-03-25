@@ -10,6 +10,8 @@ public class MajlisDto
 
     public string Description { get; set; } = string.Empty;
 
+    public string? ImageUrl { get; set; }
+
     public DateTime Date { get; set; }
 
     public string Time { get; set; } = string.Empty;

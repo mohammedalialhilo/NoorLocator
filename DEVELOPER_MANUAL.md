@@ -165,7 +165,7 @@ Primary entities:
 - can approve or reject moderated requests
 - can review suggestions
 - can manage centers and view audit logs
-- can override-delete manager content for platform safety
+- can override-delete manager content for platform safety, including center images
 
 ## 7. Full API Documentation
 
@@ -253,17 +253,22 @@ Swagger is the live reference for DTO shapes and status codes.
 - Managers can only manage content for assigned centers.
 - Event announcements do not require admin approval once created by an authorized manager.
 - Only one primary image is allowed per center.
+- Deleting a primary center image promotes the most recent remaining image when one exists.
 - Admin actions write audit log entries.
 
 ## 9. Media Handling
 
-- Development storage uses `frontend/uploads`
+- Development storage uses `frontend/uploads`, with center gallery images stored under `frontend/uploads/center-images`
 - `IMediaStorageService` is the abstraction point for Azure Blob Storage, S3, or another provider
 - only URLs are stored in the database
-- file types are validated server-side
+- `POST /api/center-images/upload` accepts `multipart/form-data`
+- file presence, extension, size, and signature are validated server-side
 - file signatures are checked, not MIME type alone
 - file names are generated securely
 - upload size is capped by configuration
+- uploaded images are linked to both `CenterId` and `UploadedByManagerId`
+- managers may upload only for assigned centers, while admins may still delete images for moderation and safety
+- public center details pages show the primary image in the hero area and the remaining gallery images in the gallery section
 
 ## 10. Frontend Responsibilities
 
@@ -273,6 +278,8 @@ Swagger is the live reference for DTO shapes and status codes.
 - render role-aware navigation
 - verify protected pages before rendering them
 - clear auth state on logout
+- upload manager center images through the shared multipart upload helper in `frontend/js/api.js`
+- show upload progress, gallery refreshes, and clear validation errors for image uploads
 - show loading states, empty states, and friendly errors
 - never act as the source of truth for security
 
@@ -355,7 +362,7 @@ Swagger is the live reference for DTO shapes and status codes.
 
 - `dotnet build NoorLocator.sln`
 - `dotnet test NoorLocator.sln`
-- current result during the Phase 10 pass: `23/23` tests passing
+- current result during the Phase 11 pass: `31/31` tests passing
 
 ### Live Runtime Verification
 
@@ -374,22 +381,26 @@ Swagger is the live reference for DTO shapes and status codes.
   - manager request submission
   - manager majlis create, update, delete
   - manager announcement creation
-  - manager image upload and primary image selection
+  - manager image upload reachability
+  - invalid image type and oversized upload rejection
+  - manager-center ownership enforcement for uploads
+  - primary image selection plus manager and admin image deletion
+  - static uploaded image reachability
   - admin approvals and suggestion review
   - public visibility of published content
   - About content API and public pages
 - additional browser verification was performed against the live app in headless Edge to confirm:
-  - logout buttons render in the navbar and on dashboard, manager, and admin pages
-  - navbar state switches immediately after logout
-  - auth storage stays cleared after page refresh
-  - browser back navigation does not restore authenticated workspace access
-  - direct navigation back to manager and admin pages after logout redirects to login
+  - manager and admin login API calls succeed before protected browser workflows are exercised
+  - the manager gallery UI shows clear errors for invalid file types and oversized images
+  - valid manager uploads complete without the old API-reachability failure and refresh the gallery
+  - the public center details page renders a hero image and gallery from uploaded media
+  - the admin image moderation section can load and delete gallery items successfully
 
 Future developers should rerun:
 
 ```powershell
 dotnet test NoorLocator.sln
-powershell -ExecutionPolicy Bypass -File .\scripts\verify-e2e.ps1 -StartApp -ConnectionString "Server=127.0.0.1;Port=3306;Database=Noorlocator;User=...;Password=...;"
+powershell -ExecutionPolicy Bypass -File .\scripts\verify-e2e.ps1 -StartApp -BaseUrl http://127.0.0.1:5210 -ConnectionString "Server=127.0.0.1;Port=3306;Database=Noorlocator;User=...;Password=...;"
 ```
 
 ## 15. Attribution
