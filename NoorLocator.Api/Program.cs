@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -70,6 +71,10 @@ var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<
 var jwtKey = ResolveJwtKey(builder.Environment, jwtSettings.Key);
 var configuredFrontendSettings = builder.Configuration.GetSection(FrontendSettings.SectionName).Get<FrontendSettings>() ?? new FrontendSettings();
 var mediaStorageSettings = builder.Configuration.GetSection(MediaStorageSettings.SectionName).Get<MediaStorageSettings>() ?? new MediaStorageSettings();
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = ResolveMultipartBodyLengthLimit(mediaStorageSettings.MaxImageSizeBytes);
+});
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -366,6 +371,14 @@ static string ResolveJwtKey(IHostEnvironment environment, string? configuredKey)
     }
 
     return key.Length >= 32 ? key : key.PadRight(32, '_');
+}
+
+static long ResolveMultipartBodyLengthLimit(int maxImageSizeBytes)
+{
+    const long minimumLimit = 6L * 1024L * 1024L;
+    const long multipartOverheadBytes = 1024L * 1024L;
+
+    return Math.Max(minimumLimit, maxImageSizeBytes + multipartOverheadBytes);
 }
 
 public partial class Program;

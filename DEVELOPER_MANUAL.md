@@ -286,17 +286,25 @@ Swagger is the live reference for DTO shapes and status codes.
 
 ## 9. Media Handling
 
-- Development storage uses `frontend/uploads`, with center gallery images stored under `frontend/uploads/center-images`
-- `IMediaStorageService` is the abstraction point for Azure Blob Storage, S3, or another provider
+- Local development storage is provider-based and defaults to `MediaStorage:RelativeRootPath`, with center gallery images stored under the `center-images` category
+- `IMediaStorageService` is the abstraction point used by center images, majalis images, and event-announcement images
+- `LocalMediaStorageService` stores validated image bytes on disk and returns an application-served `/uploads/...` URL
+- `AzureBlobStorageService` uploads validated image bytes to Azure Blob Storage and returns a direct blob URL or configured public base URL
+- configured local storage roots are created automatically, including nested relative paths such as `.codex-temp/uploads-live-local`
 - only URLs are stored in the database
 - `POST /api/center-images/upload` accepts `multipart/form-data`
 - file presence, extension, size, and signature are validated server-side
 - file signatures are checked, not MIME type alone
-- file names are generated securely
-- upload size is capped by configuration
+- file names are generated securely through a shared safe-name helper
+- upload size is capped by configuration, and multipart form limits are derived from the same storage settings so the request-size limit does not drift from the validation limit
 - uploaded images are linked to both `CenterId` and `UploadedByManagerId`
 - managers may upload only for assigned centers, while admins may still delete images for moderation and safety
 - public center details pages show the primary image in the hero area and the remaining gallery images in the gallery section
+- NoorLocator uses the simpler public-read model for center images in Azure:
+  - keep the target blob container publicly readable at the blob level
+  - if the app creates the container for you, set `AzureBlobStorage__CreateContainerIfMissing=true` and keep `AzureBlobStorage__UseBlobPublicAccess=true`
+  - if you set `AzureBlobStorage__PublicBaseUrl`, point it at the public container root or CDN origin for that container
+- signed URLs are not part of the current production design because public center images need stable browser-reachable URLs
 
 ## 10. Frontend Responsibilities
 
@@ -423,7 +431,7 @@ Swagger is the live reference for DTO shapes and status codes.
 
 - `dotnet build NoorLocator.sln`
 - `dotnet test NoorLocator.sln`
-- current result during the Deployment Phase D3 pass: `44/44` tests passing
+- current result during the Deployment Phase D4 pass: `47/47` tests passing
 
 ### Live Runtime Verification
 
@@ -432,6 +440,12 @@ Swagger is the live reference for DTO shapes and status codes.
 - `powershell -ExecutionPolicy Bypass -File .\scripts\apply-db-migrations.ps1 -EnvironmentName Production -ConnectionString "Server=...;Database=...;User=...;Password=...;"` was executed against a second fresh scratch MySQL database
 - `powershell -ExecutionPolicy Bypass -File .\scripts\generate-db-migration-script.ps1 -EnvironmentName Production -OutputPath .\artifacts\noorlocator-mysql-idempotent.sql` generated an idempotent SQL migration script
 - a production-style API run using `MYSQLCONNSTR_DefaultConnection` booted successfully after migrations and seeded reference data, bootstrap admin data, and optional demo data by configuration
+- a live API run using local storage uploaded a manager center image successfully, returned an `/uploads/center-images/...` URL, and served that image back publicly
+- the Azure Blob provider path was verified through automated endpoint tests against a local fake blob endpoint:
+  - manager upload returned a blob-backed public URL
+  - the uploaded bytes were publicly reachable from that returned URL
+  - invalid uploads were rejected before any blob write was attempted
+  - deleting the image removed the backing blob
 - verified flows:
   - registration
   - login

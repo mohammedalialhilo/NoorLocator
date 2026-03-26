@@ -37,7 +37,10 @@
 - [ ] `AzureBlobStorage__ConnectionString`
 - [ ] or `AzureBlobStorage__ServiceUri` plus App Service managed identity
 - [ ] If using a user-assigned identity, set `AzureBlobStorage__ManagedIdentityClientId`
-- [ ] If image URLs should use a custom public endpoint, set `AzureBlobStorage__PublicBaseUrl`
+- [ ] Keep the NoorLocator image container publicly readable at the blob level because the app stores direct browser-facing image URLs
+- [ ] If the app should create the container, set `AzureBlobStorage__CreateContainerIfMissing=true`
+- [ ] If the app creates the container, keep `AzureBlobStorage__UseBlobPublicAccess=true` so new containers are created with blob-level anonymous read
+- [ ] If image URLs should use a custom public endpoint, set `AzureBlobStorage__PublicBaseUrl` to the public container root or CDN origin for that container
 - [ ] Decide whether the app may auto-create the container with `AzureBlobStorage__CreateContainerIfMissing`
 - [ ] Ensure uploaded image URLs are browser-reachable in the final production design
 
@@ -81,4 +84,5 @@
 - [ ] `POST /api/auth/login` succeeds for the bootstrap admin account if first-run admin seeding was enabled
 - [ ] Cross-origin requests from the production frontend origin receive the expected CORS headers
 - [ ] Uploads succeed with the configured storage provider
+- [ ] Manager image uploads return the expected local `/uploads/...` URL or blob/CDN URL for the active provider
 - [ ] Uploaded images render correctly in public pages

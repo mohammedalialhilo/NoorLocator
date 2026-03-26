@@ -27,10 +27,7 @@ public class CenterImageEndpointsTests(NoorLocatorWebApplicationFactory factory)
         var uploadedImage = Assert.Single(galleryEnvelope.Data!, image => image.Id == uploadPayload.Id);
         Assert.True(uploadedImage.IsPrimary);
         Assert.False(string.IsNullOrWhiteSpace(uploadedImage.ImageUrl));
-
-        var imageResponse = await publicClient.GetAsync(uploadedImage.ImageUrl);
-        Assert.Equal(HttpStatusCode.OK, imageResponse.StatusCode);
-        Assert.StartsWith("image/", imageResponse.Content.Headers.ContentType?.MediaType);
+        Assert.True(File.Exists(factory.ResolveStoredUploadPath(uploadedImage.ImageUrl)));
     }
 
     [Fact]

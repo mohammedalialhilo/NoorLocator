@@ -19,8 +19,6 @@ public class MajalisController(
     IValidator<CreateMajlisDto> createMajlisValidator,
     IValidator<UpdateMajlisDto> updateMajlisValidator) : ControllerBase
 {
-    private const int MaxUploadBytes = 6 * 1024 * 1024;
-
     /// <summary>
     /// Returns public majalis, optionally filtered to a specific center.
     /// </summary>
@@ -65,8 +63,6 @@ public class MajalisController(
     [Authorize(Policy = "ManagerArea")]
     [HttpPost]
     [Consumes("multipart/form-data")]
-    [RequestFormLimits(MultipartBodyLengthLimit = MaxUploadBytes)]
-    [RequestSizeLimit(MaxUploadBytes)]
     public async Task<ActionResult<ApiResponse<object?>>> CreateForm([FromForm] CreateMajlisFormModel request, CancellationToken cancellationToken)
     {
         var payload = new CreateMajlisDto
@@ -100,8 +96,6 @@ public class MajalisController(
     [Authorize(Policy = "ManagerArea")]
     [HttpPut("{id:int}")]
     [Consumes("multipart/form-data")]
-    [RequestFormLimits(MultipartBodyLengthLimit = MaxUploadBytes)]
-    [RequestSizeLimit(MaxUploadBytes)]
     public async Task<ActionResult<ApiResponse<object?>>> UpdateForm(int id, [FromForm] UpdateMajlisFormModel request, CancellationToken cancellationToken)
     {
         var payload = new UpdateMajlisDto

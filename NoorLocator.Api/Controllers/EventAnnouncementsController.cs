@@ -19,8 +19,6 @@ public class EventAnnouncementsController(
     IValidator<CreateEventAnnouncementDto> createAnnouncementValidator,
     IValidator<UpdateEventAnnouncementDto> updateAnnouncementValidator) : ControllerBase
 {
-    private const int MaxUploadBytes = 6 * 1024 * 1024;
-
     /// <summary>
     /// Returns event announcements for a center.
     /// Public callers see published announcements only, while authorized managers can also see drafts and archived items for their assigned centers.
@@ -56,8 +54,6 @@ public class EventAnnouncementsController(
     [Authorize(Policy = "ManagerArea")]
     [HttpPost]
     [Consumes("multipart/form-data")]
-    [RequestFormLimits(MultipartBodyLengthLimit = MaxUploadBytes)]
-    [RequestSizeLimit(MaxUploadBytes)]
     public async Task<ActionResult<ApiResponse<EventAnnouncementDto>>> Create([FromForm] CreateEventAnnouncementFormModel request, CancellationToken cancellationToken)
     {
         var payload = new CreateEventAnnouncementDto
@@ -85,8 +81,6 @@ public class EventAnnouncementsController(
     [Authorize(Policy = "ManagerArea")]
     [HttpPut("{id:int}")]
     [Consumes("multipart/form-data")]
-    [RequestFormLimits(MultipartBodyLengthLimit = MaxUploadBytes)]
-    [RequestSizeLimit(MaxUploadBytes)]
     public async Task<ActionResult<ApiResponse<EventAnnouncementDto>>> Update(int id, [FromForm] UpdateEventAnnouncementFormModel request, CancellationToken cancellationToken)
     {
         var payload = new UpdateEventAnnouncementDto

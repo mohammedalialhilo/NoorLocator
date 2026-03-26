@@ -103,6 +103,45 @@ public class LocalMediaStorageServiceTests : IDisposable
         Assert.False(File.Exists(fullFilePath));
     }
 
+    [Fact]
+    public async Task SaveImageAsync_CreatesConfiguredNestedRelativeRootPath()
+    {
+        Directory.CreateDirectory(tempRootPath);
+        var nestedRelativePath = Path.Combine(".codex-temp", "local-media-tests");
+        var service = new LocalMediaStorageService(
+            new TestHostEnvironment
+            {
+                ApplicationName = "NoorLocator.UnitTests",
+                ContentRootPath = tempRootPath,
+                ContentRootFileProvider = new PhysicalFileProvider(tempRootPath),
+                EnvironmentName = "Testing"
+            },
+            Options.Create(new MediaStorageSettings
+            {
+                PublicBasePath = "/uploads",
+                RelativeRootPath = nestedRelativePath,
+                MaxImageSizeBytes = 5 * 1024 * 1024
+            }));
+
+        var result = await service.SaveImageAsync(new UploadFilePayload
+        {
+            FileName = "center.png",
+            ContentType = "image/png",
+            Content = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO5+9FoAAAAASUVORK5CYII=")
+        }, "center-images");
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Data);
+
+        var expectedFilePath = Path.Combine(
+            tempRootPath,
+            nestedRelativePath,
+            "center-images",
+            Path.GetFileName(result.Data!.PublicUrl));
+
+        Assert.True(File.Exists(expectedFilePath));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(tempRootPath))

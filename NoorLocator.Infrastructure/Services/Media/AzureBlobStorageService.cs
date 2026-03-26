@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using Azure.Identity;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -26,9 +25,10 @@ public class AzureBlobStorageService(
             return OperationResult<StoredMediaFile>.Failure(validation.Message, validation.StatusCode);
         }
 
-        var extension = Path.GetExtension(file.FileName)?.Trim().ToLowerInvariant() ?? string.Empty;
-        var safeFileName = $"{DateTime.UtcNow:yyyyMMddHHmmss}-{RandomNumberGenerator.GetHexString(20).ToLowerInvariant()}{extension}";
-        var blobName = $"{category.Trim('/')}/{safeFileName}";
+        var normalizedCategory = MediaStorageFileNameGenerator.NormalizeCategory(category);
+        var safeFileName = MediaStorageFileNameGenerator.GenerateSafeImageFileName(file.FileName);
+        var blobName = $"{normalizedCategory}/{safeFileName}";
+        var extension = Path.GetExtension(safeFileName)?.Trim().ToLowerInvariant() ?? string.Empty;
 
         var containerClient = await GetContainerClientAsync(cancellationToken);
         var blobClient = containerClient.GetBlobClient(blobName);
@@ -76,7 +76,9 @@ public class AzureBlobStorageService(
         var containerClient = GetContainerClient();
         if (azureBlobStorageSettings.CreateContainerIfMissing)
         {
-            await containerClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken);
+            await containerClient.CreateIfNotExistsAsync(
+                publicAccessType: azureBlobStorageSettings.UseBlobPublicAccess ? PublicAccessType.Blob : PublicAccessType.None,
+                cancellationToken: cancellationToken);
         }
 
         return containerClient;

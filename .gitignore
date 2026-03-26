@@ -8,3 +8,7 @@ obj/
 *.cache
 frontend/uploads/*
 !frontend/uploads/.gitkeep
+NoorLocator.Api/uploads/*
+!NoorLocator.Api/uploads/.gitkeep
+artifacts/
+.codex-temp/

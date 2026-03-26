@@ -21,17 +21,15 @@ public static class MediaStoragePathResolver
                 ? Path.GetFullPath(candidate)
                 : Path.GetFullPath(Path.Combine(hostEnvironment.ContentRootPath, candidate!));
 
-            var parentDirectory = Directory.Exists(fullPath)
-                ? fullPath
-                : Path.GetDirectoryName(fullPath);
-
-            if (string.IsNullOrWhiteSpace(parentDirectory) || !Directory.Exists(parentDirectory))
+            try
+            {
+                Directory.CreateDirectory(fullPath);
+                return fullPath;
+            }
+            catch (Exception)
             {
                 continue;
             }
-
-            Directory.CreateDirectory(fullPath);
-            return fullPath;
         }
 
         var fallback = Path.GetFullPath(Path.Combine(hostEnvironment.ContentRootPath, "uploads"));

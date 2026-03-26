@@ -15,14 +15,16 @@ namespace NoorLocator.IntegrationTests;
 public class NoorLocatorWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly string databaseName = $"NoorLocatorTests-{Guid.NewGuid():N}";
-    private readonly string uploadRootPath = Path.Combine(Path.GetTempPath(), "NoorLocatorTests", "uploads", Guid.NewGuid().ToString("N"));
+    private readonly string uploadRootPath = Path.Combine(".codex-temp", "integration-uploads", Guid.NewGuid().ToString("N"));
+    private string? resolvedUploadRootPath;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
 
-        builder.ConfigureAppConfiguration((_, configurationBuilder) =>
+        builder.ConfigureAppConfiguration((context, configurationBuilder) =>
         {
+            resolvedUploadRootPath = Path.GetFullPath(Path.Combine(context.HostingEnvironment.ContentRootPath, uploadRootPath));
             configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["MediaStorage:RelativeRootPath"] = uploadRootPath
@@ -200,14 +202,31 @@ public class NoorLocatorWebApplicationFactory : WebApplicationFactory<Program>
 
         try
         {
-            if (Directory.Exists(uploadRootPath))
+            if (!string.IsNullOrWhiteSpace(resolvedUploadRootPath) && Directory.Exists(resolvedUploadRootPath))
             {
-                Directory.Delete(uploadRootPath, recursive: true);
+                Directory.Delete(resolvedUploadRootPath, recursive: true);
             }
         }
         catch
         {
             // Ignore upload cleanup failures in test teardown.
         }
+    }
+
+    internal string ResolveStoredUploadPath(string publicUrl)
+    {
+        if (string.IsNullOrWhiteSpace(resolvedUploadRootPath))
+        {
+            throw new InvalidOperationException("The integration upload root path has not been resolved.");
+        }
+
+        const string publicBasePath = "/uploads/";
+        if (!publicUrl.StartsWith(publicBasePath, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"The public URL '{publicUrl}' does not use the expected local uploads base path.");
+        }
+
+        var relativePath = publicUrl[publicBasePath.Length..].Replace('/', Path.DirectorySeparatorChar);
+        return Path.Combine(resolvedUploadRootPath, relativePath);
     }
 }

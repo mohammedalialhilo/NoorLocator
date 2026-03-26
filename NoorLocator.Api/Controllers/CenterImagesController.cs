@@ -18,16 +18,12 @@ public class CenterImagesController(
     ICenterImageService centerImageService,
     IValidator<UploadCenterImageDto> uploadCenterImageValidator) : ControllerBase
 {
-    private const int MaxUploadBytes = 6 * 1024 * 1024;
-
     /// <summary>
     /// Uploads a center image for an assigned center.
     /// </summary>
     [Authorize(Policy = "ManagerArea")]
     [HttpPost("upload")]
     [Consumes("multipart/form-data")]
-    [RequestFormLimits(MultipartBodyLengthLimit = MaxUploadBytes)]
-    [RequestSizeLimit(MaxUploadBytes)]
     public async Task<ActionResult<ApiResponse<CenterImageDto>>> Upload([FromForm] UploadCenterImageFormModel request, CancellationToken cancellationToken)
     {
         var payload = new UploadCenterImageDto

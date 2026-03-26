@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NoorLocator.Application.Common.Configuration;
@@ -23,14 +22,15 @@ public class LocalMediaStorageService(
             return OperationResult<StoredMediaFile>.Failure(validation.Message, validation.StatusCode);
         }
 
-        var extension = Path.GetExtension(file.FileName)?.Trim().ToLowerInvariant() ?? string.Empty;
+        var normalizedCategory = MediaStorageFileNameGenerator.NormalizeCategory(category);
+        var safeFileName = MediaStorageFileNameGenerator.GenerateSafeImageFileName(file.FileName);
 
         var rootPath = ResolveStorageRootPath();
-        var categoryFolder = Path.Combine(rootPath, category);
+        var categoryFolder = Path.Combine(rootPath, normalizedCategory.Replace('/', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(categoryFolder);
 
-        var safeFileName = $"{DateTime.UtcNow:yyyyMMddHHmmss}-{RandomNumberGenerator.GetHexString(20).ToLowerInvariant()}{extension}";
         var filePath = Path.Combine(categoryFolder, safeFileName);
+        var extension = Path.GetExtension(safeFileName)?.Trim().ToLowerInvariant() ?? string.Empty;
 
         await File.WriteAllBytesAsync(filePath, file.Content, cancellationToken);
 
@@ -38,7 +38,7 @@ public class LocalMediaStorageService(
         return OperationResult<StoredMediaFile>.Success(
             new StoredMediaFile
             {
-                PublicUrl = $"{normalizedBasePath}/{category}/{safeFileName}",
+                PublicUrl = $"{normalizedBasePath}/{normalizedCategory}/{safeFileName}",
                 ContentType = MediaImageValidation.GetContentType(extension),
                 SizeBytes = file.Content.LongLength
             },

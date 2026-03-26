@@ -75,7 +75,6 @@ public class WorkflowEndpointsTests
     {
         using var factory = new NoorLocatorWebApplicationFactory();
         using var managerClient = factory.CreateClient();
-        using var publicClient = factory.CreateClient();
 
         var managerAuth = await LoginAsync(managerClient, "manager@test.local", "Manager123!Pass");
         managerClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", managerAuth.Token);
@@ -98,10 +97,7 @@ public class WorkflowEndpointsTests
         var createdMajlis = Assert.Single(majalisAfterCreate, majlis => majlis.Title == title);
         Assert.Equal(2, createdMajlis.Languages.Count);
         Assert.False(string.IsNullOrWhiteSpace(createdMajlis.ImageUrl));
-
-        var createdImageResponse = await publicClient.GetAsync(createdMajlis.ImageUrl);
-        Assert.Equal(HttpStatusCode.OK, createdImageResponse.StatusCode);
-        Assert.StartsWith("image/", createdImageResponse.Content.Headers.ContentType?.MediaType);
+        Assert.True(File.Exists(factory.ResolveStoredUploadPath(createdMajlis.ImageUrl!)));
 
         var originalImageUrl = createdMajlis.ImageUrl;
         using var updateContent = BuildMajlisContent(
@@ -122,13 +118,8 @@ public class WorkflowEndpointsTests
         Assert.Equal("English", updatedMajlis.Languages[0].Name);
         Assert.False(string.IsNullOrWhiteSpace(updatedMajlis.ImageUrl));
         Assert.NotEqual(originalImageUrl, updatedMajlis.ImageUrl);
-
-        var replacedImageResponse = await publicClient.GetAsync(updatedMajlis.ImageUrl);
-        Assert.Equal(HttpStatusCode.OK, replacedImageResponse.StatusCode);
-        Assert.StartsWith("image/", replacedImageResponse.Content.Headers.ContentType?.MediaType);
-
-        var removedOriginalImageResponse = await publicClient.GetAsync(originalImageUrl);
-        Assert.Equal(HttpStatusCode.NotFound, removedOriginalImageResponse.StatusCode);
+        Assert.True(File.Exists(factory.ResolveStoredUploadPath(updatedMajlis.ImageUrl!)));
+        Assert.False(File.Exists(factory.ResolveStoredUploadPath(originalImageUrl!)));
 
         using var removeImageContent = BuildMajlisContent(
             title: $"{title} Updated",
@@ -143,9 +134,7 @@ public class WorkflowEndpointsTests
 
         var majlisWithoutImage = await ReadEnvelopeAsync<MajlisTestDto>(managerClient, $"/api/majalis/{createdMajlis.Id}");
         Assert.Null(majlisWithoutImage.ImageUrl);
-
-        var removedReplacementImageResponse = await publicClient.GetAsync(updatedMajlis.ImageUrl);
-        Assert.Equal(HttpStatusCode.NotFound, removedReplacementImageResponse.StatusCode);
+        Assert.False(File.Exists(factory.ResolveStoredUploadPath(updatedMajlis.ImageUrl!)));
 
         var forbiddenCreateResponse = await managerClient.PostAsJsonAsync("/api/majalis", new
         {

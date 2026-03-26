@@ -21,7 +21,7 @@ public static class MediaImageValidation
 
         if (file.Content.Length > maxImageSizeBytes)
         {
-            return OperationResult<object?>.Failure("Image files must be 5MB or smaller.", 400);
+            return OperationResult<object?>.Failure($"Image files must be {FormatMegabytes(maxImageSizeBytes)}MB or smaller.", 400);
         }
 
         var extension = Path.GetExtension(file.FileName)?.Trim().ToLowerInvariant() ?? string.Empty;
@@ -77,5 +77,11 @@ public static class MediaImageValidation
                        content[11] == (byte)'P',
             _ => false
         };
+    }
+
+    private static string FormatMegabytes(int maxImageSizeBytes)
+    {
+        var megabytes = maxImageSizeBytes / (1024d * 1024d);
+        return megabytes.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
     }
 }

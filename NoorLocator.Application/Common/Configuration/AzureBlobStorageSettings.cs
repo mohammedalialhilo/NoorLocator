@@ -16,5 +16,7 @@ public class AzureBlobStorageSettings
 
     public bool CreateContainerIfMissing { get; set; }
 
+    public bool UseBlobPublicAccess { get; set; } = true;
+
     public string ManagedIdentityClientId { get; set; } = string.Empty;
 }

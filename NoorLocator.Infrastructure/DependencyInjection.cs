@@ -131,6 +131,12 @@ public static class DependencyInjection
             throw new InvalidOperationException("AzureBlobStorage:ContainerName must be configured when MediaStorage:Provider is AzureBlob.");
         }
 
+        if (!string.IsNullOrWhiteSpace(settings.PublicBaseUrl) &&
+            !Uri.TryCreate(settings.PublicBaseUrl, UriKind.Absolute, out _))
+        {
+            throw new InvalidOperationException("AzureBlobStorage:PublicBaseUrl must be an absolute URI when configured.");
+        }
+
         var hasConnectionString = !string.IsNullOrWhiteSpace(settings.ConnectionString);
         var hasServiceUri = !string.IsNullOrWhiteSpace(settings.ServiceUri);
         var hasAccountName = !string.IsNullOrWhiteSpace(settings.AccountName);
