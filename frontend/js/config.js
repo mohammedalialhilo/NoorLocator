@@ -60,7 +60,15 @@ window.NoorLocatorConfig = (() => {
         return `${normalizeBaseUrl(baseUrl)}${path}`;
     }
 
-    function shouldTryNextBase(response, contentType) {
+    function isApiPath(path) {
+        return typeof path === "string" && path.startsWith("/api/");
+    }
+
+    function shouldTryNextBase(path, response, contentType) {
+        if (isApiPath(path) && response.ok && !contentType.includes("application/json")) {
+            return true;
+        }
+
         return response.status === 404 && !contentType.includes("application/json");
     }
 
@@ -73,7 +81,7 @@ window.NoorLocatorConfig = (() => {
                 const response = await fetch(buildApiUrl(baseUrl, path), options);
                 const contentType = response.headers.get("content-type") || "";
 
-                if (response.ok || !shouldTryNextBase(response, contentType)) {
+                if (response.ok || !shouldTryNextBase(path, response, contentType)) {
                     rememberApiBaseUrl(baseUrl);
                     return { response, baseUrl, contentType };
                 }

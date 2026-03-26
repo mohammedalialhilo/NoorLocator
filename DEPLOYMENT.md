@@ -44,7 +44,9 @@ Swagger__Enabled
 ## Frontend API Base URL
 
 - When NoorLocator serves the frontend itself, the frontend uses same-origin by default
-- When the frontend is hosted separately, set `window.NoorLocatorRuntimeConfig.apiBaseUrl` in `frontend/js/runtime-config.js`
+- In the current production design, keep the frontend bundled with the ASP.NET app instead of deploying a separate static site
+- If you set `Frontend__ApiBaseUrl`, use the app origin/app root without `/api`
+- When the frontend is hosted separately in a future phase, set `window.NoorLocatorRuntimeConfig.apiBaseUrl` to the API origin/app root without `/api`
 - The frontend no longer contains hardcoded localhost API URLs
 
 ## Container Setup

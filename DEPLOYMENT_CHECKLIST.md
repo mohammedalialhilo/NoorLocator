@@ -18,8 +18,17 @@
 - [ ] Confirm the publish output exists at `.\artifacts\publish\api`
 - [ ] Confirm the deployment ZIP exists at `.\artifacts\packages\noorlocator-api-appservice.zip`
 - [ ] Confirm the publish output does not contain stale `frontend/uploads` files
+- [ ] Confirm the publish output still contains the bundled `frontend/` static site and `frontend/assets/logo_bkg.png`
 - [ ] Prefer deploying the published ZIP package instead of the raw repo
 - [ ] If deploying source code instead of the published package, set `PROJECT=NoorLocator.Api/NoorLocator.Api.csproj`
+
+## Frontend Strategy
+
+- [ ] Use the existing bundled frontend served by the ASP.NET app
+- [ ] Do not create a separate static-site deployment for the current NoorLocator production setup
+- [ ] Leave `Frontend__ApiBaseUrl` empty for same-origin hosting, or set it to the public app origin/app root without `/api`
+- [ ] Set `Frontend__PublicOrigin` to the public frontend origin used by browsers
+- [ ] Confirm `frontend/assets/logo_bkg.png` resolves in the deployed site for the favicon, navbar, hero, workspace, and footer branding
 
 ## Database Setup
 
@@ -64,6 +73,7 @@
 - [ ] `Jwt__Audience`
 - [ ] `MySql__ServerVersion`
 - [ ] `Frontend__ApiBaseUrl`
+- [ ] Keep `Frontend__ApiBaseUrl` empty for same-origin hosting, or set it to the app origin/app root without `/api`
 - [ ] `Frontend__PublicOrigin`
 - [ ] `Cors__AllowedOrigins__0`
 - [ ] `Cors__AllowedOrigins__1`
@@ -101,13 +111,18 @@
 - [ ] `GET /api/health` returns `200`
 - [ ] `GET /js/runtime-config.js` returns the expected production API base URL
 - [ ] `GET /` serves the frontend shell
+- [ ] `GET /assets/logo_bkg.png` returns `200`
+- [ ] `GET /about` returns the branded About page
 - [ ] `GET /api/languages` returns the expected reference languages if bootstrap seeding was enabled
 - [ ] `GET /api/centers` returns `200`
 - [ ] `POST /api/auth/login` succeeds for the bootstrap admin account if first-run admin seeding was enabled
 - [ ] `GET /api/auth/me` succeeds with the issued JWT
 - [ ] `GET /api/admin/dashboard` succeeds with the bootstrap admin JWT
 - [ ] Cross-origin requests from the production frontend origin receive the expected CORS headers
+- [ ] Login and logout work through the deployed frontend pages
+- [ ] Protected pages such as `dashboard.html`, `manager.html`, and `admin.html` bootstrap correctly after login
 - [ ] Uploads succeed with the configured storage provider
 - [ ] Manager image uploads return the expected local `/uploads/...` URL or blob/CDN URL for the active provider
 - [ ] Uploaded images render correctly in public pages
 - [ ] Run `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-deployed-api.ps1 -BaseUrl https://your-app-name.azurewebsites.net ...`
+- [ ] Run `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-frontend.ps1 -BaseUrl https://your-app-name.azurewebsites.net ...`

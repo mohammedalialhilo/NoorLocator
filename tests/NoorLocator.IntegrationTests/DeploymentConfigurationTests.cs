@@ -9,7 +9,7 @@ namespace NoorLocator.IntegrationTests;
 public class DeploymentConfigurationTests(NoorLocatorWebApplicationFactory factory) : IClassFixture<NoorLocatorWebApplicationFactory>
 {
     [Fact]
-    public async Task RuntimeConfigEndpoint_UsesConfiguredApiBaseUrl()
+    public async Task RuntimeConfigEndpoint_NormalizesConfiguredApiBaseUrl()
     {
         using var configuredFactory = factory.WithWebHostBuilder(builder =>
         {
@@ -17,7 +17,7 @@ public class DeploymentConfigurationTests(NoorLocatorWebApplicationFactory facto
             {
                 configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Frontend:ApiBaseUrl"] = "https://api.noorlocator.example/"
+                    ["Frontend:ApiBaseUrl"] = "https://api.noorlocator.example/api/"
                 });
             });
         });
@@ -29,7 +29,8 @@ public class DeploymentConfigurationTests(NoorLocatorWebApplicationFactory facto
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("application/javascript; charset=utf-8", response.Content.Headers.ContentType?.ToString());
         Assert.Contains("apiBaseUrl", script);
-        Assert.Contains("api.noorlocator.example", script);
+        Assert.Contains("https://api.noorlocator.example", script);
+        Assert.DoesNotContain("https://api.noorlocator.example/api", script);
         Assert.Contains("no-store", response.Headers.CacheControl?.ToString());
     }
 

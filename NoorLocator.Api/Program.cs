@@ -353,9 +353,18 @@ static IEnumerable<string> GetAdditionalAllowedOrigins(FrontendSettings frontend
 
 static string NormalizeFrontendApiBaseUrl(string? configuredApiBaseUrl)
 {
-    return string.IsNullOrWhiteSpace(configuredApiBaseUrl)
-        ? string.Empty
-        : configuredApiBaseUrl.Trim().TrimEnd('/');
+    if (string.IsNullOrWhiteSpace(configuredApiBaseUrl))
+    {
+        return string.Empty;
+    }
+
+    var normalized = configuredApiBaseUrl.Trim().TrimEnd('/');
+    if (normalized.EndsWith("/api", StringComparison.OrdinalIgnoreCase))
+    {
+        normalized = normalized[..^4];
+    }
+
+    return normalized;
 }
 
 static string ResolveJwtKey(IHostEnvironment environment, string? configuredKey)

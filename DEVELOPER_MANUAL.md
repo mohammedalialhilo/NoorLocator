@@ -310,6 +310,8 @@ Swagger is the live reference for DTO shapes and status codes.
 
 - render public pages and dashboards
 - call real API endpoints only
+- default to the same-origin ASP.NET host in production because the frontend is bundled into the published API artifact
+- use `Frontend__ApiBaseUrl` only when the frontend must target a different app origin or app root, and do not append `/api`
 - store auth state through the shared `frontend/js/auth.js` helper
 - render role-aware navigation
 - verify protected pages before rendering them
@@ -325,6 +327,7 @@ Swagger is the live reference for DTO shapes and status codes.
 
 - the official frontend logo asset is `frontend/assets/logo_bkg.png`
 - `frontend/js/layout.js` is the shared branding source for navbar logo, footer logo, favicon links, and any `[data-brand-logo]` image placeholders
+- the published App Service artifact keeps `frontend/assets/logo_bkg.png` alongside the rest of the bundled frontend, so branding should be verified from the deployed site rather than from local relative paths alone
 - the logo is intentionally used in:
   - the shared navbar and footer
   - landing and About hero panels
@@ -475,6 +478,8 @@ Swagger is the live reference for DTO shapes and status codes.
   - admin, manager, and user login all succeeded against the migrated scratch database
 - additional browser verification was performed against the live app in headless Edge to confirm:
   - manager and admin login API calls succeed before protected browser workflows are exercised
+  - the bundled frontend works against the production-style hosted API configuration without hardcoded localhost URLs
+  - the shared `frontend/assets/logo_bkg.png` asset renders in public, auth, and protected pages without broken image links
   - the manager gallery UI shows clear errors for invalid file types and oversized images
   - valid manager uploads complete without the old API-reachability failure and refresh the gallery
   - the public center details page renders a hero image and gallery from uploaded media

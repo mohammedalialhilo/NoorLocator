@@ -389,6 +389,7 @@ Recommended deployment shape:
 - Startup command: none required for the published NoorLocator API package
 - Health Check path: `/api/health/ping`
 - Production environment: `ASPNETCORE_ENVIRONMENT=Production`
+- Frontend strategy: serve the existing `frontend/` assets from the ASP.NET app; do not create a separate static-site deployment unless the architecture changes later
 
 Build the App Service-ready artifact:
 
@@ -406,6 +407,8 @@ Recommended App Service configuration:
 - deploy the published ZIP package instead of the raw repo
 - set `WEBSITE_RUN_FROM_PACKAGE=1`
 - place the MySQL connection string in the App Service Connection strings blade as `DefaultConnection`, or set `MYSQLCONNSTR_DefaultConnection`
+- leave `Frontend__ApiBaseUrl` empty when the frontend is served by the same App Service, or set it to the app origin/app root without `/api`
+- keep `frontend/assets/logo_bkg.png` in the published package so the favicon, navbar, hero, workspace, and footer branding all resolve from the same deployed asset
 - keep `ReverseProxy__UseForwardedHeaders=true`
 - keep `Swagger__Enabled=false`
 - keep `Seeding__ApplyMigrations=false` for steady-state production instances
@@ -427,6 +430,20 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-deployed-api.ps1 `
   -ManagerPassword YOUR_MANAGER_PASSWORD
 ```
 
+Frontend smoke test:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-frontend.ps1 `
+  -BaseUrl https://your-app-name.azurewebsites.net `
+  -ExpectedApiBaseUrl https://your-app-name.azurewebsites.net `
+  -UserEmail user@your-domain.example `
+  -UserPassword YOUR_USER_PASSWORD `
+  -ManagerEmail manager@your-domain.example `
+  -ManagerPassword YOUR_MANAGER_PASSWORD `
+  -AdminEmail admin@your-domain.example `
+  -AdminPassword YOUR_ADMIN_PASSWORD
+```
+
 ## Production Notes
 
 - Move connection strings and JWT secrets to environment variables or a secret store
@@ -438,7 +455,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-deployed-api.ps1 `
 - Keep `Seeding__SeedDemoData=false` for production
 - Keep `Swagger:Enabled` disabled outside development unless explicitly required
 - Configure real `Cors:AllowedOrigins`
-- Set `Frontend__ApiBaseUrl` and `Frontend__PublicOrigin` for production frontend routing and CORS
+- The production frontend is served by the ASP.NET app in the same deployment package
+- Leave `Frontend__ApiBaseUrl` empty for same-origin hosting, or set it to the app origin/app root without `/api`
+- Set `Frontend__PublicOrigin` to the public frontend origin used for CORS and runtime metadata
 - Set `MediaStorage__Provider=AzureBlob` plus the `AzureBlobStorage__*` settings for Azure-hosted media
 - If `WEBSITE_RUN_FROM_PACKAGE=1` is enabled on App Service, do not leave `MediaStorage__Provider=Local` on a relative path; use Azure Blob or an absolute writable path under `HOME`
 - Keep the centralized session-backed logout flow, profile session-refresh helper, protected-page auth bootstrap, and no-store workspace caching rules intact when modifying auth

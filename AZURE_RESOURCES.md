@@ -18,6 +18,7 @@
 - One Azure App Service running the NoorLocator ASP.NET Core app
 - Enable a system-assigned managed identity if you want the app to authenticate to Azure Blob Storage without a storage secret
 - Use App Settings / Connection Strings to provide the production configuration values listed in `DEPLOYMENT_CHECKLIST.md`
+- The current deployment shape serves the bundled `frontend/` static site from the same App Service as the API
 
 ### Azure Database For MySQL
 
@@ -60,6 +61,11 @@ The app now accepts all three patterns. Use one.
 - `Frontend__PublicOrigin`
 - `Cors__AllowedOrigins__0`
 - `Cors__AllowedOrigins__1`
+
+For the current same-origin App Service deployment:
+
+- leave `Frontend__ApiBaseUrl` empty, or set it to the public app origin/app root without `/api`
+- keep `Frontend__PublicOrigin` aligned with the deployed site origin used by browsers
 
 ### Media Storage
 

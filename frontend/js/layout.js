@@ -144,7 +144,7 @@ window.NoorLocatorLayout = (() => {
             return;
         }
 
-        const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+        const isLocal = isLikelyLocalDevelopmentHost();
         if (isLocal) {
             const registrations = await navigator.serviceWorker.getRegistrations();
             await Promise.all(registrations.map(registration => registration.unregister()));
@@ -169,6 +169,29 @@ window.NoorLocatorLayout = (() => {
         } catch (error) {
             console.warn("NoorLocator service worker registration failed.", error);
         }
+    }
+
+    function isLikelyLocalDevelopmentHost() {
+        if (!window.location || !/^https?:$/i.test(window.location.protocol)) {
+            return false;
+        }
+
+        const hostname = window.location.hostname || "";
+        if (!hostname) {
+            return false;
+        }
+
+        const labels = hostname.split(".").filter(Boolean);
+        if (labels.length <= 1) {
+            return true;
+        }
+
+        if (labels.length !== 4 || labels.some(label => !/^\d+$/.test(label))) {
+            return false;
+        }
+
+        const octets = labels.map(label => Number(label));
+        return octets[0] === 127;
     }
 
     function buildNavigation(user) {
