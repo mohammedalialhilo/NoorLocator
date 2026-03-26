@@ -18,13 +18,17 @@ public class HealthController(IWebHostEnvironment environment) : ControllerBase
     [HttpGet]
     public ActionResult<ApiResponse<object>> Get()
     {
-        var payload = new
+        var payload = new Dictionary<string, object?>
         {
-            application = "NoorLocator",
-            status = "Healthy",
-            environment = environment.EnvironmentName,
-            timestampUtc = DateTime.UtcNow
+            ["application"] = "NoorLocator",
+            ["status"] = "Healthy",
+            ["timestampUtc"] = DateTime.UtcNow
         };
+
+        if (environment.IsDevelopment() || environment.IsEnvironment("Testing"))
+        {
+            payload["environment"] = environment.EnvironmentName;
+        }
 
         return Ok(ApiResponse<object>.SuccessResponse(payload, "NoorLocator API is running."));
     }

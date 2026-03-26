@@ -1,6 +1,5 @@
 window.NoorLocatorConfig = (() => {
     const apiBaseUrlStorageKey = "noorlocator.api.baseUrl";
-    const frontendOnlyPorts = new Set(["5500", "5501", "3000", "4173"]);
 
     function normalizeBaseUrl(value) {
         if (!value) {
@@ -31,12 +30,12 @@ window.NoorLocatorConfig = (() => {
         }
     }
 
+    function getConfiguredRuntimeBaseUrl() {
+        return normalizeBaseUrl(window.NoorLocatorRuntimeConfig?.apiBaseUrl);
+    }
+
     function getSameOriginCandidate() {
         if (!window.location || !/^https?:$/i.test(window.location.protocol)) {
-            return "";
-        }
-
-        if (frontendOnlyPorts.has(window.location.port || "")) {
             return "";
         }
 
@@ -44,26 +43,16 @@ window.NoorLocatorConfig = (() => {
     }
 
     function getApiBaseCandidates() {
+        const runtimeConfigured = getConfiguredRuntimeBaseUrl();
         const configured = normalizeBaseUrl(document.body?.dataset.apiBaseUrl);
         const sameOrigin = getSameOriginCandidate();
         const stored = readStoredBaseUrl();
 
         return [
+            runtimeConfigured,
             configured,
             sameOrigin,
-            stored,
-            "http://localhost:8080",
-            "http://127.0.0.1:8080",
-            "http://localhost:5210",
-            "http://127.0.0.1:5210",
-            "http://localhost:5181",
-            "http://127.0.0.1:5181",
-            "http://localhost:5141",
-            "https://localhost:7132",
-            "http://127.0.0.1:5141",
-            "https://127.0.0.1:7132",
-            "https://localhost:7284",
-            "https://127.0.0.1:7284"
+            stored
         ].filter((value, index, values) => value && values.indexOf(value) === index);
     }
 

@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using NoorLocator.Application.Common.Configuration;
 using NoorLocator.Domain.Entities;
 using NoorLocator.Domain.Enums;
 using NoorLocator.Infrastructure.Persistence;
@@ -6,8 +8,13 @@ using NoorLocator.Infrastructure.Security;
 
 namespace NoorLocator.Infrastructure.Seeding;
 
-public class NoorLocatorDbInitializer(NoorLocatorDbContext dbContext, PasswordHashingService passwordHashingService)
+public class NoorLocatorDbInitializer(
+    NoorLocatorDbContext dbContext,
+    PasswordHashingService passwordHashingService,
+    IOptions<SeedingSettings> seedingOptions)
 {
+    private readonly SeedingSettings seedingSettings = seedingOptions.Value;
+
     public const string AdminEmail = "admin@noorlocator.local";
     public const string AdminPassword = "Admin123!Pass";
     public const string ManagerEmail = "manager@noorlocator.local";
@@ -17,10 +24,26 @@ public class NoorLocatorDbInitializer(NoorLocatorDbContext dbContext, PasswordHa
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        await dbContext.Database.MigrateAsync(cancellationToken);
+        if (seedingSettings.ApplyMigrations)
+        {
+            await dbContext.Database.MigrateAsync(cancellationToken);
+        }
 
-        await SeedLanguagesAsync(cancellationToken);
-        await SeedAppContentAsync(cancellationToken);
+        if (seedingSettings.SeedReferenceData || seedingSettings.SeedDemoData)
+        {
+            await SeedLanguagesAsync(cancellationToken);
+        }
+
+        if (seedingSettings.SeedReferenceData)
+        {
+            await SeedAppContentAsync(cancellationToken);
+        }
+
+        if (!seedingSettings.SeedDemoData)
+        {
+            return;
+        }
+
         await SeedUsersAsync(cancellationToken);
         await SeedCentersAndAssignmentsAsync(cancellationToken);
     }

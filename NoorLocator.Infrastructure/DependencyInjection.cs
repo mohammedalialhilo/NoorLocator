@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using NoorLocator.Application.Admin.Interfaces;
 using NoorLocator.Application.Authentication.Interfaces;
 using NoorLocator.Application.CenterImages.Interfaces;
@@ -34,14 +36,25 @@ namespace NoorLocator.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
+        services.Configure<FrontendSettings>(configuration.GetSection(FrontendSettings.SectionName));
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
         services.Configure<MediaStorageSettings>(configuration.GetSection(MediaStorageSettings.SectionName));
+        services.Configure<AzureBlobStorageSettings>(configuration.GetSection(AzureBlobStorageSettings.SectionName));
+        services.PostConfigure<AzureBlobStorageSettings>(settings =>
+        {
+            if (string.IsNullOrWhiteSpace(settings.ConnectionString))
+            {
+                settings.ConnectionString = configuration.GetConnectionString(AzureBlobStorageSettings.SectionName)
+                    ?? configuration["AZURE_STORAGE_CONNECTION_STRING"]
+                    ?? string.Empty;
+            }
+        });
+        services.Configure<SeedingSettings>(configuration.GetSection(SeedingSettings.SectionName));
         services.AddHttpContextAccessor();
 
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+        var connectionString = ResolveConnectionString(configuration, environment);
         var serverVersion = MySqlServerVersionFactory.Create(configuration);
 
         services.AddDbContext<NoorLocatorDbContext>(options =>
@@ -53,7 +66,13 @@ public static class DependencyInjection
         services.AddScoped<PasswordHashingService>();
         services.AddScoped<JwtTokenFactory>();
         services.AddScoped<AuditLogger>();
-        services.AddScoped<IMediaStorageService, LocalMediaStorageService>();
+        services.AddScoped<LocalMediaStorageService>();
+        services.AddScoped<AzureBlobStorageService>();
+        services.AddScoped<IMediaStorageService>(serviceProvider =>
+        {
+            var mediaStorageSettings = serviceProvider.GetRequiredService<IOptions<MediaStorageSettings>>().Value;
+            return ResolveMediaStorageService(serviceProvider, mediaStorageSettings);
+        });
         services.AddScoped<NoorLocatorDbInitializer>();
 
         services.AddScoped<IAdminService, AdminService>();
@@ -71,5 +90,61 @@ public static class DependencyInjection
         services.AddScoped<ISuggestionService, SuggestionService>();
 
         return services;
+    }
+
+    private static string ResolveConnectionString(IConfiguration configuration, IHostEnvironment environment)
+    {
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? configuration["MYSQLCONNSTR_DefaultConnection"]
+            ?? configuration["AZURE_MYSQL_CONNECTIONSTRING"];
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+        }
+
+        if (!environment.IsDevelopment() &&
+            !environment.IsEnvironment("Testing") &&
+            connectionString.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("A real ConnectionStrings:DefaultConnection value is required outside development.");
+        }
+
+        return connectionString;
+    }
+
+    private static IMediaStorageService ResolveMediaStorageService(IServiceProvider serviceProvider, MediaStorageSettings settings)
+    {
+        var provider = string.IsNullOrWhiteSpace(settings.Provider)
+            ? MediaStorageProviders.Local
+            : settings.Provider.Trim();
+
+        if (provider.Equals(MediaStorageProviders.AzureBlob, StringComparison.OrdinalIgnoreCase))
+        {
+            ValidateAzureBlobStorageSettings(serviceProvider.GetRequiredService<IOptions<AzureBlobStorageSettings>>().Value);
+            return serviceProvider.GetRequiredService<AzureBlobStorageService>();
+        }
+
+        if (!provider.Equals(MediaStorageProviders.Local, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"Unsupported media storage provider '{provider}'.");
+        }
+
+        return serviceProvider.GetRequiredService<LocalMediaStorageService>();
+    }
+
+    private static void ValidateAzureBlobStorageSettings(AzureBlobStorageSettings settings)
+    {
+        if (string.IsNullOrWhiteSpace(settings.ContainerName))
+        {
+            throw new InvalidOperationException("AzureBlobStorage:ContainerName must be configured when MediaStorage:Provider is AzureBlob.");
+        }
+
+        var hasConnectionString = !string.IsNullOrWhiteSpace(settings.ConnectionString);
+        var hasServiceUri = !string.IsNullOrWhiteSpace(settings.ServiceUri);
+        var hasAccountName = !string.IsNullOrWhiteSpace(settings.AccountName);
+        if (!hasConnectionString && !hasServiceUri && !hasAccountName)
+        {
+            throw new InvalidOperationException("AzureBlobStorage requires a ConnectionString, ServiceUri, or AccountName when MediaStorage:Provider is AzureBlob.");
+        }
     }
 }

@@ -1,4 +1,4 @@
-const CACHE_NAME = "noorlocator-shell-v7";
+const CACHE_NAME = "noorlocator-shell-v8";
 const SHELL_ASSETS = [
     "/",
     "/about",
@@ -18,6 +18,7 @@ const SHELL_ASSETS = [
     "/site.webmanifest"
 ];
 const NON_CACHEABLE_PATHS = new Set([
+    "/js/runtime-config.js",
     "/dashboard.html",
     "/profile.html",
     "/manager.html",

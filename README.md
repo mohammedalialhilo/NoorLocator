@@ -22,7 +22,7 @@ The platform focuses on:
 - Backend: ASP.NET Core Web API
 - Database: MySQL with EF Core and Pomelo
 - Authentication: JWT
-- Media storage: local file storage in development behind a storage abstraction
+- Media storage: provider-based local or Azure Blob storage
 - Testing: xUnit unit tests and integration tests
 - Documentation: Swagger / OpenAPI with XML comments
 
@@ -101,6 +101,9 @@ Useful environment variables:
 ```powershell
 $env:ConnectionStrings__DefaultConnection = "Server=127.0.0.1;Port=3306;Database=Noorlocator;User=root;Password=YOUR_PASSWORD;"
 $env:Jwt__Key = "a-secure-random-string-with-at-least-32-characters"
+$env:Cors__AllowedOrigins__0 = "https://your-frontend-host.example"
+$env:MediaStorage__RelativeRootPath = "uploads"
+$env:Seeding__SeedDemoData = "false"
 ```
 
 ### Restore And Build
@@ -141,13 +144,17 @@ Default local endpoints:
 - Health: `https://localhost:7132/api/health`
 - About page: `https://localhost:7132/about`
 
-## Seeded Accounts
+## Development Seeded Accounts
+
+These accounts are created only when demo seeding is enabled, which is the default in `Development` and disabled in `Production`.
 
 - Admin: `admin@noorlocator.local` / `Admin123!Pass`
 - Manager: `manager@noorlocator.local` / `Manager123!Pass`
 - User: `user@noorlocator.local` / `User123!Pass`
 
-## Seeded Demo Data
+## Development Seeded Demo Data
+
+The demo content below is development-oriented seed data. Production defaults now keep demo seeding off.
 
 - Languages: Arabic, Swedish, English, Farsi, Urdu
 - Published demo centers across Copenhagen, Stockholm, Helsinki, Oslo, and Aarhus
@@ -253,9 +260,9 @@ dotnet test NoorLocator.sln
 
 Current automated coverage:
 
-- `8` unit tests
-- `28` integration tests
-- `36` passing tests total at the time of the Phase 12 profile-management verification pass
+- `10` unit tests
+- `30` integration tests
+- `40` passing tests in the current deployment-readiness verification pass
 
 Important test areas:
 
@@ -313,6 +320,7 @@ See `VERIFICATION_REPORT.md` for the final verification summary.
 ## Media Handling
 
 - Development uploads are stored under `frontend/uploads/center-images`
+- Production Azure deployments can switch to Azure Blob Storage with `MediaStorage__Provider=AzureBlob`
 - The database stores image URLs only, not binary image data
 - `POST /api/center-images/upload` accepts `multipart/form-data`
 - Supported formats: `jpg`, `jpeg`, `png`, `webp`
@@ -326,6 +334,7 @@ See `VERIFICATION_REPORT.md` for the final verification summary.
 ## Docker
 
 ```powershell
+Copy-Item .env.example .env
 docker compose up --build
 ```
 
@@ -336,16 +345,19 @@ Default compose services:
 
 Before using Docker outside local experimentation:
 
-- replace placeholder passwords
-- replace `Jwt__Key`
-- review volumes and persistent database settings
+- replace every placeholder in `.env`
+- set real `Cors__AllowedOrigins__*` values
+- keep the uploads volume persistent
+- keep `Seeding__SeedDemoData=false`
 
 ## Production Notes
 
 - Move connection strings and JWT secrets to environment variables or a secret store
+- Azure App Service MySQL connection string formats such as `MYSQLCONNSTR_DefaultConnection` and `AZURE_MYSQL_CONNECTIONSTRING` are supported
 - Keep `Swagger:Enabled` disabled outside development unless explicitly required
 - Configure real `Cors:AllowedOrigins`
-- Use a production media storage implementation behind `IMediaStorageService`
+- Set `Frontend__ApiBaseUrl` and `Frontend__PublicOrigin` for production frontend routing and CORS
+- Set `MediaStorage__Provider=AzureBlob` plus the `AzureBlobStorage__*` settings for Azure-hosted media
 - Keep the centralized session-backed logout flow, profile session-refresh helper, protected-page auth bootstrap, and no-store workspace caching rules intact when modifying auth
 
 ## Phase 10 Verification
@@ -404,7 +416,10 @@ Phase 12 profile-management verification was completed against the live MySQL-ba
 
 ## Additional Documentation
 
+- `AZURE_RESOURCES.md`
 - `DEVELOPER_MANUAL.md`
+- `DEPLOYMENT.md`
+- `DEPLOYMENT_CHECKLIST.md`
 - `VERIFICATION_REPORT.md`
 - `scripts/verify-e2e.ps1`
 

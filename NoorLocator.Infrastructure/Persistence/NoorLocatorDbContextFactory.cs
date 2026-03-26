@@ -10,11 +10,14 @@ public class NoorLocatorDbContextFactory : IDesignTimeDbContextFactory<NoorLocat
     {
         var basePath = Directory.GetCurrentDirectory();
         var apiPath = Path.Combine(basePath, "..", "NoorLocator.Api");
+        var environmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+            ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+            ?? "Development";
 
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.Exists(apiPath) ? apiPath : basePath)
             .AddJsonFile("appsettings.json", optional: false)
-            .AddJsonFile("appsettings.Development.json", optional: true)
+            .AddJsonFile($"appsettings.{environmentName}.json", optional: true)
             .AddEnvironmentVariables()
             .Build();
 

@@ -4,14 +4,16 @@ services:
     container_name: noorlocator-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: Odujde9010!
-      MYSQL_DATABASE: Noorlocator
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-Noorlocator}
+      MYSQL_USER: ${MYSQL_APP_USER:-noorlocator}
+      MYSQL_PASSWORD: ${MYSQL_APP_PASSWORD:?Set MYSQL_APP_PASSWORD in .env}
     ports:
       - "3306:3306"
     volumes:
       - noorlocator-mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-pOdujde9010!"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -p$$MYSQL_ROOT_PASSWORD"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -28,16 +30,37 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: Server=mysql;Port=3306;Database=Noorlocator;User=root;Password=Odujde9010!;
-      MySql__ServerVersion: 8.0.36
-      Jwt__Issuer: NoorLocator
-      Jwt__Audience: NoorLocator.Client
-      Jwt__Key: CHANGE-ME-TO-A-SECURE-32-CHARACTER-MINIMUM-SECRET-REPLACE-THIS
-      Frontend__RelativeRootPath: frontend
-      Swagger__Enabled: "true"
-      Cors__AllowedOrigins__0: http://localhost:8080
+      ConnectionStrings__DefaultConnection: Server=mysql;Port=3306;Database=${MYSQL_DATABASE:-Noorlocator};User=${MYSQL_APP_USER:-noorlocator};Password=${MYSQL_APP_PASSWORD:?Set MYSQL_APP_PASSWORD in .env};
+      MySql__ServerVersion: ${MYSQL_SERVER_VERSION:-8.0.36}
+      Jwt__Issuer: ${JWT_ISSUER:-NoorLocator}
+      Jwt__Audience: ${JWT_AUDIENCE:-NoorLocator.Client}
+      Jwt__Key: ${JWT_KEY:?Set JWT_KEY in .env}
+      Frontend__RelativeRootPath: ${FRONTEND_RELATIVE_ROOT_PATH:-frontend}
+      Frontend__ApiBaseUrl: ${FRONTEND_API_BASE_URL:-}
+      Frontend__PublicOrigin: ${FRONTEND_PUBLIC_ORIGIN:-}
+      MediaStorage__Provider: ${MEDIA_STORAGE_PROVIDER:-Local}
+      MediaStorage__RelativeRootPath: ${MEDIA_STORAGE_RELATIVE_ROOT_PATH:-uploads}
+      MediaStorage__PublicBasePath: ${MEDIA_STORAGE_PUBLIC_BASE_PATH:-/uploads}
+      AzureBlobStorage__ConnectionString: ${AZURE_BLOB_STORAGE_CONNECTION_STRING:-}
+      AzureBlobStorage__ServiceUri: ${AZURE_BLOB_STORAGE_SERVICE_URI:-}
+      AzureBlobStorage__AccountName: ${AZURE_BLOB_STORAGE_ACCOUNT_NAME:-}
+      AzureBlobStorage__ContainerName: ${AZURE_BLOB_STORAGE_CONTAINER_NAME:-uploads}
+      AzureBlobStorage__PublicBaseUrl: ${AZURE_BLOB_STORAGE_PUBLIC_BASE_URL:-}
+      AzureBlobStorage__CreateContainerIfMissing: ${AZURE_BLOB_STORAGE_CREATE_CONTAINER_IF_MISSING:-false}
+      AzureBlobStorage__ManagedIdentityClientId: ${AZURE_BLOB_STORAGE_MANAGED_IDENTITY_CLIENT_ID:-}
+      Swagger__Enabled: ${SWAGGER_ENABLED:-false}
+      ReverseProxy__UseForwardedHeaders: ${REVERSE_PROXY_USE_FORWARDED_HEADERS:-false}
+      Https__RedirectionEnabled: ${HTTPS_REDIRECTION_ENABLED:-false}
+      Seeding__ApplyMigrations: ${SEEDING_APPLY_MIGRATIONS:-true}
+      Seeding__SeedReferenceData: ${SEEDING_SEED_REFERENCE_DATA:-false}
+      Seeding__SeedDemoData: ${SEEDING_SEED_DEMO_DATA:-false}
+      Cors__AllowedOrigins__0: ${CORS_ALLOWED_ORIGIN_0:-}
+      Cors__AllowedOrigins__1: ${CORS_ALLOWED_ORIGIN_1:-}
     ports:
       - "8080:8080"
+    volumes:
+      - noorlocator-uploads:/app/uploads
 
 volumes:
   noorlocator-mysql-data:
+  noorlocator-uploads:

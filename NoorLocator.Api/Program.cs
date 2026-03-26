@@ -1,12 +1,15 @@
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Microsoft.Extensions.Options;
 using NoorLocator.Api.Extensions;
 using NoorLocator.Api.Middleware;
 using NoorLocator.Api.OpenApi;
@@ -16,11 +19,12 @@ using NoorLocator.Application.Common.Models;
 using NoorLocator.Infrastructure;
 using NoorLocator.Infrastructure.Persistence;
 using NoorLocator.Infrastructure.Seeding;
+using NoorLocator.Infrastructure.Services.Media;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -55,9 +59,17 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHealthChecks();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>() ?? new JwtSettings();
 var jwtKey = ResolveJwtKey(builder.Environment, jwtSettings.Key);
+var configuredFrontendSettings = builder.Configuration.GetSection(FrontendSettings.SectionName).Get<FrontendSettings>() ?? new FrontendSettings();
+var mediaStorageSettings = builder.Configuration.GetSection(MediaStorageSettings.SectionName).Get<MediaStorageSettings>() ?? new MediaStorageSettings();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -117,7 +129,12 @@ builder.Services.AddAuthorization(options =>
         policy.RequireRole("Manager", "Admin"));
 });
 
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+var allowedOrigins = (builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
+    .Where(origin => Uri.TryCreate(origin?.Trim(), UriKind.Absolute, out _))
+    .Select(origin => origin.Trim().TrimEnd('/'))
+    .Concat(GetAdditionalAllowedOrigins(configuredFrontendSettings))
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray();
 var allowOpenCors = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing");
 
 builder.Services.AddCors(options =>
@@ -153,8 +170,7 @@ builder.Services.AddSwaggerGen(options =>
         Description = "Moderated center discovery, contributions, manager workflows, and admin governance for NoorLocator.",
         Contact = new OpenApiContact
         {
-            Name = "NoorLocator",
-            Url = new Uri("https://localhost")
+            Name = "NoorLocator"
         }
     });
 
@@ -182,6 +198,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+var frontendSettings = app.Services.GetRequiredService<IOptions<FrontendSettings>>().Value;
 
 if (!app.Environment.IsEnvironment("Testing"))
 {
@@ -192,13 +209,49 @@ if (!app.Environment.IsEnvironment("Testing"))
 
 app.UseMiddleware<ApiExceptionMiddleware>();
 app.UseResponseCompression();
+if (app.Configuration.GetValue<bool>("ReverseProxy:UseForwardedHeaders"))
+{
+    app.UseForwardedHeaders();
+}
 
 if (!app.Environment.IsDevelopment())
 {
     app.UseHsts();
 }
 
-var configuredFrontendPath = builder.Configuration["Frontend:RelativeRootPath"];
+app.Use(async (context, next) =>
+{
+    if (!context.Request.Path.Equals("/js/runtime-config.js", StringComparison.OrdinalIgnoreCase))
+    {
+        await next();
+        return;
+    }
+
+    context.Response.ContentType = "application/javascript; charset=utf-8";
+    context.Response.Headers.CacheControl = "no-store, no-cache, must-revalidate";
+    context.Response.Headers.Pragma = "no-cache";
+    context.Response.Headers.Expires = "0";
+
+    var payload = JsonSerializer.Serialize(new
+    {
+        apiBaseUrl = NormalizeFrontendApiBaseUrl(frontendSettings.ApiBaseUrl)
+    });
+
+    await context.Response.WriteAsync($"window.NoorLocatorRuntimeConfig = {payload};");
+});
+
+if (mediaStorageSettings.Provider.Equals(MediaStorageProviders.Local, StringComparison.OrdinalIgnoreCase))
+{
+    var uploadsRootPath = MediaStoragePathResolver.ResolveStorageRootPath(app.Environment, mediaStorageSettings);
+    var uploadsRequestPath = MediaStoragePathResolver.NormalizePublicBasePath(mediaStorageSettings.PublicBasePath);
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(uploadsRootPath),
+        RequestPath = uploadsRequestPath
+    });
+}
+
+var configuredFrontendPath = frontendSettings.RelativeRootPath;
 var frontendCandidates = new[]
 {
     configuredFrontendPath,
@@ -255,6 +308,10 @@ if (!string.IsNullOrWhiteSpace(frontendPath))
         });
     }
 }
+else
+{
+    app.Logger.LogWarning("Frontend static root was not found. Configure Frontend:RelativeRootPath so the NoorLocator frontend can be served.");
+}
 
 var swaggerEnabled = app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled");
 if (swaggerEnabled)
@@ -263,7 +320,11 @@ if (swaggerEnabled)
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+if (app.Configuration.GetValue("Https:RedirectionEnabled", app.Environment.IsDevelopment()))
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
@@ -272,6 +333,23 @@ app.MapControllers();
 app.MapHealthChecks("/health");
 
 app.Run();
+
+static IEnumerable<string> GetAdditionalAllowedOrigins(FrontendSettings frontendSettings)
+{
+    if (!Uri.TryCreate(frontendSettings.PublicOrigin?.Trim(), UriKind.Absolute, out var publicOrigin))
+    {
+        return Array.Empty<string>();
+    }
+
+    return [publicOrigin.AbsoluteUri.TrimEnd('/')];
+}
+
+static string NormalizeFrontendApiBaseUrl(string? configuredApiBaseUrl)
+{
+    return string.IsNullOrWhiteSpace(configuredApiBaseUrl)
+        ? string.Empty
+        : configuredApiBaseUrl.Trim().TrimEnd('/');
+}
 
 static string ResolveJwtKey(IHostEnvironment environment, string? configuredKey)
 {
