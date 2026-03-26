@@ -15,11 +15,18 @@
 
 - [ ] Choose public-access firewall rules or private networking for MySQL
 - [ ] Confirm the final MySQL host name, database name, username, and TLS-ready connection string
+- [ ] If the host ends with `.mysql.database.azure.com`, confirm the final connection string uses TLS or let NoorLocator add `SslMode=Required`
+- [ ] Prefer `MYSQLCONNSTR_DefaultConnection` on Azure App Service, or use `ConnectionStrings__DefaultConnection` / `AZURE_MYSQL_CONNECTIONSTRING`
 - [ ] Set one of:
 - [ ] `MYSQLCONNSTR_DefaultConnection`
 - [ ] `ConnectionStrings__DefaultConnection`
 - [ ] `AZURE_MYSQL_CONNECTIONSTRING`
-- [ ] Run EF Core migrations against the Azure MySQL database
+- [ ] Choose the migration path:
+- [ ] `dotnet ef database update --project .\NoorLocator.Infrastructure\NoorLocator.Infrastructure.csproj --startup-project .\NoorLocator.Api\NoorLocator.Api.csproj`
+- [ ] or `powershell -ExecutionPolicy Bypass -File .\scripts\apply-db-migrations.ps1 -EnvironmentName Production -ConnectionString "..."`
+- [ ] Optionally generate and archive `.\artifacts\noorlocator-mysql-idempotent.sql` with `scripts/generate-db-migration-script.ps1`
+- [ ] Run EF Core migrations against the Azure MySQL database before the production app instance serves traffic
+- [ ] Decide whether first-run bootstrap should seed reference data and an initial admin account
 - [ ] Keep `Seeding__SeedDemoData=false` in production
 
 ## Storage Setup
@@ -48,8 +55,14 @@
 - [ ] `ReverseProxy__UseForwardedHeaders`
 - [ ] `Https__RedirectionEnabled`
 - [ ] `Swagger__Enabled=false`
-- [ ] `Seeding__ApplyMigrations=true`
-- [ ] `Seeding__SeedReferenceData=false` unless you intentionally need seed content
+- [ ] `Seeding__ApplyMigrations=false`
+- [ ] `Seeding__SeedReferenceData=true` only for the first bootstrap that needs reference content
+- [ ] `Seeding__SeedAdminAccount=true` only for the first bootstrap that needs an initial admin
+- [ ] `Seeding__AdminName`
+- [ ] `Seeding__AdminEmail`
+- [ ] `Seeding__AdminPassword`
+- [ ] Turn `Seeding__SeedAdminAccount=false` again after the admin account is created
+- [ ] `Seeding__SeedDemoData=false`
 
 ## Secrets
 
@@ -63,7 +76,9 @@
 - [ ] `GET /api/health` returns `200`
 - [ ] `GET /js/runtime-config.js` returns the expected production API base URL
 - [ ] `GET /` serves the frontend shell
+- [ ] `GET /api/languages` returns the expected reference languages if bootstrap seeding was enabled
 - [ ] `GET /api/centers` returns `200`
+- [ ] `POST /api/auth/login` succeeds for the bootstrap admin account if first-run admin seeding was enabled
 - [ ] Cross-origin requests from the production frontend origin receive the expected CORS headers
 - [ ] Uploads succeed with the configured storage provider
 - [ ] Uploaded images render correctly in public pages

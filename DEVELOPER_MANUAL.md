@@ -270,6 +270,20 @@ Swagger is the live reference for DTO shapes and status codes.
 - Deleting a primary center image promotes the most recent remaining image when one exists.
 - Admin actions write audit log entries.
 
+### Database Deployment And Seeding
+
+- `NoorLocatorDbContext` uses Pomelo EF Core for MySQL and is compatible with MySQL 8.x and Azure Database for MySQL Flexible Server
+- `NoorLocatorDbContextFactory` loads `appsettings.json`, the active environment file, and environment variables so `dotnet ef` follows the same connection rules as the app
+- supported production connection inputs are `ConnectionStrings:DefaultConnection`, `MYSQLCONNSTR_DefaultConnection`, and `AZURE_MYSQL_CONNECTIONSTRING`
+- Azure MySQL host names ending in `.mysql.database.azure.com` automatically receive `SslMode=Required` when the connection string omits it
+- the recommended production flow is:
+  - run migrations out of band with `dotnet ef database update` or `scripts/apply-db-migrations.ps1`
+  - keep `Seeding__ApplyMigrations=false` for steady-state App Service instances
+  - use `Seeding__SeedReferenceData=true` and `Seeding__SeedAdminAccount=true` only for the initial bootstrap when needed
+  - provide `Seeding__AdminName`, `Seeding__AdminEmail`, and `Seeding__AdminPassword` when bootstrap admin seeding is enabled
+  - turn `Seeding__SeedAdminAccount=false` again after the admin exists
+  - keep `Seeding__SeedDemoData=false` in production
+
 ## 9. Media Handling
 
 - Development storage uses `frontend/uploads`, with center gallery images stored under `frontend/uploads/center-images`
@@ -400,6 +414,8 @@ Swagger is the live reference for DTO shapes and status codes.
 - testing manager flows with a user token that has not been reissued after role approval
 - forgetting that static protected pages still need API-backed auth bootstrap before render
 - assuming service worker behavior in local development; NoorLocator disables caching on localhost to reduce stale-auth issues
+- leaving `Seeding__SeedAdminAccount=true` permanently after the first production bootstrap
+- relying on app-start automatic migrations for every production instance instead of a controlled migration step
 
 ## 14. Working Verification
 
@@ -407,11 +423,15 @@ Swagger is the live reference for DTO shapes and status codes.
 
 - `dotnet build NoorLocator.sln`
 - `dotnet test NoorLocator.sln`
-- current result during the Phase 12 pass: `36/36` tests passing
+- current result during the Deployment Phase D3 pass: `44/44` tests passing
 
 ### Live Runtime Verification
 
 - `scripts/verify-e2e.ps1` was executed against the real MySQL-backed application
+- `dotnet ef database update --project .\NoorLocator.Infrastructure\NoorLocator.Infrastructure.csproj --startup-project .\NoorLocator.Api\NoorLocator.Api.csproj` was executed against a fresh scratch MySQL database
+- `powershell -ExecutionPolicy Bypass -File .\scripts\apply-db-migrations.ps1 -EnvironmentName Production -ConnectionString "Server=...;Database=...;User=...;Password=...;"` was executed against a second fresh scratch MySQL database
+- `powershell -ExecutionPolicy Bypass -File .\scripts\generate-db-migration-script.ps1 -EnvironmentName Production -OutputPath .\artifacts\noorlocator-mysql-idempotent.sql` generated an idempotent SQL migration script
+- a production-style API run using `MYSQLCONNSTR_DefaultConnection` booted successfully after migrations and seeded reference data, bootstrap admin data, and optional demo data by configuration
 - verified flows:
   - registration
   - login
@@ -436,6 +456,9 @@ Swagger is the live reference for DTO shapes and status codes.
   - admin approvals and suggestion review
   - public visibility of published content
   - About content API and public pages
+  - `/api/languages` returned the seeded languages after the production-style bootstrap
+  - `/api/centers` returned the seeded demo centers when `Seeding__SeedDemoData=true`
+  - admin, manager, and user login all succeeded against the migrated scratch database
 - additional browser verification was performed against the live app in headless Edge to confirm:
   - manager and admin login API calls succeed before protected browser workflows are exercised
   - the manager gallery UI shows clear errors for invalid file types and oversized images
@@ -447,6 +470,8 @@ Future developers should rerun:
 
 ```powershell
 dotnet test NoorLocator.sln
+powershell -ExecutionPolicy Bypass -File .\scripts\apply-db-migrations.ps1 -EnvironmentName Production -ConnectionString "Server=127.0.0.1;Port=3306;Database=Noorlocator;User=...;Password=...;"
+powershell -ExecutionPolicy Bypass -File .\scripts\generate-db-migration-script.ps1 -EnvironmentName Production -OutputPath .\artifacts\noorlocator-mysql-idempotent.sql
 powershell -ExecutionPolicy Bypass -File .\scripts\verify-e2e.ps1 -StartApp -BaseUrl http://127.0.0.1:5210 -ConnectionString "Server=127.0.0.1;Port=3306;Database=Noorlocator;User=...;Password=...;"
 ```
 

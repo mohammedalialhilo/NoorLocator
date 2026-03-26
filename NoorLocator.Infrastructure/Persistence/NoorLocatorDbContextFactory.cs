@@ -22,11 +22,20 @@ public class NoorLocatorDbContextFactory : IDesignTimeDbContextFactory<NoorLocat
             .Build();
 
         var optionsBuilder = new DbContextOptionsBuilder<NoorLocatorDbContext>();
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+        var connectionString = MySqlConnectionStringResolver.Resolve(configuration, environmentName);
         var serverVersion = MySqlServerVersionFactory.Create(configuration);
 
-        optionsBuilder.UseMySql(connectionString, serverVersion);
+        optionsBuilder.UseMySql(
+            connectionString,
+            serverVersion,
+            mysqlOptions =>
+            {
+                mysqlOptions.MigrationsAssembly(typeof(NoorLocatorDbContext).Assembly.FullName);
+                mysqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorNumbersToAdd: null);
+            });
 
         return new NoorLocatorDbContext(optionsBuilder.Options);
     }

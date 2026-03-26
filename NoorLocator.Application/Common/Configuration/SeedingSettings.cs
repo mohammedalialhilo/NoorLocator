@@ -8,5 +8,13 @@ public class SeedingSettings
 
     public bool SeedReferenceData { get; set; } = true;
 
+    public bool SeedAdminAccount { get; set; }
+
+    public string AdminName { get; set; } = "NoorLocator Admin";
+
+    public string AdminEmail { get; set; } = "admin@noorlocator.local";
+
+    public string AdminPassword { get; set; } = string.Empty;
+
     public bool SeedDemoData { get; set; }
 }

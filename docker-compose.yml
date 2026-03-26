@@ -51,8 +51,12 @@ services:
       Swagger__Enabled: ${SWAGGER_ENABLED:-false}
       ReverseProxy__UseForwardedHeaders: ${REVERSE_PROXY_USE_FORWARDED_HEADERS:-false}
       Https__RedirectionEnabled: ${HTTPS_REDIRECTION_ENABLED:-false}
-      Seeding__ApplyMigrations: ${SEEDING_APPLY_MIGRATIONS:-true}
+      Seeding__ApplyMigrations: ${SEEDING_APPLY_MIGRATIONS:-false}
       Seeding__SeedReferenceData: ${SEEDING_SEED_REFERENCE_DATA:-false}
+      Seeding__SeedAdminAccount: ${SEEDING_SEED_ADMIN_ACCOUNT:-false}
+      Seeding__AdminName: ${SEEDING_ADMIN_NAME:-NoorLocator Admin}
+      Seeding__AdminEmail: ${SEEDING_ADMIN_EMAIL:-admin@noorlocator.local}
+      Seeding__AdminPassword: ${SEEDING_ADMIN_PASSWORD:-}
       Seeding__SeedDemoData: ${SEEDING_SEED_DEMO_DATA:-false}
       Cors__AllowedOrigins__0: ${CORS_ALLOWED_ORIGIN_0:-}
       Cors__AllowedOrigins__1: ${CORS_ALLOWED_ORIGIN_1:-}

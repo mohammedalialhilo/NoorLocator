@@ -13,39 +13,52 @@ public class NoorLocatorDbInitializer(
     PasswordHashingService passwordHashingService,
     IOptions<SeedingSettings> seedingOptions)
 {
-    private readonly SeedingSettings seedingSettings = seedingOptions.Value;
+    private const string DemoManagerEmail = "manager@noorlocator.local";
+    private const string DemoManagerPassword = "Manager123!Pass";
+    private const string DemoUserEmail = "user@noorlocator.local";
+    private const string DemoUserPassword = "User123!Pass";
 
-    public const string AdminEmail = "admin@noorlocator.local";
-    public const string AdminPassword = "Admin123!Pass";
-    public const string ManagerEmail = "manager@noorlocator.local";
-    public const string ManagerPassword = "Manager123!Pass";
-    public const string UserEmail = "user@noorlocator.local";
-    public const string UserPassword = "User123!Pass";
+    private readonly SeedingSettings seedingSettings = seedingOptions.Value;
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        if (seedingSettings.ApplyMigrations)
+        var executionStrategy = dbContext.Database.CreateExecutionStrategy();
+        await executionStrategy.ExecuteAsync(async () =>
         {
-            await dbContext.Database.MigrateAsync(cancellationToken);
-        }
+            if (seedingSettings.ApplyMigrations)
+            {
+                await dbContext.Database.MigrateAsync(cancellationToken);
+            }
 
-        if (seedingSettings.SeedReferenceData || seedingSettings.SeedDemoData)
-        {
-            await SeedLanguagesAsync(cancellationToken);
-        }
+            if (seedingSettings.SeedReferenceData || seedingSettings.SeedDemoData)
+            {
+                await SeedLanguagesAsync(cancellationToken);
+            }
 
-        if (seedingSettings.SeedReferenceData)
-        {
-            await SeedAppContentAsync(cancellationToken);
-        }
+            if (seedingSettings.SeedReferenceData)
+            {
+                await SeedAppContentAsync(cancellationToken);
+            }
 
-        if (!seedingSettings.SeedDemoData)
-        {
-            return;
-        }
+            if (seedingSettings.SeedAdminAccount)
+            {
+                ValidateAdminSeedConfiguration();
+                await EnsureUserAsync(
+                    seedingSettings.AdminName.Trim(),
+                    seedingSettings.AdminEmail.Trim().ToLowerInvariant(),
+                    seedingSettings.AdminPassword,
+                    UserRole.Admin,
+                    cancellationToken);
+            }
 
-        await SeedUsersAsync(cancellationToken);
-        await SeedCentersAndAssignmentsAsync(cancellationToken);
+            if (!seedingSettings.SeedDemoData)
+            {
+                return;
+            }
+
+            await SeedDemoUsersAsync(cancellationToken);
+            await SeedCentersAndAssignmentsAsync(cancellationToken);
+        });
     }
 
     private async Task SeedLanguagesAsync(CancellationToken cancellationToken)
@@ -72,11 +85,10 @@ public class NoorLocatorDbInitializer(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task SeedUsersAsync(CancellationToken cancellationToken)
+    private async Task SeedDemoUsersAsync(CancellationToken cancellationToken)
     {
-        await EnsureUserAsync("NoorLocator Admin", AdminEmail, AdminPassword, UserRole.Admin, cancellationToken);
-        await EnsureUserAsync("NoorLocator Manager", ManagerEmail, ManagerPassword, UserRole.Manager, cancellationToken);
-        await EnsureUserAsync("NoorLocator User", UserEmail, UserPassword, UserRole.User, cancellationToken);
+        await EnsureUserAsync("NoorLocator Manager", DemoManagerEmail, DemoManagerPassword, UserRole.Manager, cancellationToken);
+        await EnsureUserAsync("NoorLocator User", DemoUserEmail, DemoUserPassword, UserRole.User, cancellationToken);
     }
 
     private async Task SeedAppContentAsync(CancellationToken cancellationToken)
@@ -139,7 +151,7 @@ public class NoorLocatorDbInitializer(
     private async Task SeedCentersAndAssignmentsAsync(CancellationToken cancellationToken)
     {
         var languages = await dbContext.Languages.ToDictionaryAsync(language => language.Code, cancellationToken);
-        var manager = await dbContext.Users.SingleAsync(user => user.Email == ManagerEmail, cancellationToken);
+        var manager = await dbContext.Users.SingleAsync(user => user.Email == DemoManagerEmail, cancellationToken);
 
         var centerDefinitions = new[]
         {
@@ -240,6 +252,21 @@ public class NoorLocatorDbInitializer(
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private void ValidateAdminSeedConfiguration()
+    {
+        if (string.IsNullOrWhiteSpace(seedingSettings.AdminName) ||
+            string.IsNullOrWhiteSpace(seedingSettings.AdminEmail) ||
+            string.IsNullOrWhiteSpace(seedingSettings.AdminPassword))
+        {
+            throw new InvalidOperationException("Seeding:AdminName, Seeding:AdminEmail, and Seeding:AdminPassword are required when Seeding:SeedAdminAccount is enabled.");
+        }
+
+        if (seedingSettings.AdminPassword.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Seeding:AdminPassword must be a real value when Seeding:SeedAdminAccount is enabled.");
+        }
     }
 
     private async Task<Center> EnsureCenterAsync(CenterSeed definition, CancellationToken cancellationToken)

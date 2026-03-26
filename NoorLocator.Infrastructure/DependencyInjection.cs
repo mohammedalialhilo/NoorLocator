@@ -61,7 +61,14 @@ public static class DependencyInjection
             options.UseMySql(
                 connectionString,
                 serverVersion,
-                mysqlOptions => mysqlOptions.MigrationsAssembly(typeof(NoorLocatorDbContext).Assembly.FullName)));
+                mysqlOptions =>
+                {
+                    mysqlOptions.MigrationsAssembly(typeof(NoorLocatorDbContext).Assembly.FullName);
+                    mysqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(10),
+                        errorNumbersToAdd: null);
+                }));
 
         services.AddScoped<PasswordHashingService>();
         services.AddScoped<JwtTokenFactory>();
@@ -94,22 +101,7 @@ public static class DependencyInjection
 
     private static string ResolveConnectionString(IConfiguration configuration, IHostEnvironment environment)
     {
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? configuration["MYSQLCONNSTR_DefaultConnection"]
-            ?? configuration["AZURE_MYSQL_CONNECTIONSTRING"];
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
-        }
-
-        if (!environment.IsDevelopment() &&
-            !environment.IsEnvironment("Testing") &&
-            connectionString.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException("A real ConnectionStrings:DefaultConnection value is required outside development.");
-        }
-
-        return connectionString;
+        return MySqlConnectionStringResolver.Resolve(configuration, environment.EnvironmentName);
     }
 
     private static IMediaStorageService ResolveMediaStorageService(IServiceProvider serviceProvider, MediaStorageSettings settings)

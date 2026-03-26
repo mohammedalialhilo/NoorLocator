@@ -100,9 +100,13 @@ Useful environment variables:
 
 ```powershell
 $env:ConnectionStrings__DefaultConnection = "Server=127.0.0.1;Port=3306;Database=Noorlocator;User=root;Password=YOUR_PASSWORD;"
+$env:MYSQLCONNSTR_DefaultConnection = "Server=your-server.mysql.database.azure.com;Port=3306;Database=Noorlocator;User=YOUR_USER;Password=YOUR_PASSWORD;"
 $env:Jwt__Key = "a-secure-random-string-with-at-least-32-characters"
 $env:Cors__AllowedOrigins__0 = "https://your-frontend-host.example"
 $env:MediaStorage__RelativeRootPath = "uploads"
+$env:Seeding__SeedAdminAccount = "true"
+$env:Seeding__AdminEmail = "admin@your-domain.example"
+$env:Seeding__AdminPassword = "a-secure-bootstrap-password"
 $env:Seeding__SeedDemoData = "false"
 ```
 
@@ -116,10 +120,29 @@ dotnet build NoorLocator.sln
 
 ### Database Migration Steps
 
-Apply migrations with the API project as the startup project:
+Recommended production flow:
+
+- run migrations before the app instance starts serving traffic
+- keep `Seeding__ApplyMigrations=false` for steady-state production App Service instances
+- use `Seeding__SeedAdminAccount=true` only for the first bootstrap when you need an initial admin
+- keep `Seeding__SeedDemoData=false` in production
+
+Apply migrations directly with EF Core:
 
 ```powershell
 dotnet ef database update --project .\NoorLocator.Infrastructure\NoorLocator.Infrastructure.csproj --startup-project .\NoorLocator.Api\NoorLocator.Api.csproj
+```
+
+Apply migrations with the helper script:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\apply-db-migrations.ps1 -EnvironmentName Production -ConnectionString "Server=your-server.mysql.database.azure.com;Port=3306;Database=Noorlocator;User=YOUR_USER;Password=YOUR_PASSWORD;"
+```
+
+Generate an idempotent SQL script for controlled rollouts:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\generate-db-migration-script.ps1 -EnvironmentName Production -OutputPath .\artifacts\noorlocator-mysql-idempotent.sql
 ```
 
 Create a new migration:
@@ -146,15 +169,21 @@ Default local endpoints:
 
 ## Development Seeded Accounts
 
-These accounts are created only when demo seeding is enabled, which is the default in `Development` and disabled in `Production`.
+These accounts are created by the development seeding defaults:
 
-- Admin: `admin@noorlocator.local` / `Admin123!Pass`
-- Manager: `manager@noorlocator.local` / `Manager123!Pass`
-- User: `user@noorlocator.local` / `User123!Pass`
+- Admin bootstrap account, created when `Seeding:SeedAdminAccount=true`: `admin@noorlocator.local` / `Admin123!Pass`
+- Manager demo account, created when `Seeding:SeedDemoData=true`: `manager@noorlocator.local` / `Manager123!Pass`
+- User demo account, created when `Seeding:SeedDemoData=true`: `user@noorlocator.local` / `User123!Pass`
+
+For production first-run bootstrap:
+
+- set `Seeding__SeedAdminAccount=true`
+- provide `Seeding__AdminName`, `Seeding__AdminEmail`, and `Seeding__AdminPassword`
+- turn `Seeding__SeedAdminAccount=false` again after the admin account exists
 
 ## Development Seeded Demo Data
 
-The demo content below is development-oriented seed data. Production defaults now keep demo seeding off.
+The demo content below is development-oriented seed data. Production defaults keep demo seeding off unless you intentionally enable it for a non-public environment.
 
 - Languages: Arabic, Swedish, English, Farsi, Urdu
 - Published demo centers across Copenhagen, Stockholm, Helsinki, Oslo, and Aarhus
@@ -260,9 +289,9 @@ dotnet test NoorLocator.sln
 
 Current automated coverage:
 
-- `10` unit tests
+- `14` unit tests
 - `30` integration tests
-- `40` passing tests in the current deployment-readiness verification pass
+- `44` passing tests in the current deployment-readiness verification pass
 
 Important test areas:
 
@@ -354,6 +383,11 @@ Before using Docker outside local experimentation:
 
 - Move connection strings and JWT secrets to environment variables or a secret store
 - Azure App Service MySQL connection string formats such as `MYSQLCONNSTR_DefaultConnection` and `AZURE_MYSQL_CONNECTIONSTRING` are supported
+- Azure MySQL host names ending in `.mysql.database.azure.com` automatically receive `SslMode=Required` if the connection string omits it
+- Prefer running `dotnet ef database update` or `scripts/apply-db-migrations.ps1` before app startup instead of enabling automatic migrations on every production boot
+- Keep `Seeding__ApplyMigrations=false` in normal production operation
+- Turn on `Seeding__SeedReferenceData=true` and `Seeding__SeedAdminAccount=true` only for the first bootstrap when you need reference content and an initial admin, then turn `Seeding__SeedAdminAccount=false` again
+- Keep `Seeding__SeedDemoData=false` for production
 - Keep `Swagger:Enabled` disabled outside development unless explicitly required
 - Configure real `Cors:AllowedOrigins`
 - Set `Frontend__ApiBaseUrl` and `Frontend__PublicOrigin` for production frontend routing and CORS
