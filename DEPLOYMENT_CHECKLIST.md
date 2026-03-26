@@ -11,6 +11,16 @@
 - [ ] Create the Azure Storage Account
 - [ ] Create the blob container for uploads, such as `uploads`
 
+## App Service Package
+
+- [ ] Confirm the Azure App Service runtime stack is `.NET 10`
+- [ ] Run `powershell -ExecutionPolicy Bypass -File .\scripts\package-app-service-api.ps1`
+- [ ] Confirm the publish output exists at `.\artifacts\publish\api`
+- [ ] Confirm the deployment ZIP exists at `.\artifacts\packages\noorlocator-api-appservice.zip`
+- [ ] Confirm the publish output does not contain stale `frontend/uploads` files
+- [ ] Prefer deploying the published ZIP package instead of the raw repo
+- [ ] If deploying source code instead of the published package, set `PROJECT=NoorLocator.Api/NoorLocator.Api.csproj`
+
 ## Database Setup
 
 - [ ] Choose public-access firewall rules or private networking for MySQL
@@ -43,10 +53,12 @@
 - [ ] If image URLs should use a custom public endpoint, set `AzureBlobStorage__PublicBaseUrl` to the public container root or CDN origin for that container
 - [ ] Decide whether the app may auto-create the container with `AzureBlobStorage__CreateContainerIfMissing`
 - [ ] Ensure uploaded image URLs are browser-reachable in the final production design
+- [ ] Do not keep `MediaStorage__Provider=Local` on a relative path for App Service package deployments; use Azure Blob or an absolute writable path under `HOME`
 
 ## App Service Settings
 
 - [ ] `ASPNETCORE_ENVIRONMENT=Production`
+- [ ] `WEBSITE_RUN_FROM_PACKAGE=1` when deploying the published package
 - [ ] `Jwt__Key`
 - [ ] `Jwt__Issuer`
 - [ ] `Jwt__Audience`
@@ -66,6 +78,16 @@
 - [ ] `Seeding__AdminPassword`
 - [ ] Turn `Seeding__SeedAdminAccount=false` again after the admin account is created
 - [ ] `Seeding__SeedDemoData=false`
+- [ ] Leave the App Service startup command empty for the published NoorLocator API package
+- [ ] Set the App Service Health Check path to `/api/health/ping`
+
+## Connection Strings Placement
+
+- [ ] Prefer the App Service Connection strings blade with name `DefaultConnection`
+- [ ] If using app settings instead, set `MYSQLCONNSTR_DefaultConnection`
+- [ ] `ConnectionStrings__DefaultConnection` is supported as a fallback
+- [ ] `AZURE_MYSQL_CONNECTIONSTRING` is supported as a fallback
+- [ ] `AzureBlobStorage__ConnectionString` belongs in App Service app settings or a Key Vault reference if you are not using managed identity
 
 ## Secrets
 
@@ -82,7 +104,10 @@
 - [ ] `GET /api/languages` returns the expected reference languages if bootstrap seeding was enabled
 - [ ] `GET /api/centers` returns `200`
 - [ ] `POST /api/auth/login` succeeds for the bootstrap admin account if first-run admin seeding was enabled
+- [ ] `GET /api/auth/me` succeeds with the issued JWT
+- [ ] `GET /api/admin/dashboard` succeeds with the bootstrap admin JWT
 - [ ] Cross-origin requests from the production frontend origin receive the expected CORS headers
 - [ ] Uploads succeed with the configured storage provider
 - [ ] Manager image uploads return the expected local `/uploads/...` URL or blob/CDN URL for the active provider
 - [ ] Uploaded images render correctly in public pages
+- [ ] Run `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-deployed-api.ps1 -BaseUrl https://your-app-name.azurewebsites.net ...`

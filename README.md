@@ -289,9 +289,9 @@ dotnet test NoorLocator.sln
 
 Current automated coverage:
 
-- `14` unit tests
-- `30` integration tests
-- `44` passing tests in the current deployment-readiness verification pass
+- `19` unit tests
+- `32` integration tests
+- `51` passing tests in the current deployment-readiness verification pass
 
 Important test areas:
 
@@ -348,7 +348,7 @@ See `VERIFICATION_REPORT.md` for the final verification summary.
 
 ## Media Handling
 
-- Development uploads are stored under `frontend/uploads/center-images`
+- Local uploads are stored under the configured `MediaStorage__RelativeRootPath` value, which defaults to `uploads`
 - Production Azure deployments can switch to Azure Blob Storage with `MediaStorage__Provider=AzureBlob`
 - The database stores image URLs only, not binary image data
 - `POST /api/center-images/upload` accepts `multipart/form-data`
@@ -359,6 +359,7 @@ See `VERIFICATION_REPORT.md` for the final verification summary.
 - Each uploaded image is linked to a center and the manager who uploaded it
 - Managers can upload only for assigned centers, while admins can still delete unsafe or broken images
 - Public center details pages display the primary image in the hero area and the remaining gallery images below it
+- Azure App Service deployments should prefer `MediaStorage__Provider=AzureBlob`; local storage on App Service is allowed only when you point `MediaStorage__RelativeRootPath` at an absolute writable path under `HOME`
 
 ## Docker
 
@@ -379,6 +380,53 @@ Before using Docker outside local experimentation:
 - keep the uploads volume persistent
 - keep `Seeding__SeedDemoData=false`
 
+## Azure App Service Deployment
+
+Recommended deployment shape:
+
+- Runtime stack: `.NET 10`
+- Publish mode: framework-dependent `dotnet publish`
+- Startup command: none required for the published NoorLocator API package
+- Health Check path: `/api/health/ping`
+- Production environment: `ASPNETCORE_ENVIRONMENT=Production`
+
+Build the App Service-ready artifact:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\package-app-service-api.ps1
+```
+
+This produces:
+
+- publish output: `.\artifacts\publish\api`
+- zip package: `.\artifacts\packages\noorlocator-api-appservice.zip`
+
+Recommended App Service configuration:
+
+- deploy the published ZIP package instead of the raw repo
+- set `WEBSITE_RUN_FROM_PACKAGE=1`
+- place the MySQL connection string in the App Service Connection strings blade as `DefaultConnection`, or set `MYSQLCONNSTR_DefaultConnection`
+- keep `ReverseProxy__UseForwardedHeaders=true`
+- keep `Swagger__Enabled=false`
+- keep `Seeding__ApplyMigrations=false` for steady-state production instances
+- set `MediaStorage__Provider=AzureBlob` plus the required `AzureBlobStorage__*` settings
+
+If you intentionally deploy source code instead of the published package, set:
+
+- `PROJECT=NoorLocator.Api/NoorLocator.Api.csproj`
+
+Post-deployment smoke test:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-deployed-api.ps1 `
+  -BaseUrl https://your-app-name.azurewebsites.net `
+  -Origin https://your-frontend-host.example `
+  -AdminEmail admin@your-domain.example `
+  -AdminPassword YOUR_ADMIN_PASSWORD `
+  -ManagerEmail manager@your-domain.example `
+  -ManagerPassword YOUR_MANAGER_PASSWORD
+```
+
 ## Production Notes
 
 - Move connection strings and JWT secrets to environment variables or a secret store
@@ -392,6 +440,7 @@ Before using Docker outside local experimentation:
 - Configure real `Cors:AllowedOrigins`
 - Set `Frontend__ApiBaseUrl` and `Frontend__PublicOrigin` for production frontend routing and CORS
 - Set `MediaStorage__Provider=AzureBlob` plus the `AzureBlobStorage__*` settings for Azure-hosted media
+- If `WEBSITE_RUN_FROM_PACKAGE=1` is enabled on App Service, do not leave `MediaStorage__Provider=Local` on a relative path; use Azure Blob or an absolute writable path under `HOME`
 - Keep the centralized session-backed logout flow, profile session-refresh helper, protected-page auth bootstrap, and no-store workspace caching rules intact when modifying auth
 
 ## Phase 10 Verification

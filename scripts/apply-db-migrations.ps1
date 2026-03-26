@@ -23,3 +23,7 @@ $env:MySql__ServerVersion = $MySqlServerVersion
 dotnet ef database update `
     --project .\NoorLocator.Infrastructure\NoorLocator.Infrastructure.csproj `
     --startup-project .\NoorLocator.Api\NoorLocator.Api.csproj
+
+if ($LASTEXITCODE -ne 0) {
+    throw "dotnet ef database update failed with exit code $LASTEXITCODE."
+}

@@ -18,6 +18,7 @@ using NoorLocator.Application;
 using NoorLocator.Application.Common.Configuration;
 using NoorLocator.Application.Common.Models;
 using NoorLocator.Infrastructure;
+using NoorLocator.Infrastructure.Deployment;
 using NoorLocator.Infrastructure.Persistence;
 using NoorLocator.Infrastructure.Seeding;
 using NoorLocator.Infrastructure.Services.Media;
@@ -71,6 +72,7 @@ var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<
 var jwtKey = ResolveJwtKey(builder.Environment, jwtSettings.Key);
 var configuredFrontendSettings = builder.Configuration.GetSection(FrontendSettings.SectionName).Get<FrontendSettings>() ?? new FrontendSettings();
 var mediaStorageSettings = builder.Configuration.GetSection(MediaStorageSettings.SectionName).Get<MediaStorageSettings>() ?? new MediaStorageSettings();
+AppServiceDeploymentValidator.Validate(builder.Configuration, builder.Environment, mediaStorageSettings);
 builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = ResolveMultipartBodyLengthLimit(mediaStorageSettings.MaxImageSizeBytes);

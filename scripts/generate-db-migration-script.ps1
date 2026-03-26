@@ -26,3 +26,7 @@ dotnet ef migrations script `
     --project .\NoorLocator.Infrastructure\NoorLocator.Infrastructure.csproj `
     --startup-project .\NoorLocator.Api\NoorLocator.Api.csproj `
     --output $OutputPath
+
+if ($LASTEXITCODE -ne 0) {
+    throw "dotnet ef migrations script failed with exit code $LASTEXITCODE."
+}
