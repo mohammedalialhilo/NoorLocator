@@ -402,6 +402,11 @@ This produces:
 - publish output: `.\artifacts\publish\api`
 - zip package: `.\artifacts\packages\noorlocator-api-appservice.zip`
 
+GitHub Actions automation for this package-and-deploy flow now lives at:
+
+- `.github/workflows/noorlocator-azure-app-service.yml`
+- `CI_CD.md`
+
 Recommended App Service configuration:
 
 - deploy the published ZIP package instead of the raw repo
@@ -514,11 +519,12 @@ Phase 12 profile-management verification was completed against the live MySQL-ba
 - nearby majalis and notification scaffolding
 - announcement scheduling, expiry, and pinning
 - managed cloud image resizing and compression
-- CI/CD pipelines and deployment environments
+- deployment slots and staged promotions
 
 ## Additional Documentation
 
 - `AZURE_RESOURCES.md`
+- `CI_CD.md`
 - `DEVELOPER_MANUAL.md`
 - `DEPLOYMENT.md`
 - `DEPLOYMENT_CHECKLIST.md`
