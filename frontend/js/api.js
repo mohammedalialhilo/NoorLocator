@@ -11,7 +11,7 @@ window.NoorLocatorApi = (() => {
     }
 
     function defaultNetworkMessage() {
-        return "NoorLocator could not reach the API. Check that the backend is running and try again.";
+        return "NoorLocator could not load this right now. Please try again shortly.";
     }
 
     function parsePayloadFromText(responseLike, responseText) {
@@ -108,7 +108,7 @@ window.NoorLocatorApi = (() => {
                 cache: "no-store"
             });
         } catch {
-            throw buildNetworkError("NoorLocator could not reach the upload API. Check the API URL, backend status, and browser network access, then try again.");
+            throw buildNetworkError("NoorLocator could not upload the image right now. Please try again shortly.");
         }
 
         const response = fetchResult.response;
@@ -130,7 +130,7 @@ window.NoorLocatorApi = (() => {
         const ok = "ok" in response ? Boolean(response.ok) : status >= 200 && status < 300;
 
         if (ok) {
-            return "Request completed.";
+            return "Done.";
         }
 
         if (status === 401) {
@@ -142,10 +142,10 @@ window.NoorLocatorApi = (() => {
         }
 
         if (status >= 500) {
-            return "NoorLocator hit a server error while processing the request.";
+            return "Something went wrong on our side. Please try again shortly.";
         }
 
-        return `Request failed with status ${status}.`;
+        return "Something went wrong. Please try again.";
     }
 
     function toQueryString(params) {

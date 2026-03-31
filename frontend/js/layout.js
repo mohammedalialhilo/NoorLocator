@@ -1,7 +1,7 @@
 window.NoorLocatorLayout = (() => {
     const navPanelId = "site-nav-panel";
     const navScrimId = "site-nav-scrim";
-    const mobileNavBreakpoint = 860;
+    const mobileNavBreakpoint = 1050;
     const brandLogoPath = "assets/logo_bkg.png";
     const brandLogoAlt = "NoorLocator logo";
     const aboutPageHref = "about.html";
@@ -36,6 +36,23 @@ window.NoorLocatorLayout = (() => {
         upsertHeadLink("apple-touch-icon", brandLogoPath, "image/png");
     }
 
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function getProfileInitial(user) {
+        const sourceName = typeof user?.name === "string" && user.name.trim()
+            ? user.name.trim()
+            : "Member";
+
+        return sourceName.charAt(0).toUpperCase();
+    }
+
     function isCompactViewport() {
         if (!window.matchMedia) {
             return window.innerWidth <= mobileNavBreakpoint;
@@ -44,16 +61,16 @@ window.NoorLocatorLayout = (() => {
         return window.matchMedia(`(max-width: ${mobileNavBreakpoint}px)`).matches;
     }
 
-    function setBodyNavState(isOpen) {
-        document.body.classList.toggle("nav-open", isOpen);
-        document.body.classList.toggle("nav-scroll-lock", isOpen);
+    function setScrollLockState(isLocked) {
+        document.body.classList.toggle("nav-scroll-lock", isLocked);
     }
 
     function bindNavigationBehavior(mount) {
+        const siteHeader = mount.querySelector(".site-header");
         const toggleButton = mount.querySelector("[data-nav-toggle]");
         const navPanel = mount.querySelector("[data-nav-panel]");
         const navScrim = mount.querySelector("[data-nav-scrim]");
-        if (!toggleButton || !navPanel || !navScrim) {
+        if (!siteHeader || !toggleButton || !navPanel || !navScrim) {
             return;
         }
 
@@ -61,16 +78,23 @@ window.NoorLocatorLayout = (() => {
         navCleanupController = new AbortController();
         const { signal } = navCleanupController;
 
+        const syncHeaderOffset = () => {
+            const headerHeight = Math.ceil(siteHeader.getBoundingClientRect().height);
+            mount.style.setProperty("--site-header-height", `${headerHeight}px`);
+        };
+
         const setExpanded = (expanded, options = {}) => {
             const canUseDrawer = isCompactViewport();
             const isOpen = canUseDrawer && expanded;
 
             toggleButton.setAttribute("aria-expanded", String(isOpen));
             toggleButton.setAttribute("aria-label", isOpen ? "Close navigation menu" : "Open navigation menu");
+            toggleButton.classList.toggle("is-open", isOpen);
             navPanel.classList.toggle("is-open", isOpen);
             navScrim.classList.toggle("is-visible", isOpen);
             navScrim.hidden = !isOpen;
-            setBodyNavState(isOpen);
+            setScrollLockState(isOpen);
+            syncHeaderOffset();
 
             if (!isOpen && options.focusToggle === true) {
                 toggleButton.focus();
@@ -81,7 +105,18 @@ window.NoorLocatorLayout = (() => {
             setExpanded(false, options);
         };
 
+        syncHeaderOffset();
         setExpanded(false);
+
+        if ("ResizeObserver" in window) {
+            const headerObserver = new ResizeObserver(() => {
+                syncHeaderOffset();
+            });
+            headerObserver.observe(siteHeader);
+            signal.addEventListener("abort", () => {
+                headerObserver.disconnect();
+            }, { once: true });
+        }
 
         toggleButton.addEventListener("click", event => {
             event.preventDefault();
@@ -113,16 +148,19 @@ window.NoorLocatorLayout = (() => {
         }, { signal });
 
         window.addEventListener("resize", () => {
+            syncHeaderOffset();
             if (!isCompactViewport()) {
                 closeMenu();
             }
         }, { signal });
 
         window.addEventListener("orientationchange", () => {
+            syncHeaderOffset();
             closeMenu();
         }, { signal });
 
         window.addEventListener("pageshow", () => {
+            syncHeaderOffset();
             closeMenu();
         }, { signal });
 
@@ -143,17 +181,8 @@ window.NoorLocatorLayout = (() => {
         const user = window.NoorLocatorAuth.getSessionUser();
         const navigation = buildNavigation(user);
         const navMarkup = navigation
-            .map(item => `<a class="site-nav__link${item.page === currentPage ? " is-active" : ""}" href="${item.href}">${item.label}</a>`)
+            .map(item => renderNavigationItem(item, currentPage))
             .join("");
-        const authMarkup = user
-            ? `
-                <div class="utility-row utility-row--panel">
-                    <span class="card__meta">${user.name} | ${user.role}</span>
-                    <a class="button button--secondary" href="profile.html">My profile</a>
-                    <a class="button button--ghost" href="logout.html" data-logout-action data-logout-redirect="login.html?loggedOut=1">Logout</a>
-                </div>
-            `
-            : "";
 
         mount.innerHTML = `
             <header class="site-header">
@@ -181,14 +210,12 @@ window.NoorLocatorLayout = (() => {
                         <nav class="site-nav" aria-label="Primary navigation">
                             ${navMarkup}
                         </nav>
-                        ${authMarkup}
                     </div>
                     <button id="${navScrimId}" class="site-nav-scrim" type="button" hidden tabindex="-1" aria-label="Close navigation menu" data-nav-scrim></button>
                 </div>
             </header>
         `;
 
-        window.NoorLocatorAuth.bindLogoutControls(mount);
         bindNavigationBehavior(mount);
     }
 
@@ -312,7 +339,6 @@ window.NoorLocatorLayout = (() => {
 
         if (user) {
             items.push({ href: "dashboard.html", label: "Dashboard", page: "dashboard" });
-            items.push({ href: "profile.html", label: "Profile", page: "profile" });
 
             if (user.role === "Manager" || user.role === "Admin") {
                 items.push({ href: "manager.html", label: "Manager", page: "manager" });
@@ -322,12 +348,40 @@ window.NoorLocatorLayout = (() => {
                 items.push({ href: "admin.html", label: "Admin", page: "admin" });
             }
 
+            items.push({
+                href: "profile.html",
+                label: window.NoorLocatorAuth.formatUserDisplayName(user),
+                page: "profile",
+                variant: "profile",
+                initial: getProfileInitial(user)
+            });
+
             return items;
         }
 
         items.push({ href: "login.html", label: "Login", page: "login" });
         items.push({ href: "register.html", label: "Register", page: "register" });
         return items;
+    }
+
+    function renderNavigationItem(item, currentPage) {
+        const isActive = item.page === currentPage;
+        const className = `site-nav__link${isActive ? " is-active" : ""}${item.variant === "profile" ? " site-nav__link--profile" : ""}`;
+        const ariaCurrent = isActive ? ' aria-current="page"' : "";
+
+        if (item.variant === "profile") {
+            const profileLabel = escapeHtml(item.label);
+            const profileInitial = escapeHtml(item.initial);
+
+            return `
+                <a class="${className}" href="${item.href}" data-profile-nav${ariaCurrent} aria-label="Open profile for ${profileLabel}">
+                    <span class="site-nav__profile-mark" aria-hidden="true">${profileInitial}</span>
+                    <span class="site-nav__profile-copy">${profileLabel}</span>
+                </a>
+            `;
+        }
+
+        return `<a class="${className}" href="${item.href}"${ariaCurrent}>${escapeHtml(item.label)}</a>`;
     }
 
     function renderShell() {

@@ -28,7 +28,7 @@
                 <div class="hero__actions">
                     <a id="profile-workspace-link" class="button button--primary" href="dashboard.html">Back to workspace</a>
                     <a class="button button--secondary" href="#profile-form-section">Edit profile</a>
-                    <a class="button button--ghost" href="logout.html" data-logout-action data-logout-redirect="login.html?loggedOut=1">Log out</a>
+                    <a class="button button--ghost" href="login.html?loggedOut=1" data-logout-action data-logout-redirect="login.html?loggedOut=1">Logout</a>
                 </div>
                 <p id="profile-page-message" class="message">Loading your profile...</p>
             </div>
@@ -37,6 +37,11 @@
                     <img class="site-logo site-logo--workspace" data-brand-logo src="assets/logo_bkg.png" alt="NoorLocator logo">
                     <p class="brand-card__tagline">Your personal account details stay connected to the same NoorLocator identity and session experience.</p>
                 </div>
+                <article class="mini-stat">
+                    <span class="card__meta">Current profile</span>
+                    <strong id="profile-display-name">Loading...</strong>
+                    <p>This is the exact identity NoorLocator shows in navigation after your session is confirmed.</p>
+                </article>
                 <article class="mini-stat">
                     <span class="card__meta">Role</span>
                     <strong id="profile-role-badge">Loading...</strong>

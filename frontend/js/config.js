@@ -90,7 +90,7 @@ window.NoorLocatorConfig = (() => {
             }
         }
 
-        throw lastError ?? new Error("NoorLocator could not reach the API.");
+        throw lastError ?? new Error("NoorLocator could not load this right now.");
     }
 
     async function resolveApiBaseUrl() {

@@ -254,14 +254,38 @@ function buildCenterDetailsHref(centerId, location = getDiscoveryLocation()) {
 
 function normalizeErrorMessage(error, fallbackMessage) {
     if (Array.isArray(error?.errors) && error.errors.length > 0 && typeof error.errors[0] === "string") {
-        return error.errors[0].trim();
+        return sanitizeUiMessage(error.errors[0], fallbackMessage);
     }
 
     if (typeof error?.message === "string" && error.message.trim()) {
-        return error.message.trim();
+        return sanitizeUiMessage(error.message, fallbackMessage);
     }
 
     return fallbackMessage;
+}
+
+function sanitizeUiMessage(message, fallbackMessage = "Something went wrong. Please try again.") {
+    const text = String(message || "").trim();
+    if (!text) {
+        return fallbackMessage;
+    }
+
+    const technicalPatterns = [
+        /\/api\//i,
+        /\bapi\b/i,
+        /\bbackend\b/i,
+        /\bendpoint\b/i,
+        /\bresponse\b/i,
+        /\bpayload\b/i,
+        /\bserver-side\b/i,
+        /\bstatus\s*\d{3}\b/i,
+        /\bget\s+\//i,
+        /\bpost\s+\//i
+    ];
+
+    return technicalPatterns.some(pattern => pattern.test(text))
+        ? fallbackMessage
+        : text;
 }
 
 function ensureToastRoot() {
@@ -756,7 +780,7 @@ async function initHomePage() {
             homeStatus,
             location
                 ? "Showing the closest published centers based on your saved location."
-                : "Showing a live preview of published centers from the public API.",
+                : "Showing a preview of published centers in NoorLocator.",
             "success");
     } catch (error) {
         if (centerCount) {
@@ -880,7 +904,7 @@ async function initAboutPage() {
             closingHighlight.textContent = content.closing.highlight;
         }
 
-        setMessage(pageMessage, "Manifesto-driven identity content loaded successfully.", "success");
+        setMessage(pageMessage, "About NoorLocator is ready.", "success");
     } catch (error) {
         const message = normalizeErrorMessage(error, "The About page could not be loaded right now.");
         setMessage(pageMessage, message, "error");
@@ -916,18 +940,23 @@ async function initCentersPage() {
             : await window.NoorLocatorApi.getCenters(appendLocationParams({}, state.location));
         const centers = response.data || [];
 
-        renderCenterCards(centersContainer, centers, "No centers matched the current filters.");
+        renderCenterCards(
+            centersContainer,
+            centers,
+            filters && hasSearchFilters(filters)
+                ? "No centers matched your search. Try another area or keyword."
+                : "No centers are available right now.");
 
         if (resultsSummary) {
             resultsSummary.textContent = filters && hasSearchFilters(filters)
-                ? `Showing ${centers.length} center${centers.length === 1 ? "" : "s"} that match your search.`
-                : `Showing ${centers.length} published center${centers.length === 1 ? "" : "s"} from the public API.`;
+                ? `${centers.length} center${centers.length === 1 ? "" : "s"} found for your search.`
+                : `${centers.length} center${centers.length === 1 ? "" : "s"} available right now.`;
         }
     }
 
     async function loadNearbyCenters() {
         if (!state.location) {
-            setContainerMessage(nearbyContainer, "Enable location access to see the closest centers, or use the search filters below.", "soft");
+            setContainerMessage(nearbyContainer, "Turn on location to see nearby centers, or search below.", "soft");
             return;
         }
 
@@ -936,9 +965,9 @@ async function initCentersPage() {
         try {
             const response = await window.NoorLocatorApi.getNearestCenters(state.location);
             const centers = response.data || [];
-            renderCenterCards(nearbyContainer, centers, "No nearby centers are available yet.", { limit: 3 });
+            renderCenterCards(nearbyContainer, centers, "No centers found near your location. Try searching in another area.", { limit: 3 });
         } catch (error) {
-            setContainerMessage(nearbyContainer, error.message || "Nearby center lookup is currently unavailable.", "error");
+            setContainerMessage(nearbyContainer, normalizeErrorMessage(error, "Nearby centers are unavailable right now."), "error");
         }
     }
 
@@ -954,8 +983,8 @@ async function initCentersPage() {
     }
 
     async function refreshLocation() {
-        updateLocationPanel("Locating", "Requesting your browser location to calculate distances and nearby centers.");
-        setMessage(pageMessage, "Requesting your browser location...");
+        updateLocationPanel("Locating", "Finding nearby centers based on your location.");
+        setMessage(pageMessage, "Finding nearby centers...");
 
         try {
             const location = await requestBrowserLocation();
@@ -964,9 +993,9 @@ async function initCentersPage() {
 
             updateLocationPanel(
                 "Enabled",
-                `Approximate coordinates active: ${location.lat.toFixed(3)}, ${location.lng.toFixed(3)}. Distances are now served from the API.`,
+                "Using your location to show nearby centers and estimated distances.",
                 "success");
-            setMessage(pageMessage, "Location enabled. Distances and nearby centers are now available.", "success");
+            setMessage(pageMessage, "Location enabled. Nearby centers are now available.", "success");
 
             const filters = getTrimmedFormValues(searchForm);
 
@@ -976,12 +1005,14 @@ async function initCentersPage() {
                     loadNearbyCenters()
                 ]);
             } catch (loadError) {
-                setContainerMessage(centersContainer, loadError.message || "The public center list could not be refreshed.", "error");
-                setMessage(pageMessage, loadError.message || "Location was enabled, but the center list could not be refreshed.", "error");
+                const message = normalizeErrorMessage(loadError, "The center list could not be refreshed right now.");
+                setContainerMessage(centersContainer, message, "error");
+                setMessage(pageMessage, message, "error");
             }
         } catch (error) {
-            updateLocationPanel("Unavailable", error.message || "Location access is currently unavailable.", "error");
-            setMessage(pageMessage, error.message || "Location access is unavailable. Use city and country search instead.", "error");
+            const message = normalizeErrorMessage(error, "Location access is unavailable. Use city and country search instead.");
+            updateLocationPanel("Unavailable", message, "error");
+            setMessage(pageMessage, message, "error");
             setContainerMessage(nearbyContainer, "Location access is unavailable. Use city or country search to find relevant centers.", "soft");
         }
     }
@@ -996,14 +1027,14 @@ async function initCentersPage() {
         event.preventDefault();
         const filters = getTrimmedFormValues(searchForm);
 
-        setMessage(searchMessage, "Searching the public center directory...");
+        setMessage(searchMessage, "Searching centers...");
 
         try {
             await loadDirectory(filters);
             setMessage(
                 searchMessage,
                 hasSearchFilters(filters)
-                    ? "Search results loaded from the API."
+                    ? "Search complete."
                     : "Showing all published centers.",
                 "success");
         } catch (error) {
@@ -1025,17 +1056,18 @@ async function initCentersPage() {
     if (state.location) {
         updateLocationPanel(
             "Enabled",
-            `Using saved coordinates: ${state.location.lat.toFixed(3)}, ${state.location.lng.toFixed(3)}.`,
+            "Using your saved location to show nearby centers.",
             "success");
     } else {
-        updateLocationPanel("Checking", "No saved location was found. NoorLocator will try browser geolocation next.");
+        updateLocationPanel("Checking", "No saved location was found yet. NoorLocator can use your browser location next.");
     }
 
     try {
         await loadDirectory();
     } catch (error) {
-        setContainerMessage(centersContainer, error.message || "The public center directory could not be loaded.", "error");
-        setMessage(pageMessage, error.message || "The public center directory could not be loaded.", "error");
+        const message = normalizeErrorMessage(error, "The center directory could not be loaded right now.");
+        setContainerMessage(centersContainer, message, "error");
+        setMessage(pageMessage, message, "error");
     }
 
     if (state.location) {
@@ -1099,7 +1131,7 @@ async function initCenterDetailsPage() {
     }
 
     if (description) {
-        description.textContent = "Fetching this center from the public NoorLocator API.";
+        description.textContent = "Loading this center's details.";
     }
 
     if (languages) {
@@ -1180,7 +1212,7 @@ async function initCenterDetailsPage() {
                 <article class="info-card">
                     <span class="card__meta">Distance</span>
                     <strong>${escapeHtml(typeof center.distanceKm === "number" ? formatDistance(center.distanceKm) : "Unavailable")}</strong>
-                    <p>${typeof center.distanceKm === "number" ? "Approximate distance calculated server-side." : "Enable location to see approximate distance."}</p>
+                    <p>${typeof center.distanceKm === "number" ? "Estimated from your current location." : "Enable location to see an estimated distance."}</p>
                 </article>
                 <article class="info-card">
                     <span class="card__meta">Coordinates</span>
@@ -1200,11 +1232,11 @@ async function initCenterDetailsPage() {
             imagesResult.status !== "fulfilled" ||
             announcementsResult.status !== "fulfilled"
         ) {
-            setMessage(detailMessage, "Some supporting sections could not be refreshed independently, so NoorLocator used the center detail payload as a fallback.", "error");
+            setMessage(detailMessage, "Some details are temporarily unavailable, but the main center profile is ready.", "error");
             return;
         }
 
-        setMessage(detailMessage, "Center profile loaded successfully from the public API.", "success");
+        setMessage(detailMessage, "Center details are ready.", "success");
     } catch (error) {
         if (title) {
             title.textContent = "Center profile unavailable";
@@ -1225,7 +1257,7 @@ async function initCenterDetailsPage() {
         applyCenterHeroImage(heroImage, heroFallback, "NoorLocator", []);
 
         if (infoGrid) {
-            infoGrid.innerHTML = `<div class="empty-state empty-state--error">The center profile could not be loaded from the API right now.</div>`;
+            infoGrid.innerHTML = `<div class="empty-state empty-state--error">Center details are unavailable right now.</div>`;
         }
 
         setMessage(detailMessage, error.message || "Center details could not be loaded.", "error");
@@ -1261,6 +1293,7 @@ function initProfilePage() {
     const formMessage = document.querySelector('[data-form-message="profile-form"]');
     const nameInput = document.querySelector('#profile-form input[name="name"]');
     const emailInput = document.querySelector('#profile-form input[name="email"]');
+    const displayName = document.getElementById("profile-display-name");
     const roleBadge = document.getElementById("profile-role-badge");
     const createdAt = document.getElementById("profile-created-at");
     const roleDisplay = document.getElementById("profile-role-display");
@@ -1270,7 +1303,7 @@ function initProfilePage() {
         profile: window.NoorLocatorAuth.getSessionUser()
     };
 
-    if (!pageMessage || !cardsContainer || !form || !formMessage || !nameInput || !emailInput || !roleBadge || !createdAt || !roleDisplay || !centerCount || !workspaceLink) {
+    if (!pageMessage || !cardsContainer || !form || !formMessage || !nameInput || !emailInput || !displayName || !roleBadge || !createdAt || !roleDisplay || !centerCount || !workspaceLink) {
         return;
     }
 
@@ -1305,8 +1338,9 @@ function initProfilePage() {
 
         nameInput.value = profile.name || "";
         emailInput.value = profile.email || "";
-        roleBadge.textContent = profile.role || "User";
-        roleDisplay.textContent = profile.role || "User";
+        displayName.textContent = window.NoorLocatorAuth.formatUserDisplayName(profile);
+        roleBadge.textContent = window.NoorLocatorAuth.normalizeUserRole(profile.role);
+        roleDisplay.textContent = window.NoorLocatorAuth.normalizeUserRole(profile.role);
         createdAt.textContent = profile.createdAt ? formatDateTime(profile.createdAt) : "Unknown";
 
         const assignedCenterCount = (profile.assignedCenterIds || []).length;
@@ -1320,11 +1354,12 @@ function initProfilePage() {
     function refreshOverviewCards() {
         const profile = state.profile || window.NoorLocatorAuth.getSessionUser() || { name: "Member", role: "User", email: "" };
         const assignedCenterCount = (profile.assignedCenterIds || []).length;
+        const displayLabel = window.NoorLocatorAuth.formatUserDisplayName(profile);
 
         populateCards("profile-cards", [
             {
-                title: "Signed in as",
-                body: `${profile.name} is currently authenticated as ${profile.role}. Profile edits update personal details only and do not change permissions.`
+                title: "Current profile identity",
+                body: `${displayLabel} is the profile identity NoorLocator shows in navigation. Profile edits update personal details only and do not change permissions.`
             },
             {
                 title: "Email on file",
@@ -1421,7 +1456,12 @@ function bindAuthForm(formId, submitAction) {
     form.addEventListener("submit", async event => {
         event.preventDefault();
         const formData = Object.fromEntries(new FormData(form).entries());
-        setMessage(message, "Sending request to the API...");
+        const busyMessage = formId === "login-form"
+            ? "Signing you in..."
+            : formId === "register-form"
+                ? "Creating your account..."
+                : "Submitting...";
+        setMessage(message, busyMessage);
 
         try {
             const response = await submitAction(formData);
@@ -1479,10 +1519,11 @@ function initDashboardPage() {
 
     function refreshOverviewCards() {
         const currentUser = state.user || window.NoorLocatorAuth.getSessionUser() || { name: "Contributor", role: "User" };
+        const displayLabel = window.NoorLocatorAuth.formatUserDisplayName(currentUser);
         populateCards("dashboard-cards", [
             {
                 title: "Signed in",
-                body: `${currentUser.name} is contributing as ${currentUser.role}. Every submission enters moderation before it reaches the public directory.`
+                body: `${displayLabel} is the current NoorLocator account for this workspace. Every submission enters moderation before it reaches the public directory.`
             },
             {
                 title: "My center requests",
@@ -1499,7 +1540,7 @@ function initDashboardPage() {
             {
                 title: "Predefined languages",
                 body: state.languages.length
-                    ? `${state.languages.length} predefined language option${state.languages.length === 1 ? "" : "s"} are available from the live API.`
+                    ? `${state.languages.length} predefined language option${state.languages.length === 1 ? "" : "s"} are ready to use in your forms.`
                     : "Language lookup data is currently unavailable."
             }
         ]);
@@ -2031,10 +2072,11 @@ function initManagerPage() {
 
     function refreshOverviewCards() {
         const currentUser = state.user || window.NoorLocatorAuth.getSessionUser() || { name: "Manager", role: "Manager" };
+        const displayLabel = window.NoorLocatorAuth.formatUserDisplayName(currentUser);
         populateCards("manager-cards", [
             {
                 title: "Manager session",
-                body: `${currentUser.name} is signed in as ${currentUser.role}. Majalis, announcements, and gallery changes are accepted only for approved center assignments.`
+                body: `${displayLabel} is the current NoorLocator account for this workspace. Majalis, announcements, and gallery changes are accepted only for approved center assignments.`
             },
             {
                 title: "Assigned centers",
@@ -2435,7 +2477,7 @@ function initManagerPage() {
         }
     }
 
-    async function refreshSelectedCenterWorkspace(successMessage = "Manager workspace loaded from the live API.") {
+    async function refreshSelectedCenterWorkspace(successMessage = "Manager workspace is ready.") {
         try {
             await Promise.all([
                 loadMajalisForSelectedCenter(),
@@ -3001,11 +3043,12 @@ function initAdminPage() {
     }
 
     function refreshOverviewCards() {
-        const currentUser = state.user || window.NoorLocatorAuth.getSessionUser() || { name: "Admin" };
+        const currentUser = state.user || window.NoorLocatorAuth.getSessionUser() || { name: "Admin", role: "Admin" };
+        const displayLabel = window.NoorLocatorAuth.formatUserDisplayName(currentUser);
         populateCards("admin-cards", [
             {
                 title: "Moderation queue",
-                body: `${currentUser.name} currently has ${(state.dashboard?.pendingCenterRequests || 0) + (state.dashboard?.pendingManagerRequests || 0) + (state.dashboard?.pendingCenterLanguageSuggestions || 0) + (state.dashboard?.pendingSuggestions || 0)} pending items to review.`
+                body: `${displayLabel} currently has ${(state.dashboard?.pendingCenterRequests || 0) + (state.dashboard?.pendingManagerRequests || 0) + (state.dashboard?.pendingCenterLanguageSuggestions || 0) + (state.dashboard?.pendingSuggestions || 0)} pending items to review.`
             },
             {
                 title: "Platform scale",
@@ -3226,7 +3269,7 @@ function initAdminPage() {
 
         renderAllSections();
         await loadAdminCenterImages();
-        setMessage(pageMessage, "Admin workspace loaded from the secured API.", "success");
+        setMessage(pageMessage, "Admin workspace is ready.", "success");
     }
 
     async function runAdminAction(confirmMessage, action) {

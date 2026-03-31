@@ -22,13 +22,13 @@
                     <button id="locate-centers" class="button button--primary" type="button" data-locate-centers>Use my location</button>
                     <a class="button button--ghost" href="index.html">Back home</a>
                 </div>
-                <p id="centers-page-message" class="message">Loading the public center directory...</p>
+                <p id="centers-page-message" class="message">Loading centers...</p>
             </div>
             <aside class="hero__panel hero__panel--stack">
                 <article class="mini-stat">
                     <span class="card__meta">Location status</span>
                     <strong id="location-status">Checking</strong>
-                    <p id="current-location">Browser geolocation helps NoorLocator calculate approximate distance in kilometers.</p>
+                    <p id="current-location">Turn on location to see nearby centers and estimated distances.</p>
                 </article>
             </aside>
         </section>
@@ -38,7 +38,7 @@
                 <div class="section__copy">
                     <span class="eyebrow">Search and filter</span>
                     <h2>Find centers by place, language, or keywords.</h2>
-                    <p>If you deny location access, you can still discover centers through city and country search.</p>
+                    <p>If you prefer not to share your location, you can still discover centers by searching for a city or country.</p>
                 </div>
             </div>
             <form id="center-search-form" class="panel filter-form">
@@ -73,7 +73,7 @@
                 <div class="section__copy">
                     <span class="eyebrow">Nearby</span>
                     <h2>Closest centers to your current location.</h2>
-                    <p>This section is filled from `GET /api/centers/nearest` when location access is available.</p>
+                    <p>Allow location sharing to see nearby centers here.</p>
                 </div>
             </div>
             <div id="nearby-centers" class="card-grid"></div>
@@ -84,7 +84,7 @@
                 <div class="section__copy">
                     <span class="eyebrow">Directory</span>
                     <h2>All published centers.</h2>
-                    <p id="centers-results-summary">Showing centers from the live public API.</p>
+                    <p id="centers-results-summary">Browse centers in the NoorLocator directory.</p>
                 </div>
             </div>
             <div id="centers-list" class="card-grid"></div>

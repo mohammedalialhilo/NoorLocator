@@ -140,6 +140,28 @@ window.NoorLocatorAuth = (() => {
         return Boolean(user && roles.includes(user.role));
     }
 
+    function normalizeUserRole(role) {
+        const normalizedRole = typeof role === "string" ? role.trim() : "";
+        return normalizedRole || "User";
+    }
+
+    function shouldDisplayRoleWithName(role) {
+        const normalizedRole = normalizeUserRole(role);
+        return normalizedRole === "Admin" || normalizedRole === "Manager";
+    }
+
+    function formatUserDisplayName(user) {
+        const fallbackName = "Member";
+        const normalizedName = typeof user?.name === "string" && user.name.trim()
+            ? user.name.trim()
+            : fallbackName;
+        const normalizedRole = normalizeUserRole(user?.role);
+
+        return shouldDisplayRoleWithName(normalizedRole)
+            ? `${normalizedName} | ${normalizedRole}`
+            : normalizedName;
+    }
+
     function persistUser(user) {
         writeStorage(storageKeys.user, JSON.stringify(user));
         refreshSessionFromStorage();
@@ -460,6 +482,7 @@ window.NoorLocatorAuth = (() => {
         clearSession,
         getDefaultRoute,
         getRefreshToken,
+        formatUserDisplayName,
         getSessionUser,
         getToken,
         getUser,
@@ -467,8 +490,10 @@ window.NoorLocatorAuth = (() => {
         hasRole,
         isAuthenticated,
         logout,
+        normalizeUserRole,
         requireAuth,
         setSession,
+        shouldDisplayRoleWithName,
         syncCurrentUser,
         updateSessionUser
     };
