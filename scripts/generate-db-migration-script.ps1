@@ -1,6 +1,8 @@
 param(
     [string]$EnvironmentName = "Production",
     [string]$OutputPath = ".\artifacts\noorlocator-mysql-idempotent.sql",
+    [string]$ConnectionString = "",
+    [string]$MySqlServerVersion = "8.0.36",
     [string]$ProjectRoot
 )
 
@@ -15,6 +17,14 @@ else {
 
 Set-Location $resolvedProjectRoot
 $env:ASPNETCORE_ENVIRONMENT = $EnvironmentName
+
+if (-not [string]::IsNullOrWhiteSpace($ConnectionString)) {
+    $env:ConnectionStrings__DefaultConnection = $ConnectionString
+}
+
+if (-not [string]::IsNullOrWhiteSpace($MySqlServerVersion)) {
+    $env:MySql__ServerVersion = $MySqlServerVersion
+}
 
 $outputDirectory = Split-Path -Path $OutputPath -Parent
 if ($outputDirectory) {

@@ -150,7 +150,15 @@ try {
 
     if (-not [string]::IsNullOrWhiteSpace($Origin)) {
         $corsResponse = Send-Request -Method "Get" -Path "/api/centers" -RequestOrigin $Origin
-        Assert-True ($corsResponse.AccessControlAllowOrigin -eq $Origin.TrimEnd("/")) "The configured origin was not echoed in Access-Control-Allow-Origin."
+        $normalizedCorsOrigin = if ([string]::IsNullOrWhiteSpace([string]$corsResponse.AccessControlAllowOrigin)) {
+            ""
+        }
+        else {
+            [string]$corsResponse.AccessControlAllowOrigin
+        }
+
+        $normalizedCorsOrigin = $normalizedCorsOrigin.TrimEnd("/")
+        Assert-True ($normalizedCorsOrigin -eq $Origin.TrimEnd("/")) "The configured origin was not echoed in Access-Control-Allow-Origin."
         $summary.Cors = "Verified CORS response for the supplied frontend origin."
     }
 

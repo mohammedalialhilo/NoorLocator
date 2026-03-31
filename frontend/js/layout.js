@@ -1,10 +1,15 @@
 window.NoorLocatorLayout = (() => {
     const navPanelId = "site-nav-panel";
+    const navScrimId = "site-nav-scrim";
+    const mobileNavBreakpoint = 860;
     const brandLogoPath = "assets/logo_bkg.png";
     const brandLogoAlt = "NoorLocator logo";
-    const attribution = "Driven by \u0645\u0648\u0643\u0628 \u062e\u062f\u0627\u0645 \u0623\u0647\u0644 \u0627\u0644\u0628\u064a\u062a (\u0639\u0644\u064a\u0647\u0645 \u0627\u0644\u0633\u0644\u0627\u0645), Copenhagen, Denmark.";
+    const aboutPageHref = "about.html";
+    const attribution = "Driven by موكب خدام أهل البيت (عليهم السلام), Copenhagen, Denmark.";
     const tagline = "Connecting you to Shia centers and majalis worldwide";
     let serviceWorkerSetupStarted = false;
+    let installPromptSetupStarted = false;
+    let navCleanupController = null;
 
     function upsertHeadLink(rel, href, type = "") {
         let link = document.querySelector(`link[rel="${rel}"]`);
@@ -29,6 +34,103 @@ window.NoorLocatorLayout = (() => {
         upsertHeadLink("icon", brandLogoPath, "image/png");
         upsertHeadLink("shortcut icon", brandLogoPath, "image/png");
         upsertHeadLink("apple-touch-icon", brandLogoPath, "image/png");
+    }
+
+    function isCompactViewport() {
+        if (!window.matchMedia) {
+            return window.innerWidth <= mobileNavBreakpoint;
+        }
+
+        return window.matchMedia(`(max-width: ${mobileNavBreakpoint}px)`).matches;
+    }
+
+    function setBodyNavState(isOpen) {
+        document.body.classList.toggle("nav-open", isOpen);
+        document.body.classList.toggle("nav-scroll-lock", isOpen);
+    }
+
+    function bindNavigationBehavior(mount) {
+        const toggleButton = mount.querySelector("[data-nav-toggle]");
+        const navPanel = mount.querySelector("[data-nav-panel]");
+        const navScrim = mount.querySelector("[data-nav-scrim]");
+        if (!toggleButton || !navPanel || !navScrim) {
+            return;
+        }
+
+        navCleanupController?.abort();
+        navCleanupController = new AbortController();
+        const { signal } = navCleanupController;
+
+        const setExpanded = (expanded, options = {}) => {
+            const canUseDrawer = isCompactViewport();
+            const isOpen = canUseDrawer && expanded;
+
+            toggleButton.setAttribute("aria-expanded", String(isOpen));
+            toggleButton.setAttribute("aria-label", isOpen ? "Close navigation menu" : "Open navigation menu");
+            navPanel.classList.toggle("is-open", isOpen);
+            navScrim.classList.toggle("is-visible", isOpen);
+            navScrim.hidden = !isOpen;
+            setBodyNavState(isOpen);
+
+            if (!isOpen && options.focusToggle === true) {
+                toggleButton.focus();
+            }
+        };
+
+        const closeMenu = (options = {}) => {
+            setExpanded(false, options);
+        };
+
+        setExpanded(false);
+
+        toggleButton.addEventListener("click", event => {
+            event.preventDefault();
+            event.stopPropagation();
+            setExpanded(toggleButton.getAttribute("aria-expanded") !== "true");
+        }, { signal });
+
+        navScrim.addEventListener("click", () => {
+            closeMenu({ focusToggle: true });
+        }, { signal });
+
+        document.addEventListener("pointerdown", event => {
+            if (!isCompactViewport() || toggleButton.getAttribute("aria-expanded") !== "true") {
+                return;
+            }
+
+            const target = event.target;
+            if (target instanceof Node && (navPanel.contains(target) || toggleButton.contains(target))) {
+                return;
+            }
+
+            closeMenu();
+        }, { signal });
+
+        document.addEventListener("keydown", event => {
+            if (event.key === "Escape") {
+                closeMenu({ focusToggle: true });
+            }
+        }, { signal });
+
+        window.addEventListener("resize", () => {
+            if (!isCompactViewport()) {
+                closeMenu();
+            }
+        }, { signal });
+
+        window.addEventListener("orientationchange", () => {
+            closeMenu();
+        }, { signal });
+
+        window.addEventListener("pageshow", () => {
+            closeMenu();
+        }, { signal });
+
+        navPanel.querySelectorAll("a, button").forEach(element => {
+            element.addEventListener("click", () => {
+                closeMenu();
+            }, { signal });
+        });
     }
 
     function renderHeader() {
@@ -63,11 +165,17 @@ window.NoorLocatorLayout = (() => {
                             <span class="brand__title">NoorLocator</span>
                         </span>
                     </a>
-                    <button class="site-nav-toggle" type="button" aria-expanded="false" aria-controls="${navPanelId}" data-nav-toggle>
+                    <button
+                        class="site-nav-toggle"
+                        type="button"
+                        aria-expanded="false"
+                        aria-label="Open navigation menu"
+                        aria-controls="${navPanelId}"
+                        data-nav-toggle>
                         <span class="sr-only">Toggle navigation</span>
-                        <span></span>
-                        <span></span>
-                        <span></span>
+                        <span class="site-nav-toggle__line"></span>
+                        <span class="site-nav-toggle__line"></span>
+                        <span class="site-nav-toggle__line"></span>
                     </button>
                     <div id="${navPanelId}" class="site-header__panel" data-nav-panel>
                         <nav class="site-nav" aria-label="Primary navigation">
@@ -75,33 +183,13 @@ window.NoorLocatorLayout = (() => {
                         </nav>
                         ${authMarkup}
                     </div>
+                    <button id="${navScrimId}" class="site-nav-scrim" type="button" hidden tabindex="-1" aria-label="Close navigation menu" data-nav-scrim></button>
                 </div>
             </header>
         `;
 
         window.NoorLocatorAuth.bindLogoutControls(mount);
-
-        const toggleButton = mount.querySelector("[data-nav-toggle]");
-        const navPanel = mount.querySelector("[data-nav-panel]");
-        if (!toggleButton || !navPanel) {
-            return;
-        }
-
-        const setExpanded = expanded => {
-            toggleButton.setAttribute("aria-expanded", String(expanded));
-            navPanel.classList.toggle("is-open", expanded);
-        };
-
-        setExpanded(false);
-
-        toggleButton.addEventListener("click", () => {
-            const expanded = toggleButton.getAttribute("aria-expanded") === "true";
-            setExpanded(!expanded);
-        });
-
-        navPanel.querySelectorAll("a, button").forEach(element => {
-            element.addEventListener("click", () => setExpanded(false));
-        });
+        bindNavigationBehavior(mount);
     }
 
     function renderFooter() {
@@ -130,7 +218,7 @@ window.NoorLocatorLayout = (() => {
                         <nav class="footer-nav" aria-label="Footer navigation">
                             <a class="footer-nav__link" href="index.html">Home</a>
                             <a class="footer-nav__link" href="centers.html">Centers</a>
-                            <a class="footer-nav__link" href="/about">About</a>
+                            <a class="footer-nav__link" href="${aboutPageHref}">About</a>
                             <a class="footer-nav__link" href="${suggestionsHref}">Contact / Suggestions</a>
                         </nav>
                     </div>
@@ -141,6 +229,10 @@ window.NoorLocatorLayout = (() => {
 
     async function registerServiceWorker() {
         if (!("serviceWorker" in navigator)) {
+            return;
+        }
+
+        if (!window.location || !/^https?:$/i.test(window.location.protocol)) {
             return;
         }
 
@@ -171,6 +263,23 @@ window.NoorLocatorLayout = (() => {
         }
     }
 
+    function registerInstallPromptHooks() {
+        if (installPromptSetupStarted) {
+            return;
+        }
+
+        installPromptSetupStarted = true;
+
+        window.addEventListener("beforeinstallprompt", event => {
+            event.preventDefault();
+            window.NoorLocatorBeforeInstallPrompt = event;
+        });
+
+        window.addEventListener("appinstalled", () => {
+            window.NoorLocatorBeforeInstallPrompt = null;
+        });
+    }
+
     function isLikelyLocalDevelopmentHost() {
         if (!window.location || !/^https?:$/i.test(window.location.protocol)) {
             return false;
@@ -198,7 +307,7 @@ window.NoorLocatorLayout = (() => {
         const items = [
             { href: "index.html", label: "Home", page: "home" },
             { href: "centers.html", label: "Centers", page: "centers" },
-            { href: "/about", label: "About", page: "about" }
+            { href: aboutPageHref, label: "About", page: "about" }
         ];
 
         if (user) {
@@ -234,6 +343,7 @@ window.NoorLocatorLayout = (() => {
         },
         init() {
             renderShell();
+            registerInstallPromptHooks();
 
             if (!serviceWorkerSetupStarted) {
                 serviceWorkerSetupStarted = true;

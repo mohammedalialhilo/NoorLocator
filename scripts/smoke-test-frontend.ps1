@@ -514,7 +514,14 @@ try {
   detailMessage: document.getElementById('center-detail-message')?.textContent || ''
 }))()
 "@
-        Assert-True ($imageState.heroImageSrc -eq $uploadResult.imageUrl) "The public center page did not render the uploaded production image URL."
+        $expectedRenderedImageUrl = if ($uploadResult.imageUrl.StartsWith("http://", [System.StringComparison]::OrdinalIgnoreCase) -or $uploadResult.imageUrl.StartsWith("https://", [System.StringComparison]::OrdinalIgnoreCase)) {
+            $uploadResult.imageUrl
+        }
+        else {
+            Join-BaseUrl $normalizedBaseUrl $uploadResult.imageUrl
+        }
+
+        Assert-True ($imageState.heroImageSrc -eq $expectedRenderedImageUrl) "The public center page did not render the uploaded production image URL."
         Assert-Branding $webSocket "The public center details page"
 
         [void](Invoke-Js $webSocket @"

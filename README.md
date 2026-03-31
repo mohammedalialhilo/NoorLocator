@@ -26,6 +26,12 @@ The platform focuses on:
 - Testing: xUnit unit tests and integration tests
 - Documentation: Swagger / OpenAPI with XML comments
 
+Important deployment note:
+
+- NoorLocator currently supports MySQL-compatible deployments only.
+- In Azure, use Azure Database for MySQL Flexible Server.
+- Azure SQL Database / SQL Server is **not** a drop-in option for this codebase today because the EF Core provider, migrations, and connection handling are built for MySQL.
+
 ## Architecture Summary
 
 ```text
@@ -142,7 +148,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\apply-db-migrations.ps1 -Envi
 Generate an idempotent SQL script for controlled rollouts:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\generate-db-migration-script.ps1 -EnvironmentName Production -OutputPath .\artifacts\noorlocator-mysql-idempotent.sql
+powershell -ExecutionPolicy Bypass -File .\scripts\generate-db-migration-script.ps1 -EnvironmentName Production -ConnectionString "Server=your-server.mysql.database.azure.com;Port=3306;Database=Noorlocator;User=YOUR_USER;Password=YOUR_PASSWORD;" -OutputPath .\artifacts\noorlocator-mysql-idempotent.sql
 ```
 
 Create a new migration:
@@ -407,6 +413,14 @@ GitHub Actions automation for this package-and-deploy flow now lives at:
 - `.github/workflows/noorlocator-azure-app-service.yml`
 - `CI_CD.md`
 
+GitHub Actions deployment settings required for the `production` environment:
+
+- secret: `AZURE_CLIENT_ID`
+- secret: `AZURE_TENANT_ID`
+- secret: `AZURE_SUBSCRIPTION_ID`
+- variable: `AZURE_WEBAPP_NAME`
+- auth model: Azure OpenID Connect / federated credential, not a long-lived publish profile
+
 Recommended App Service configuration:
 
 - deploy the published ZIP package instead of the raw repo
@@ -518,6 +532,7 @@ Before public launch, verify the hosted application with a real production-style
 - an admin can review and approve the moderated records needed for launch
 - `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-deployed-api.ps1 -BaseUrl https://your-host ...`
 - `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-frontend.ps1 -BaseUrl https://your-host ...`
+- `powershell -ExecutionPolicy Bypass -File .\scripts\verify-mobile-frontend.ps1 -BaseUrl https://your-host ...` when you want an additional mobile-navigation and responsive-layout browser pass
 
 ## Rollback And Recovery
 
@@ -616,6 +631,9 @@ Phase 12 profile-management verification was completed against the live MySQL-ba
 - `DEVELOPER_MANUAL.md`
 - `DEPLOYMENT.md`
 - `DEPLOYMENT_CHECKLIST.md`
+- `NoorLocator_Deployment_Guide.md`
+- `NoorLocator_Deployment_Guide.docx`
+- `scripts/generate-deployment-guide-docx.py`
 - `VERIFICATION_REPORT.md`
 - `scripts/verify-e2e.ps1`
 

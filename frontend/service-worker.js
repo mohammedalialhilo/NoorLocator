@@ -1,21 +1,20 @@
-const CACHE_NAME = "noorlocator-shell-v8";
+const CACHE_NAME = "noorlocator-shell-v9";
 const SHELL_ASSETS = [
-    "/",
-    "/about",
-    "/index.html",
-    "/about.html",
-    "/centers.html",
-    "/center-details.html",
-    "/login.html",
-    "/register.html",
-    "/css/style.css",
-    "/js/auth.js",
-    "/js/api.js",
-    "/js/layout.js",
-    "/js/app.js",
-    "/assets/logo_bkg.png",
-    "/assets/center-photo-placeholder.svg",
-    "/site.webmanifest"
+    "./",
+    "index.html",
+    "about.html",
+    "centers.html",
+    "center-details.html",
+    "login.html",
+    "register.html",
+    "css/style.css",
+    "js/auth.js",
+    "js/api.js",
+    "js/layout.js",
+    "js/app.js",
+    "assets/logo_bkg.png",
+    "assets/center-photo-placeholder.svg",
+    "site.webmanifest"
 ];
 const NON_CACHEABLE_PATHS = new Set([
     "/js/runtime-config.js",

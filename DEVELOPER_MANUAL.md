@@ -273,6 +273,7 @@ Swagger is the live reference for DTO shapes and status codes.
 ### Database Deployment And Seeding
 
 - `NoorLocatorDbContext` uses Pomelo EF Core for MySQL and is compatible with MySQL 8.x and Azure Database for MySQL Flexible Server
+- Azure SQL Database / SQL Server is not part of the current NoorLocator deployment target; using it would require a provider and migration strategy change
 - `NoorLocatorDbContextFactory` loads `appsettings.json`, the active environment file, and environment variables so `dotnet ef` follows the same connection rules as the app
 - supported production connection inputs are `ConnectionStrings:DefaultConnection`, `MYSQLCONNSTR_DefaultConnection`, and `AZURE_MYSQL_CONNECTIONSTRING`
 - Azure MySQL host names ending in `.mysql.database.azure.com` automatically receive `SslMode=Required` when the connection string omits it
@@ -311,6 +312,7 @@ Swagger is the live reference for DTO shapes and status codes.
 - render public pages and dashboards
 - call real API endpoints only
 - default to the same-origin ASP.NET host in production because the frontend is bundled into the published API artifact
+- keep public page links and manifest routes relative, such as `index.html`, `about.html`, and `centers.html`, so the same bundle works in App Service and Capacitor-packaged mobile shells
 - use `Frontend__ApiBaseUrl` only when the frontend must target a different app origin or app root, and do not append `/api`
 - store auth state through the shared `frontend/js/auth.js` helper
 - render role-aware navigation
@@ -322,6 +324,44 @@ Swagger is the live reference for DTO shapes and status codes.
 - show upload progress, gallery refreshes, and clear validation errors for image uploads
 - show loading states, empty states, and friendly errors
 - never act as the source of truth for security
+- the source frontend lives in `frontend/`, and `NoorLocator.Api/NoorLocator.Api.csproj` copies it into the published API artifact under `frontend/...`, so deployment and Capacitor packaging checks should inspect `artifacts/publish/api/frontend`
+
+### Responsive Strategy And Mobile Navigation
+
+- `frontend/css/style.css` is the shared responsive layer for public pages, forms, dashboards, and admin tables
+- the current breakpoints are:
+  - `960px` for collapsing hero, detail, and split-panel layouts into a single column
+  - `860px` for switching the shared navbar into the hamburger-driven mobile menu
+  - `720px` for stacking button rows, filter grids, dashboard navigation, and table content for narrow phones
+- mobile safety rules in the shared CSS include:
+  - `overflow-x: hidden` on the page shell
+  - `max-width: 100%` on major content containers and inputs
+  - `overflow-wrap: anywhere` on card and table content so long email addresses, metadata, or tokens do not force horizontal scrolling
+  - `scroll-margin-top` on section anchors so sticky-header navigation remains usable on smaller screens
+  - `prefers-reduced-motion` support so the menu and cards remain comfortable for reduced-motion users
+- the hamburger menu is owned by `frontend/js/layout.js` and `frontend/css/style.css`
+- on screens at or below `860px`, `layout.js`:
+  - renders the toggle button and drawer panel
+  - opens and closes the drawer by toggling `aria-expanded`, `.is-open`, and body nav-state classes
+  - closes the menu when the scrim is tapped, when a navigation item is selected, when the user presses `Escape`, and when the viewport changes
+  - rebuilds the menu after auth changes so logged-in and logged-out states stay correct without a manual refresh
+- on the CSS side, the hamburger experience depends on:
+  - `.site-nav-toggle`
+  - `.site-nav-toggle__line`
+  - `.site-header__panel`
+  - `.site-nav-scrim`
+  - `.site-nav__link`
+  - `.utility-row--panel`
+- maintain the mobile navbar by editing `buildNavigation()` and `renderHeader()` in `frontend/js/layout.js` first, then keeping the selectors above aligned in `frontend/css/style.css`
+- if you add a new top-level page:
+  - add the relative route in `buildNavigation()` if it belongs in the primary menu
+  - decide whether it should appear for anonymous users, authenticated users, managers, or admins
+  - verify its active-link state and drawer close behavior in both desktop and mobile layouts
+- admin data tables intentionally become stacked card-like rows on small screens, so future table cells must keep `data-label` attributes when new columns are added
+- `frontend/js/config.js` keeps the API base URL configurable through runtime config, page config, same-origin fallback, and remembered overrides
+- `frontend/js/layout.js` only registers the service worker on `http` and `https` origins, which avoids breaking `file://` or Capacitor-style packaged environments
+- `frontend/site.webmanifest` keeps `id`, `start_url`, and `scope` relative so installable and packaged builds do not assume a root-domain deployment
+- `frontend/service-worker.js` precaches only relative shell assets and avoids workspace pages plus runtime config so authenticated/mobile shells do not serve stale protected UI
 
 ### Frontend Branding
 
@@ -460,7 +500,7 @@ Swagger is the live reference for DTO shapes and status codes.
 - `scripts/verify-e2e.ps1` was executed against the real MySQL-backed application
 - `dotnet ef database update --project .\NoorLocator.Infrastructure\NoorLocator.Infrastructure.csproj --startup-project .\NoorLocator.Api\NoorLocator.Api.csproj` was executed against a fresh scratch MySQL database
 - `powershell -ExecutionPolicy Bypass -File .\scripts\apply-db-migrations.ps1 -EnvironmentName Production -ConnectionString "Server=...;Database=...;User=...;Password=...;"` was executed against a second fresh scratch MySQL database
-- `powershell -ExecutionPolicy Bypass -File .\scripts\generate-db-migration-script.ps1 -EnvironmentName Production -OutputPath .\artifacts\noorlocator-mysql-idempotent.sql` generated an idempotent SQL migration script
+- `powershell -ExecutionPolicy Bypass -File .\scripts\generate-db-migration-script.ps1 -EnvironmentName Production -ConnectionString "Server=...;Database=...;User=...;Password=...;" -OutputPath .\artifacts\noorlocator-mysql-idempotent.sql` generated an idempotent SQL migration script
 - a production-style API run using `MYSQLCONNSTR_DefaultConnection` booted successfully after migrations and seeded reference data, bootstrap admin data, and optional demo data by configuration
 - a live API run using local storage uploaded a manager center image successfully, returned an `/uploads/center-images/...` URL, and served that image back publicly
 - the Azure Blob provider path was verified through automated endpoint tests against a local fake blob endpoint:
@@ -503,14 +543,20 @@ Swagger is the live reference for DTO shapes and status codes.
   - valid manager uploads complete without the old API-reachability failure and refresh the gallery
   - the public center details page renders a hero image and gallery from uploaded media
   - the admin image moderation section can load and delete gallery items successfully
+  - `scripts/verify-mobile-frontend.ps1` exercised mobile, tablet, and desktop browser viewports against the real local app and confirmed:
+    - home, centers, center details, login, register, profile, dashboard, manager, and admin pages render without horizontal overflow or console errors
+    - the hamburger menu appears on small screens, opens, closes, navigates correctly, marks active links, and switches correctly after register, login, and logout
+    - touch targets remain usable on key pages and forms stay within the viewport
+    - relative routes, relative manifest entry points, and the guarded service-worker registration path remain compatible with future Capacitor packaging
 
 Future developers should rerun:
 
 ```powershell
 dotnet test NoorLocator.sln
 powershell -ExecutionPolicy Bypass -File .\scripts\apply-db-migrations.ps1 -EnvironmentName Production -ConnectionString "Server=127.0.0.1;Port=3306;Database=Noorlocator;User=...;Password=...;"
-powershell -ExecutionPolicy Bypass -File .\scripts\generate-db-migration-script.ps1 -EnvironmentName Production -OutputPath .\artifacts\noorlocator-mysql-idempotent.sql
+powershell -ExecutionPolicy Bypass -File .\scripts\generate-db-migration-script.ps1 -EnvironmentName Production -ConnectionString "Server=127.0.0.1;Port=3306;Database=Noorlocator;User=...;Password=...;" -OutputPath .\artifacts\noorlocator-mysql-idempotent.sql
 powershell -ExecutionPolicy Bypass -File .\scripts\verify-e2e.ps1 -StartApp -BaseUrl http://127.0.0.1:5210 -ConnectionString "Server=127.0.0.1;Port=3306;Database=Noorlocator;User=...;Password=...;"
+powershell -ExecutionPolicy Bypass -File .\scripts\verify-mobile-frontend.ps1 -StartApp -BaseUrl http://127.0.0.1:5210 -ConnectionString "Server=127.0.0.1;Port=3306;Database=Noorlocator;User=...;Password=...;"
 ```
 
 ### Production Launch Smoke Checklist

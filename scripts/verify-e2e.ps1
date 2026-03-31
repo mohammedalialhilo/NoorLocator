@@ -206,7 +206,7 @@ try {
     $serviceWorkerScript = Send-Request -Method "Get" -Path "/service-worker.js" -Accept "text/javascript"
     Assert-True ($serviceWorkerScript.Text.Contains("NON_CACHEABLE_PATHS")) "service-worker.js is not protecting workspace pages from cache reuse."
     Assert-True ($serviceWorkerScript.Text.Contains("/profile.html")) "service-worker.js is not excluding the profile page from cache reuse."
-    Assert-True ($serviceWorkerScript.Text.Contains("/assets/logo_bkg.png")) "service-worker.js is not caching the shared PNG logo."
+    Assert-True (($serviceWorkerScript.Text.Contains("/assets/logo_bkg.png")) -or ($serviceWorkerScript.Text.Contains("assets/logo_bkg.png"))) "service-worker.js is not caching the shared PNG logo."
     Assert-True (-not $serviceWorkerScript.Text.Contains("/assets/logo.svg")) "service-worker.js still references the legacy SVG logo."
     Assert-True ($serviceWorkerScript.Text.Contains('requestUrl.pathname.startsWith("/api/") || NON_CACHEABLE_PATHS.has(requestUrl.pathname)')) "service-worker.js is still caching protected workspace routes."
     $appScript = Send-Request -Method "Get" -Path "/js/app.js" -Accept "text/javascript"

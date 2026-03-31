@@ -10,6 +10,7 @@
 - [ ] Create the `Noorlocator` MySQL database
 - [ ] Create the Azure Storage Account
 - [ ] Create the blob container for uploads, such as `uploads`
+- [ ] Do **not** substitute Azure SQL Database or SQL Server for the current NoorLocator deployment; the application and EF migrations are built for MySQL
 
 ## App Service Package
 
@@ -58,6 +59,7 @@
 - [ ] `dotnet ef database update --project .\NoorLocator.Infrastructure\NoorLocator.Infrastructure.csproj --startup-project .\NoorLocator.Api\NoorLocator.Api.csproj`
 - [ ] or `powershell -ExecutionPolicy Bypass -File .\scripts\apply-db-migrations.ps1 -EnvironmentName Production -ConnectionString "..."`
 - [ ] Optionally generate and archive `.\artifacts\noorlocator-mysql-idempotent.sql` with `scripts/generate-db-migration-script.ps1`
+- [ ] If generating the idempotent script for a production-like environment, pass the production connection string explicitly to `scripts/generate-db-migration-script.ps1`
 - [ ] Run EF Core migrations against the Azure MySQL database before the production app instance serves traffic
 - [ ] Decide whether first-run bootstrap should seed reference data and an initial admin account
 - [ ] Keep `Seeding__SeedDemoData=false` in production
@@ -113,6 +115,16 @@
 - [ ] `AZURE_MYSQL_CONNECTIONSTRING` is supported as a fallback
 - [ ] `AzureBlobStorage__ConnectionString` belongs in App Service app settings or a Key Vault reference if you are not using managed identity
 
+## GitHub Actions Deployment Settings
+
+- [ ] Create a GitHub environment named `production`
+- [ ] Add GitHub environment secret `AZURE_CLIENT_ID`
+- [ ] Add GitHub environment secret `AZURE_TENANT_ID`
+- [ ] Add GitHub environment secret `AZURE_SUBSCRIPTION_ID`
+- [ ] Add GitHub environment variable `AZURE_WEBAPP_NAME`
+- [ ] Configure Azure federated credentials for GitHub OIDC with the subject `repo:<ORG>/<REPO>:environment:production`
+- [ ] Confirm the workflow file `.github/workflows/noorlocator-azure-app-service.yml` is the deployment workflow used by `main`
+
 ## Secrets
 
 - [ ] Store JWT secret securely
@@ -160,6 +172,7 @@
 - [ ] Admin approvals for center requests, manager requests, and language suggestions succeed when launch data depends on them
 - [ ] Run `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-deployed-api.ps1 -BaseUrl https://your-app-name.azurewebsites.net ...`
 - [ ] Run `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-frontend.ps1 -BaseUrl https://your-app-name.azurewebsites.net ...`
+- [ ] Run `powershell -ExecutionPolicy Bypass -File .\scripts\verify-mobile-frontend.ps1 -BaseUrl https://your-app-name.azurewebsites.net ...` for an additional responsive/mobile-navbar browser pass
 
 ## Rollback And Basic Recovery
 

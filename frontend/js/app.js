@@ -2879,28 +2879,30 @@ function renderAdminUsersTable(container, users) {
     }
 
     container.innerHTML = `
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Assigned Centers</th>
-                    <th>Created</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${users.map(user => `
+        <div class="table-shell">
+            <table class="data-table">
+                <thead>
                     <tr>
-                        <td>${escapeHtml(user.name)}</td>
-                        <td>${escapeHtml(user.email)}</td>
-                        <td>${escapeHtml(String(user.role))}</td>
-                        <td>${escapeHtml(String(user.assignedCenterCount))}</td>
-                        <td>${escapeHtml(formatDateTime(user.createdAt))}</td>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Assigned Centers</th>
+                        <th>Created</th>
                     </tr>
-                `).join("")}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    ${users.map(user => `
+                        <tr>
+                            <td data-label="Name">${escapeHtml(user.name)}</td>
+                            <td data-label="Email">${escapeHtml(user.email)}</td>
+                            <td data-label="Role">${escapeHtml(String(user.role))}</td>
+                            <td data-label="Assigned Centers">${escapeHtml(String(user.assignedCenterCount))}</td>
+                            <td data-label="Created">${escapeHtml(formatDateTime(user.createdAt))}</td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
+        </div>
     `;
 }
 
@@ -2915,30 +2917,32 @@ function renderAdminAuditLogsTable(container, auditLogs) {
     }
 
     container.innerHTML = `
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>When</th>
-                    <th>Action</th>
-                    <th>Entity</th>
-                    <th>User</th>
-                    <th>IP</th>
-                    <th>Metadata</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${auditLogs.map(log => `
+        <div class="table-shell">
+            <table class="data-table">
+                <thead>
                     <tr>
-                        <td>${escapeHtml(formatDateTime(log.createdAt))}</td>
-                        <td>${escapeHtml(log.action)}</td>
-                        <td>${escapeHtml(log.entityName)}${log.entityId ? ` <span class="data-table__mono">#${escapeHtml(log.entityId)}</span>` : ""}</td>
-                        <td>${escapeHtml(log.userName || log.userEmail || "System")}</td>
-                        <td class="data-table__mono">${escapeHtml(log.ipAddress || "-")}</td>
-                        <td class="data-table__mono">${escapeHtml(truncateText(log.metadata || "-", 140))}</td>
+                        <th>When</th>
+                        <th>Action</th>
+                        <th>Entity</th>
+                        <th>User</th>
+                        <th>IP</th>
+                        <th>Metadata</th>
                     </tr>
-                `).join("")}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    ${auditLogs.map(log => `
+                        <tr>
+                            <td data-label="When">${escapeHtml(formatDateTime(log.createdAt))}</td>
+                            <td data-label="Action">${escapeHtml(log.action)}</td>
+                            <td data-label="Entity">${escapeHtml(log.entityName)}${log.entityId ? ` <span class="data-table__mono">#${escapeHtml(log.entityId)}</span>` : ""}</td>
+                            <td data-label="User">${escapeHtml(log.userName || log.userEmail || "System")}</td>
+                            <td data-label="IP" class="data-table__mono">${escapeHtml(log.ipAddress || "-")}</td>
+                            <td data-label="Metadata" class="data-table__mono">${escapeHtml(truncateText(log.metadata || "-", 140))}</td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
+        </div>
     `;
 }
 
