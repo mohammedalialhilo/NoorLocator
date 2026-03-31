@@ -20,6 +20,7 @@ namespace NoorLocator.Api.Controllers;
 public class CentersController(
     ICenterImageService centerImageService,
     ICenterService centerService,
+    IUserCenterEngagementService userCenterEngagementService,
     IValidator<CenterLocationQueryDto> locationQueryValidator,
     IValidator<NearestCentersQueryDto> nearestQueryValidator,
     IValidator<CenterSearchQueryDto> searchQueryValidator) : ControllerBase
@@ -122,6 +123,43 @@ public class CentersController(
     public async Task<ActionResult<ApiResponse<IReadOnlyCollection<CenterImageDto>>>> GetImages(int id, CancellationToken cancellationToken)
     {
         var result = await centerImageService.GetCenterImagesAsync(id, cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Records that a verified user visited a center details page.
+    /// </summary>
+    [Authorize(Policy = "VerifiedAccount", Roles = "User,Manager,Admin")]
+    [HttpPost("{id:int}/visit")]
+    public async Task<ActionResult<ApiResponse<object?>>> TrackVisit(int id, [FromBody] TrackCenterVisitRequestDto? request, CancellationToken cancellationToken)
+    {
+        var result = await userCenterEngagementService.TrackVisitAsync(
+            User.GetRequiredUserId(),
+            id,
+            request?.Source ?? "page_view",
+            cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Subscribes the current user to center updates and notifications.
+    /// </summary>
+    [Authorize(Policy = "VerifiedAccount", Roles = "User,Manager,Admin")]
+    [HttpPost("{id:int}/subscribe")]
+    public async Task<ActionResult<ApiResponse<CenterSubscriptionDto>>> Subscribe(int id, CancellationToken cancellationToken)
+    {
+        var result = await userCenterEngagementService.SubscribeAsync(User.GetRequiredUserId(), id, cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Stops center-specific notifications for the current user.
+    /// </summary>
+    [Authorize(Policy = "VerifiedAccount", Roles = "User,Manager,Admin")]
+    [HttpDelete("{id:int}/subscribe")]
+    public async Task<ActionResult<ApiResponse<object?>>> Unsubscribe(int id, CancellationToken cancellationToken)
+    {
+        var result = await userCenterEngagementService.UnsubscribeAsync(User.GetRequiredUserId(), id, cancellationToken);
         return this.ToActionResult(result);
     }
 

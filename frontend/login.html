@@ -43,7 +43,19 @@
                         <button class="button button--primary" type="submit">Log in</button>
                         <a class="button button--ghost" href="register.html">Create account</a>
                     </div>
+                    <div class="button-row button-row--inline">
+                        <a class="button button--ghost" href="forgot-password.html">Forgot password?</a>
+                    </div>
                     <p data-form-message="login-form" class="message"></p>
+                    <div id="login-resend-verification" class="panel panel--soft" hidden>
+                        <span class="card__meta">Need verification?</span>
+                        <p>Verify your email to unlock NoorLocator, then sign in again.</p>
+                        <div class="button-row">
+                            <button id="login-resend-verification-button" class="button button--secondary" type="button">Resend verification email</button>
+                            <a class="button button--ghost" href="verify-email.html">Open verification page</a>
+                        </div>
+                        <p id="login-resend-verification-message" class="message"></p>
+                    </div>
                 </form>
             </div>
         </section>

@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Microsoft.Extensions.Options;
+using NoorLocator.Api.Authorization;
 using NoorLocator.Api.Extensions;
 using NoorLocator.Api.Middleware;
 using NoorLocator.Api.OpenApi;
@@ -129,12 +131,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization(options =>
 {
+    options.AddPolicy("VerifiedAccount", policy =>
+        policy.RequireAuthenticatedUser()
+            .AddRequirements(new VerifiedAccountRequirement()));
+
     options.AddPolicy("AdminArea", policy =>
-        policy.RequireRole("Admin"));
+        policy.RequireRole("Admin")
+            .AddRequirements(new VerifiedAccountRequirement()));
 
     options.AddPolicy("ManagerArea", policy =>
-        policy.RequireRole("Manager", "Admin"));
+        policy.RequireRole("Manager", "Admin")
+            .AddRequirements(new VerifiedAccountRequirement()));
 });
+builder.Services.AddScoped<IAuthorizationHandler, VerifiedAccountHandler>();
 
 var allowedOrigins = (builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
     .Where(origin => Uri.TryCreate(origin?.Trim(), UriKind.Absolute, out _))

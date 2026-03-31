@@ -248,10 +248,24 @@ public class NoorLocatorDbInitializer(
             Email = email,
             PasswordHash = passwordHashingService.HashPassword(password),
             Role = role,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow,
+            IsEmailVerified = true
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        var createdUser = await dbContext.Users.SingleAsync(user => user.Email == email, cancellationToken);
+        if (!await dbContext.UserNotificationPreferences.AnyAsync(preference => preference.UserId == createdUser.Id, cancellationToken))
+        {
+            dbContext.UserNotificationPreferences.Add(new UserNotificationPreference
+            {
+                UserId = createdUser.Id,
+                CreatedAtUtc = DateTime.UtcNow
+            });
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
     }
 
     private void ValidateAdminSeedConfiguration()

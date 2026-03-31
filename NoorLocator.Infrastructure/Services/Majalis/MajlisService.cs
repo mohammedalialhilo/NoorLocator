@@ -4,6 +4,7 @@ using NoorLocator.Application.Languages.Dtos;
 using NoorLocator.Application.Majalis.Dtos;
 using NoorLocator.Application.Majalis.Interfaces;
 using NoorLocator.Application.Management.Interfaces;
+using NoorLocator.Application.Notifications.Interfaces;
 using NoorLocator.Domain.Entities;
 using NoorLocator.Infrastructure.Persistence;
 using NoorLocator.Infrastructure.Services.Audit;
@@ -15,7 +16,8 @@ public class MajlisService(
     NoorLocatorDbContext dbContext,
     IManagerCenterAccessService managerCenterAccessService,
     IMediaStorageService mediaStorageService,
-    AuditLogger auditLogger) : IMajlisService
+    AuditLogger auditLogger,
+    INotificationService notificationService) : IMajlisService
 {
     private const string StorageCategory = "majalis";
 
@@ -86,6 +88,8 @@ public class MajlisService(
                 LanguageIds = distinctLanguageIds
             },
             cancellationToken: cancellationToken);
+
+        await notificationService.NotifyMajlisCreatedAsync(majlis, cancellationToken);
 
         return OperationResult.Success("Majlis created successfully.", 201);
     }

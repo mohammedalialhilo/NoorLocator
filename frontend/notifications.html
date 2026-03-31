@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0D2535">
+    <title>NoorLocator | Notifications</title>
+    <link rel="icon" type="image/png" href="assets/logo_bkg.png">
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="notifications" data-auth-required="true">
+    <div data-site-header></div>
+    <div class="auth-gate" data-auth-gate>
+        <div class="auth-gate__card">
+            <span class="eyebrow">Checking session</span>
+            <h2>Loading your NoorLocator notifications.</h2>
+            <p>Your account notifications stay protected until NoorLocator confirms the current authenticated session.</p>
+        </div>
+    </div>
+
+    <main class="page-shell">
+        <section class="page-hero page-hero--split">
+            <div class="page-hero__content">
+                <span class="eyebrow">Notifications</span>
+                <h1>Stay up to date with the centers you follow and visit.</h1>
+                <p>Majlis and event updates appear here as soon as NoorLocator sends them to your account.</p>
+                <div class="hero__actions">
+                    <button id="notifications-mark-all" class="button button--secondary" type="button">Mark all as read</button>
+                    <a class="button button--ghost" href="profile.html">Notification settings</a>
+                </div>
+                <p id="notifications-page-message" class="message">Loading notifications...</p>
+            </div>
+            <aside class="hero__panel hero__panel--stack">
+                <div class="brand-card brand-card--compact">
+                    <img class="site-logo site-logo--workspace" data-brand-logo src="assets/logo_bkg.png" alt="NoorLocator logo">
+                    <p class="brand-card__tagline">Your unread badge updates as soon as NoorLocator records new center activity for you.</p>
+                </div>
+            </aside>
+        </section>
+
+        <section class="section">
+            <div id="notifications-list" class="stack-list"></div>
+        </section>
+    </main>
+
+    <div data-site-footer></div>
+
+    <script defer src="js/runtime-config.js"></script>
+    <script defer src="js/config.js"></script>
+    <script defer src="js/auth.js"></script>
+    <script defer src="js/api.js"></script>
+    <script defer src="js/layout.js"></script>
+    <script defer src="js/app.js"></script>
+</body>
+</html>

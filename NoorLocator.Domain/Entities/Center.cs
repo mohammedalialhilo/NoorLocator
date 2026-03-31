@@ -31,4 +31,8 @@ public class Center : AuditableEntity
     public ICollection<CenterLanguage> CenterLanguages { get; set; } = new List<CenterLanguage>();
 
     public ICollection<CenterLanguageSuggestion> CenterLanguageSuggestions { get; set; } = new List<CenterLanguageSuggestion>();
+
+    public ICollection<UserCenterVisit> UserVisits { get; set; } = new List<UserCenterVisit>();
+
+    public ICollection<UserCenterSubscription> UserSubscriptions { get; set; } = new List<UserCenterSubscription>();
 }

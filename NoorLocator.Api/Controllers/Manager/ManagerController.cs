@@ -21,7 +21,7 @@ public class ManagerController(
     /// <summary>
     /// Requests manager access for a specific center.
     /// </summary>
-    [Authorize(Roles = "User,Admin")]
+    [Authorize(Policy = "VerifiedAccount", Roles = "User,Admin")]
     [HttpPost("request")]
     public async Task<ActionResult<ApiResponse<object?>>> RequestAccess([FromBody] ManagerRequestDto request, CancellationToken cancellationToken)
     {

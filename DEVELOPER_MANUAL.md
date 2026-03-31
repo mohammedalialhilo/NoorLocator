@@ -106,7 +106,7 @@ NoorLocator/
 Primary entities:
 
 - `User`
-  Account record with hashed password and role.
+  Account record with hashed password, role, email-verification state, verification/reset token hashes, and audit timestamps.
 - `RefreshToken`
   Stores hashed refresh token, session ID, expiry, and revocation status. This is the server-side session record used for logout invalidation.
 - `Center`
@@ -133,6 +133,14 @@ Primary entities:
   Manager-authored announcement separate from majalis.
 - `CenterImage`
   Public center gallery image metadata.
+- `UserCenterVisit`
+  Tracks when a verified authenticated user opens a center details page.
+- `UserCenterSubscription`
+  Tracks explicit follow/subscription preferences for a center.
+- `UserNotificationPreference`
+  Stores the authenticated user's email/app/majlis/event/center-update preference switches.
+- `Notification`
+  Stores in-app notifications, unread state, related entity links, and whether email delivery also occurred.
 - `AuditLog`
   Record of critical moderation, management, and auth events.
 - `AppContent`
@@ -172,9 +180,17 @@ Primary entities:
 ### Authentication
 
 - `POST /api/auth/register`
-  Registers a new `User` and returns tokens plus current user data.
+  Registers a new `User`, stores them as unverified, and sends a verification email.
 - `POST /api/auth/login`
-  Returns JWT access token, refresh token, expiry, and current user data.
+  Returns JWT access token, refresh token, expiry, and current user data for verified accounts only.
+- `GET /api/auth/verify-email`
+  Consumes a secure verification token and marks the user email as verified.
+- `POST /api/auth/resend-verification-email`
+  Sends a fresh verification email for an account that still requires verification.
+- `POST /api/auth/forgot-password`
+  Starts the reset flow without revealing whether the email exists.
+- `POST /api/auth/reset-password`
+  Consumes a secure reset token, changes the password, and revokes active sessions.
 - `GET /api/auth/me`
   Returns the authenticated user profile.
 - `POST /api/auth/logout`
@@ -186,6 +202,10 @@ Primary entities:
   Returns the authenticated user's self-service profile payload.
 - `PUT /api/profile/me`
   Updates only the authenticated user's editable profile fields.
+- `GET /api/profile/me/notification-preferences`
+  Returns the authenticated user's notification preference payload.
+- `PUT /api/profile/me/notification-preferences`
+  Updates the authenticated user's notification preference payload.
 - Allowed editable fields:
   - `Name`
   - `Email`
@@ -213,6 +233,28 @@ Primary entities:
 - `GET /api/event-announcements/{id}`
 - `GET /api/languages`
 - `GET /api/content/about`
+
+### Center Engagement
+
+- `POST /api/centers/{id}/visit`
+  Records or refreshes a verified user's center-visit record.
+- `POST /api/centers/{id}/subscribe`
+  Creates or reuses a center follow/subscription record.
+- `DELETE /api/centers/{id}/subscribe`
+  Removes the authenticated user's center follow/subscription record.
+- `GET /api/users/me/subscriptions`
+  Returns the authenticated user's current center subscriptions.
+
+### Notifications
+
+- `GET /api/notifications`
+  Returns the authenticated verified user's in-app notifications.
+- `GET /api/notifications/unread-count`
+  Returns the unread notification count used by the navbar bell.
+- `PUT /api/notifications/{id}/read`
+  Marks a single notification as read.
+- `PUT /api/notifications/read-all`
+  Marks every unread notification for the current user as read.
 
 ### User Contributions
 
@@ -316,10 +358,14 @@ Swagger is the live reference for DTO shapes and status codes.
 - use `Frontend__ApiBaseUrl` only when the frontend must target a different app origin or app root, and do not append `/api`
 - store auth state through the shared `frontend/js/auth.js` helper
 - render role-aware navigation
+- render verification-aware navigation and block trusted workspace links for unverified accounts
 - verify protected pages before rendering them
 - expose the shared `profile.html` page to every authenticated role
+- expose `verify-email.html`, `forgot-password.html`, `reset-password.html`, and `notifications.html` through the same shared shell
 - refresh stored session user data after profile edits so navbar and workspace labels update immediately
+- refresh unread notification counts after auth changes and notification state changes
 - clear auth state on logout
+- keep logout entry points on `profile.html` only
 - upload manager center images through the shared multipart upload helper in `frontend/js/api.js`
 - show upload progress, gallery refreshes, and clear validation errors for image uploads
 - show loading states, empty states, and friendly errors
@@ -331,7 +377,7 @@ Swagger is the live reference for DTO shapes and status codes.
 - `frontend/css/style.css` is the shared responsive layer for public pages, forms, dashboards, and admin tables
 - the current breakpoints are:
   - `960px` for collapsing hero, detail, and split-panel layouts into a single column
-  - `860px` for switching the shared navbar into the hamburger-driven mobile menu
+  - `1050px` for switching the shared navbar into the hamburger-driven mobile menu
   - `720px` for stacking button rows, filter grids, dashboard navigation, and table content for narrow phones
 - mobile safety rules in the shared CSS include:
   - `overflow-x: hidden` on the page shell
@@ -340,9 +386,9 @@ Swagger is the live reference for DTO shapes and status codes.
   - `scroll-margin-top` on section anchors so sticky-header navigation remains usable on smaller screens
   - `prefers-reduced-motion` support so the menu and cards remain comfortable for reduced-motion users
 - the hamburger menu is owned by `frontend/js/layout.js` and `frontend/css/style.css`
-- on screens at or below `860px`, `layout.js`:
+- on screens at or below `1050px`, `layout.js`:
   - renders the toggle button and drawer panel
-  - opens and closes the drawer by toggling `aria-expanded`, `.is-open`, and body nav-state classes
+  - opens and closes the drawer by toggling `aria-expanded`, `.is-open`, `.is-visible`, and scroll-lock state only
   - closes the menu when the scrim is tapped, when a navigation item is selected, when the user presses `Escape`, and when the viewport changes
   - rebuilds the menu after auth changes so logged-in and logged-out states stay correct without a manual refresh
 - on the CSS side, the hamburger experience depends on:
@@ -380,17 +426,46 @@ Swagger is the live reference for DTO shapes and status codes.
   - review `frontend/js/layout.js`, `frontend/site.webmanifest`, and `frontend/service-worker.js` together so the shell, favicon, manifest, and cached asset list stay aligned
   - verify all public, auth, and protected pages render the updated logo without broken images or layout shifts
 
-## 11. Authentication, Profile, And Logout
+## 11. Authentication, Verification, Password Reset, Notifications, Profile, And Logout
 
 ### How Login Works
 
 - the client posts credentials to `POST /api/auth/login`
 - the API validates the password hash
+- the API blocks trusted login when `IsEmailVerified=false`
 - the API creates:
   - a JWT access token
   - a refresh token
   - a server-side `RefreshToken` row with a generated `SessionId`
 - the JWT includes a `sid` claim that matches the stored session
+
+### How Email Verification Works
+
+- registration always creates the user with `IsEmailVerified=false`
+- the backend generates a secure random verification token, stores only its hash, and stores an expiry timestamp
+- the email service sends a verification email from the configured `noorlocator@gmail.com` sender identity
+- `GET /api/auth/verify-email?token=...` consumes the token, marks the account verified, and clears the stored token hash and expiry
+- `POST /api/auth/resend-verification-email` issues a fresh token when the account still needs verification
+- changing the email address through `PUT /api/profile/me` returns the account to the unverified state until the new address is confirmed
+- verified-only policies check the current database state, not just the JWT payload, so access shrinks immediately after an email change
+
+### How Password Reset Works
+
+- `POST /api/auth/forgot-password` always returns a generic success message
+- when the email exists, the backend generates a secure random reset token, stores only its hash, and stores an expiry timestamp
+- the email service sends the reset link from the configured `noorlocator@gmail.com` sender identity
+- `POST /api/auth/reset-password` validates the token, expiry, and password confirmation before changing the hash
+- a successful password reset clears the reset token and revokes active refresh-token sessions so older access tokens fail on their next authenticated request
+- reset tokens are single-use, and expired tokens are cleared when they are rejected
+
+### AuthFlow And SMTP Configuration
+
+- `AuthFlow:EmailVerificationTokenLifetimeMinutes` controls verification-token expiry
+- `AuthFlow:PasswordResetTokenLifetimeMinutes` controls reset-token expiry
+- `AuthFlow:VerifyEmailPath` and `AuthFlow:ResetPasswordPath` control the frontend routes used in emails
+- `SmtpSettings:Host`, `Port`, `Username`, `Password`, `FromEmail`, and `FromName` define the email transport
+- NoorLocator is configured to send from `noorlocator@gmail.com`
+- development and testing can use `SmtpSettings:WriteToPickupDirectoryWhenDisabled=true` so email templates are still rendered and verified without live SMTP credentials
 
 ### How JWT Is Stored
 
@@ -405,23 +480,44 @@ Swagger is the live reference for DTO shapes and status codes.
 - every authenticated role uses the same self-service page: `frontend/profile.html`
 - the page reads `GET /api/profile/me`
 - the page updates `PUT /api/profile/me`
+- the page also reads and writes `GET/PUT /api/profile/me/notification-preferences`
 - the backend resolves the authenticated `UserId` from the JWT and never accepts a target user id from the client
 - editable fields are limited to `Name` and `Email`
 - `Role` and `PasswordHash` are not exposed as writable DTO fields, which prevents direct role escalation or password-hash overposting
 - email changes are normalized to lowercase and checked for uniqueness before save
+- after an email change, the account becomes unverified again and a new verification email is sent
 - after a successful save, the frontend updates the cached session user through `updateSessionUser()` so navbar and dashboard labels refresh without forcing logout
+- the profile page is the only place where logout is exposed in the authenticated UI
 
 ### How Protected Pages Are Verified
 
 - `dashboard.html`, `profile.html`, `manager.html`, and `admin.html` declare their auth requirements through `data-auth-*` attributes
 - `frontend/js/auth.js` runs `bootstrapPageAuth()` on page load before the workspace initializes
 - the page stays behind an auth gate until `GET /api/auth/me` confirms the active session
+- verified-only pages and endpoints redirect or return `403` when the account exists but the email is not currently verified
 - manager and admin pages also verify required roles before rendering
 - `pageshow` and `storage` listeners re-run the same auth bootstrap so browser back and cross-tab logout do not restore protected UI state incorrectly
 
+### How Notifications Work
+
+- visiting a center detail page records or refreshes a `UserCenterVisit` for verified authenticated users
+- explicitly following a center creates a `UserCenterSubscription`
+- when a manager/admin publishes a new majlis or a published event announcement, the notification service finds verified users who visited or followed that center
+- in-app notifications are stored in `Notifications` with unread state, related entity metadata, optional link URLs, and email-delivery flags
+- notification delivery is filtered through:
+  - user-level preferences in `UserNotificationPreference`
+  - center-level follow preferences in `UserCenterSubscription`
+  - verified-email status for email delivery
+- the frontend surfaces notifications through:
+  - the shared navbar bell with unread count
+  - `notifications.html`
+  - profile notification preference controls
+- `PUT /api/notifications/{id}/read` and `PUT /api/notifications/read-all` keep the unread badge and notifications page in sync
+
 ### How Logout Works
 
-- every logout entry point calls the shared frontend `logout()` helper
+- `profile.html` is the single logout entry point in the authenticated UI
+- the frontend calls the shared `logout()` helper
 - the frontend calls `POST /api/auth/logout`
 - the API revokes the active `RefreshToken` session for the current `sid`
 - JWT bearer validation checks that the session record is still active
@@ -434,6 +530,8 @@ Swagger is the live reference for DTO shapes and status codes.
 - clearing browser storage without revoking the server-side session
 - leaving multiple logout implementations that drift out of sync
 - assuming a role change in the database updates an already-issued JWT
+- treating email-format validation as proof of email ownership
+- storing raw verification or reset tokens instead of hashes
 - letting profile update DTOs bind directly to the `User` entity
 - allowing `Role` or `PasswordHash` to flow through the self-service profile endpoint
 - trusting client-side route guards as security controls
@@ -443,8 +541,11 @@ Swagger is the live reference for DTO shapes and status codes.
 
 - keep JWT keys and DB credentials out of committed config
 - preserve the session-backed `sid` validation in `Program.cs`
+- keep verification/reset tokens securely random, hashed at rest, expiring, and single-use
+- do not log raw passwords, raw reset tokens, or raw verification tokens
 - do not bypass DTOs with direct entity binding
 - keep invalid and revoked tokens returning `401`
+- keep forgot-password responses generic so account existence is not leaked
 - keep protected workspace pages non-cacheable after logout-sensitive changes
 - review any future refresh-token implementation carefully so it preserves revocation guarantees
 
@@ -489,7 +590,7 @@ Swagger is the live reference for DTO shapes and status codes.
 
 - `dotnet build NoorLocator.sln`
 - `dotnet test NoorLocator.sln`
-- current result during the Deployment Phase D8 pass: `60/60` tests passing
+- current result in the latest auth-and-notification pass: `67/67` tests passing
 - current production hardening coverage includes:
   - production exception payload redaction
   - production health payload environment redaction
@@ -508,23 +609,28 @@ Swagger is the live reference for DTO shapes and status codes.
   - the uploaded bytes were publicly reachable from that returned URL
   - invalid uploads were rejected before any blob write was attempted
   - deleting the image removed the backing blob
-- verified flows:
-  - registration
-  - login
-  - self-service profile read and update for authenticated users
-  - manager and admin self-profile edits without role changes
-  - logout and token invalidation
-  - manager and admin logout invalidation
-  - public center browsing
+  - verified flows:
+    - registration
+    - email verification
+    - login
+    - forgot-password and reset-password
+    - self-service profile read and update for authenticated users
+    - manager and admin self-profile edits without role changes
+    - logout and token invalidation
+    - manager and admin logout invalidation
+    - public center browsing
   - nearest centers lookup
   - center detail endpoints
   - center request submission
   - suggestion submission
   - center language suggestion submission
-  - manager request submission
-  - manager majlis create, update, delete
-  - manager announcement creation
-  - manager image upload reachability
+    - manager request submission
+    - center visit tracking and follow/subscription deduplication
+    - manager majlis create, update, delete
+    - manager announcement creation
+    - notification preference persistence
+    - in-app and email notifications for majalis and event announcements
+    - manager image upload reachability
   - invalid image type and oversized upload rejection
   - manager-center ownership enforcement for uploads
   - primary image selection plus manager and admin image deletion
@@ -535,11 +641,12 @@ Swagger is the live reference for DTO shapes and status codes.
   - `/api/languages` returned the seeded languages after the production-style bootstrap
   - `/api/centers` returned the seeded demo centers when `Seeding__SeedDemoData=true`
   - admin, manager, and user login all succeeded against the migrated scratch database
-- additional browser verification was performed against the live app in headless Edge to confirm:
-  - manager and admin login API calls succeed before protected browser workflows are exercised
-  - the bundled frontend works against the production-style hosted API configuration without hardcoded localhost URLs
-  - the shared `frontend/assets/logo_bkg.png` asset renders in public, auth, and protected pages without broken image links
-  - the manager gallery UI shows clear errors for invalid file types and oversized images
+  - additional browser verification was performed against the live app in headless Edge to confirm:
+    - manager and admin login API calls succeed before protected browser workflows are exercised
+    - the bundled frontend works against the production-style hosted API configuration without hardcoded localhost URLs
+    - the shared `frontend/assets/logo_bkg.png` asset renders in public, auth, and protected pages without broken image links
+    - register, resend-verification, verify-email, forgot-password, reset-password, profile notification preferences, and notification bell/page flows work in the real frontend
+    - the manager gallery UI shows clear errors for invalid file types and oversized images
   - valid manager uploads complete without the old API-reachability failure and refresh the gallery
   - the public center details page renders a hero image and gallery from uploaded media
   - the admin image moderation section can load and delete gallery items successfully

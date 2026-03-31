@@ -9,7 +9,7 @@
     <link rel="manifest" href="site.webmanifest">
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body data-page="profile" data-auth-required="true">
+<body data-page="profile" data-auth-required="true" data-auth-allow-unverified="true">
     <div data-site-header></div>
     <div class="auth-gate" data-auth-gate>
         <div class="auth-gate__card">
@@ -43,6 +43,12 @@
                     <p>This is the exact identity NoorLocator shows in navigation after your session is confirmed.</p>
                 </article>
                 <article class="mini-stat">
+                    <span class="card__meta">Email status</span>
+                    <strong id="profile-verification-status">Loading...</strong>
+                    <p id="profile-verification-note">NoorLocator is checking whether this email is verified.</p>
+                    <button id="profile-resend-verification" class="button button--ghost" type="button" hidden>Resend verification email</button>
+                </article>
+                <article class="mini-stat">
                     <span class="card__meta">Role</span>
                     <strong id="profile-role-badge">Loading...</strong>
                     <p>Your role and security-sensitive account fields stay read-only here.</p>
@@ -51,6 +57,11 @@
                     <span class="card__meta">Account created</span>
                     <strong id="profile-created-at">Loading...</strong>
                     <p>Profile changes update your personal account details without breaking the current session.</p>
+                </article>
+                <article class="mini-stat">
+                    <span class="card__meta">Last sign-in</span>
+                    <strong id="profile-last-login">Loading...</strong>
+                    <p>NoorLocator uses this to help you keep track of your active account activity.</p>
                 </article>
             </aside>
         </section>
@@ -112,6 +123,38 @@
                             </div>
                         </article>
                     </div>
+                </article>
+            </div>
+            <div class="detail-grid detail-grid--dashboard">
+                <article class="panel">
+                    <span class="card__meta">Notifications</span>
+                    <h3>Choose how NoorLocator reaches you</h3>
+                    <form id="notification-preferences-form" class="form">
+                        <label class="checkbox-row">
+                            <input type="checkbox" name="emailNotificationsEnabled">
+                            <span>Email notifications</span>
+                        </label>
+                        <label class="checkbox-row">
+                            <input type="checkbox" name="appNotificationsEnabled">
+                            <span>In-app notifications</span>
+                        </label>
+                        <label class="checkbox-row">
+                            <input type="checkbox" name="majlisNotificationsEnabled">
+                            <span>Majlis updates</span>
+                        </label>
+                        <label class="checkbox-row">
+                            <input type="checkbox" name="eventNotificationsEnabled">
+                            <span>Event announcements</span>
+                        </label>
+                        <label class="checkbox-row">
+                            <input type="checkbox" name="centerUpdatesEnabled">
+                            <span>Center activity updates</span>
+                        </label>
+                        <div class="button-row">
+                            <button class="button button--primary" type="submit">Save notification settings</button>
+                        </div>
+                        <p data-form-message="notification-preferences-form" class="message"></p>
+                    </form>
                 </article>
             </div>
         </section>

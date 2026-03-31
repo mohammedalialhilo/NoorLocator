@@ -66,7 +66,13 @@ NoorLocator.sln
 
 - Public center discovery with search, nearest-center lookup, distance calculation, languages, images, announcements, and center detail pages
 - JWT authentication with `User`, `Manager`, and `Admin` roles
+- Real email-ownership verification before trusted access is granted to a newly registered account
+- Forgot-password and reset-password flows with expiring, single-use reset tokens
+- Centralized SMTP-backed email delivery with HTML templates and a development/testing pickup-directory fallback
 - Centralized auth state with session-backed logout and immediate server-side session invalidation
+- In-app notifications with unread badge counts, read state, and a dedicated notifications page
+- Email and in-app event notifications for centers a verified user has visited or followed
+- User notification preferences plus center follow/subscription controls
 - Shared self-service profile management for every authenticated user through `profile.html` and `/api/profile/me`
 - Unified frontend branding through `frontend/assets/logo_bkg.png` across the shared shell, auth pages, workspace pages, public hero areas, favicon, and web manifest
 - User contribution workflows for center requests, suggestions, language suggestions, and manager requests
@@ -109,7 +115,18 @@ $env:ConnectionStrings__DefaultConnection = "Server=127.0.0.1;Port=3306;Database
 $env:MYSQLCONNSTR_DefaultConnection = "Server=your-server.mysql.database.azure.com;Port=3306;Database=Noorlocator;User=YOUR_USER;Password=YOUR_PASSWORD;"
 $env:Jwt__Key = "a-secure-random-string-with-at-least-32-characters"
 $env:Cors__AllowedOrigins__0 = "https://your-frontend-host.example"
+$env:Frontend__PublicOrigin = "https://your-frontend-host.example"
 $env:MediaStorage__RelativeRootPath = "uploads"
+$env:AuthFlow__EmailVerificationTokenLifetimeMinutes = "1440"
+$env:AuthFlow__PasswordResetTokenLifetimeMinutes = "60"
+$env:AuthFlow__VerifyEmailPath = "verify-email.html"
+$env:AuthFlow__ResetPasswordPath = "reset-password.html"
+$env:SmtpSettings__Host = "smtp.gmail.com"
+$env:SmtpSettings__Port = "587"
+$env:SmtpSettings__Username = "noorlocator@gmail.com"
+$env:SmtpSettings__Password = "YOUR_GMAIL_APP_PASSWORD"
+$env:SmtpSettings__FromEmail = "noorlocator@gmail.com"
+$env:SmtpSettings__FromName = "NoorLocator"
 $env:Seeding__SeedAdminAccount = "true"
 $env:Seeding__AdminEmail = "admin@your-domain.example"
 $env:Seeding__AdminPassword = "a-secure-bootstrap-password"
@@ -199,12 +216,70 @@ The demo content below is development-oriented seed data. Production defaults ke
 - Published event announcements
 - Manifesto-backed site content for the home page and About page
 
+## Authentication, Email, And Notifications
+
+### Email Verification
+
+- `POST /api/auth/register` creates users in an unverified state and sends a verification email.
+- Trusted login is blocked until `GET /api/auth/verify-email?token=...` succeeds.
+- `POST /api/auth/resend-verification-email` issues a fresh token for accounts that still need verification.
+- Verification tokens are securely random, expire, and are invalidated after use.
+- If a verified user changes their email through `PUT /api/profile/me`, the account becomes unverified again until the new address is confirmed.
+
+### Forgot And Reset Password
+
+- `POST /api/auth/forgot-password` always returns a generic success message so account existence is not leaked.
+- `POST /api/auth/reset-password` accepts a token, new password, and confirm password.
+- Reset tokens are single-use, expire, and are cleared after a successful reset or expired-token rejection.
+- Password reset revokes active refresh-token sessions so older access tokens fail on their next authenticated request.
+
+### Email Delivery Configuration
+
+- SMTP/email configuration is externalized under `SmtpSettings`.
+- NoorLocator is configured to send from `noorlocator@gmail.com`.
+- Gmail setup uses:
+  - `SmtpSettings__Host=smtp.gmail.com`
+  - `SmtpSettings__Port=587`
+  - `SmtpSettings__Username=noorlocator@gmail.com`
+  - `SmtpSettings__Password=<gmail app password>`
+- HTML email templates exist for:
+  - email verification
+  - password reset
+  - password changed confirmation
+  - new majlis notifications
+  - new event announcement notifications
+- When SMTP credentials are intentionally absent in development or testing, NoorLocator writes the rendered outbound emails to the configured pickup directory instead of silently dropping them.
+
+### Center Visits, Follows, And Notifications
+
+- Opening a center details page as a verified authenticated user records or refreshes a `UserCenterVisit`.
+- Users can explicitly follow a center through `POST /api/centers/{id}/subscribe` and stop following with `DELETE /api/centers/{id}/subscribe`.
+- Publishing a new majlis or a published event announcement fans out to verified users who visited or followed that center.
+- Delivery respects user-level preferences and center-level follow/subscription preferences.
+- In-app notifications are stored in the `Notifications` table and surfaced through the navbar bell and `notifications.html`.
+- Email notifications are sent only when the destination email is verified and email delivery is enabled for that scenario.
+
+### Notification Preferences
+
+- `GET /api/profile/me/notification-preferences` returns the current preference set.
+- `PUT /api/profile/me/notification-preferences` persists:
+  - email notifications
+  - in-app notifications
+  - majlis notifications
+  - event notifications
+  - center update notifications
+- The profile page is the single place where users manage logout, verification status, and notification preferences.
+
 ## API Overview
 
 Authentication:
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `GET /api/auth/verify-email`
+- `POST /api/auth/resend-verification-email`
+- `POST /api/auth/forgot-password`
+- `POST /api/auth/reset-password`
 - `GET /api/auth/me`
 - `POST /api/auth/logout`
 
@@ -212,6 +287,8 @@ Profile:
 
 - `GET /api/profile/me`
 - `PUT /api/profile/me`
+- `GET /api/profile/me/notification-preferences`
+- `PUT /api/profile/me/notification-preferences`
 
 Public discovery:
 
@@ -228,6 +305,20 @@ Public discovery:
 - `GET /api/event-announcements/{id}`
 - `GET /api/languages`
 - `GET /api/content/about`
+
+Center engagement:
+
+- `POST /api/centers/{id}/visit`
+- `POST /api/centers/{id}/subscribe`
+- `DELETE /api/centers/{id}/subscribe`
+- `GET /api/users/me/subscriptions`
+
+Notifications:
+
+- `GET /api/notifications`
+- `GET /api/notifications/unread-count`
+- `PUT /api/notifications/{id}/read`
+- `PUT /api/notifications/read-all`
 
 User contribution:
 
@@ -296,15 +387,18 @@ dotnet test NoorLocator.sln
 Current automated coverage:
 
 - `28` unit tests
-- `32` integration tests
-- `60` passing tests in the current deployment-readiness verification pass
+- `39` integration tests
+- `67` passing tests in the current verification pass
 
 Important test areas:
 
-- auth registration, login, and logout invalidation
-- self-service profile read/update, invalid-input rejection, duplicate-email protection, and role protection
+- auth registration, email verification, unverified-access restrictions, login, and logout invalidation
+- forgot-password, reset-password, reset-token expiry, single-use enforcement, and session revocation after reset
+- self-service profile read/update, invalid-input rejection, duplicate-email protection, role protection, and reverification on email changes
 - expired-token rejection and refresh-token-backed session revocation
 - public discovery endpoints
+- center visit tracking, follow/subscription deduplication, notification preference persistence, and notification read-state updates
+- in-app and email notifications for majalis and event announcements
 - admin authorization
 - user contribution workflows
 - manager majalis workflows
@@ -324,10 +418,12 @@ The script verifies:
 
 - public pages and identity content
 - login and logout behavior
+- register, resend-verification, verify-email, forgot-password, and reset-password behavior
 - profile read/update behavior for user, manager, and admin accounts
 - protected route invalidation after logout
 - manager and admin token invalidation after logout
 - center discovery endpoints
+- visit tracking, center follow/subscription behavior, notification-bell updates, and mark-read flows
 - user submissions
 - manager majalis workflows
 - manager announcements and gallery uploads
@@ -345,8 +441,9 @@ See `VERIFICATION_REPORT.md` for the final verification summary.
 - There is no separate frontend dev server required for normal local use.
 - The API serves the `frontend/` directory as static assets.
 - Protected UI pages are hidden behind a shared auth bootstrap until `/api/auth/me` confirms the active session.
-- Logout buttons in the navbar, dashboard, manager workspace, and admin workspace all route through the same frontend logout helper.
+- Logout is exposed from `profile.html` only; the shared navbar uses a combined profile entry and a notification bell for verified users.
 - Every authenticated role can open `profile.html` to edit only their own display name and email while keeping role and password fields protected.
+- Verified users see trusted workspace links plus notifications, while unverified users are directed to `verify-email.html` until ownership is confirmed.
 - Frontend branding is standardized on `frontend/assets/logo_bkg.png`, with `frontend/js/layout.js` acting as the shared source for navbar, footer, favicon, and page-level logo hydration.
 - Manager image uploads use a shared multipart upload helper that resolves the API base URL before sending files, so the upload flow stays aligned with the same live API as the rest of the app.
 - Workspace pages, including `profile.html`, are excluded from service-worker precaching and returned with no-store cache headers to reduce stale protected-page restores after logout.
@@ -519,12 +616,14 @@ Before public launch, verify the hosted application with a real production-style
 - home page loads at `/` with live branding and no mixed-content warnings
 - About page loads at `/about` and fetches manifesto content successfully
 - registration succeeds from `register.html`
+- verification-email delivery, verification-link completion, forgot-password, and reset-password flows succeed for a real accessible inbox or configured SMTP/pickup flow
 - login succeeds for user, manager, and admin accounts
 - logout returns to the logged-out state and old protected requests return `401`
 - `dashboard.html` loads for a normal authenticated user
 - `manager.html` loads for a manager account
 - `admin.html` loads for an admin account
 - a user can submit a center request
+- a user can follow a center, receive majlis/event notifications, and control notification preferences from the profile page
 - a manager can create, edit, and delete a majlis
 - a manager can create and remove an announcement
 - a manager can upload an image and the image is publicly reachable
@@ -558,7 +657,7 @@ Deployment Phase D8 production-hardening verification was completed against the 
 - `powershell -ExecutionPolicy Bypass -File .\scripts\package-app-service-api.ps1`
 - `powershell -ExecutionPolicy Bypass -File .\scripts\verify-app-service-package.ps1`
 - Verified outcomes:
-  - `28` unit tests and `32` integration tests passed for `60/60` total passing tests
+  - the current repository state passes `28` unit tests and `39` integration tests for `67/67` total passing tests
   - production exception handling returns a generic `500` payload without detailed exception type leakage
   - production health output omits the environment name
   - production defaults keep forwarded headers enabled, HTTPS redirection enabled, Swagger disabled, automatic migrations disabled, and demo seeding disabled
@@ -579,7 +678,7 @@ Phase 10 logout verification was completed against the live MySQL-backed app and
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\verify-e2e.ps1 -StartApp -ConnectionString \"Server=127.0.0.1;Port=3306;Database=Noorlocator;User=root;Password=...;\"`
 - Headless Edge browser verification against the live app confirmed:
   - login succeeds for user, manager, and admin flows
-  - logout buttons are visible in the navbar and on dashboard, manager, and admin pages
+  - logout is available from the shared profile page and returns the UI to the logged-out state
   - logout clears auth storage and updates the navbar to the logged-out state
   - protected API requests return `401` when replaying the pre-logout token
   - direct navigation, page refresh, and browser back do not restore authenticated workspace access after logout
@@ -612,6 +711,26 @@ Phase 12 profile-management verification was completed against the live MySQL-ba
   - valid manager uploads completed without the old "can't reach api" failure and refreshed the gallery
   - the public center details page rendered a prominent hero image plus gallery items from uploaded media
   - the admin image moderation section loaded and deleted images successfully
+
+## Phase 13 Verification
+
+Phase 13 authentication-and-notification verification was completed against the live MySQL-backed app, the automated test suite, and a headless Edge browser run.
+
+- `dotnet build NoorLocator.sln`
+- `dotnet test NoorLocator.sln`
+- Verified outcomes:
+  - registration creates an unverified account and sends a verification email from the configured `noorlocator@gmail.com` identity
+  - unverified login is blocked and resend-verification works
+  - verification links complete the trust flow and unlock sign-in
+  - forgot-password and reset-password work end to end, and the old password stops working after reset
+  - reset-password sends a password-changed confirmation email
+  - visiting/following a center leads to majlis and event notifications after privileged publishing
+  - the in-app notification bell, notifications page, and mark-read flow work
+  - notification preferences persist from the profile page
+- Live browser verification against `http://127.0.0.1:5213` confirmed:
+  - register, resend verification, verify-email, login, follow-center, notification UI, logout, forgot-password, and reset-password all worked in the real frontend
+  - the pickup-directory email flow produced `2` verification emails, `2` notification emails, `1` reset email, and `1` password-changed confirmation for the verified browser scenario
+  - the verification run used center `20` on the local seeded dataset and the browser-created user `ui-7d81b955b1@test.local`
 
 ## Future Roadmap
 

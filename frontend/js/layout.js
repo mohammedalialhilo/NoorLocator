@@ -338,14 +338,29 @@ window.NoorLocatorLayout = (() => {
         ];
 
         if (user) {
-            items.push({ href: "dashboard.html", label: "Dashboard", page: "dashboard" });
+            if (window.NoorLocatorAuth.isEmailVerified(user)) {
+                items.push({ href: "dashboard.html", label: "Dashboard", page: "dashboard" });
 
-            if (user.role === "Manager" || user.role === "Admin") {
-                items.push({ href: "manager.html", label: "Manager", page: "manager" });
-            }
+                if (user.role === "Manager" || user.role === "Admin") {
+                    items.push({ href: "manager.html", label: "Manager", page: "manager" });
+                }
 
-            if (user.role === "Admin") {
-                items.push({ href: "admin.html", label: "Admin", page: "admin" });
+                if (user.role === "Admin") {
+                    items.push({ href: "admin.html", label: "Admin", page: "admin" });
+                }
+
+                items.push({
+                    href: "notifications.html",
+                    label: "Notifications",
+                    page: "notifications",
+                    variant: "notification"
+                });
+            } else {
+                items.push({
+                    href: window.NoorLocatorAuth.getVerificationRoute(user),
+                    label: "Verify Email",
+                    page: "verify-email"
+                });
             }
 
             items.push({
@@ -366,7 +381,7 @@ window.NoorLocatorLayout = (() => {
 
     function renderNavigationItem(item, currentPage) {
         const isActive = item.page === currentPage;
-        const className = `site-nav__link${isActive ? " is-active" : ""}${item.variant === "profile" ? " site-nav__link--profile" : ""}`;
+        const className = `site-nav__link${isActive ? " is-active" : ""}${item.variant === "profile" ? " site-nav__link--profile" : ""}${item.variant === "notification" ? " site-nav__link--notification" : ""}`;
         const ariaCurrent = isActive ? ' aria-current="page"' : "";
 
         if (item.variant === "profile") {
@@ -377,6 +392,20 @@ window.NoorLocatorLayout = (() => {
                 <a class="${className}" href="${item.href}" data-profile-nav${ariaCurrent} aria-label="Open profile for ${profileLabel}">
                     <span class="site-nav__profile-mark" aria-hidden="true">${profileInitial}</span>
                     <span class="site-nav__profile-copy">${profileLabel}</span>
+                </a>
+            `;
+        }
+
+        if (item.variant === "notification") {
+            return `
+                <a class="${className}" href="${item.href}" data-notification-nav${ariaCurrent} aria-label="Open notifications">
+                    <span class="site-nav__notification-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                            <path d="M12 22a2.5 2.5 0 0 0 2.29-1.5h-4.58A2.5 2.5 0 0 0 12 22Zm7-4H5a1 1 0 0 1-.78-1.63l1.28-1.59V10a6.5 6.5 0 1 1 13 0v4.78l1.28 1.59A1 1 0 0 1 19 18Z"></path>
+                        </svg>
+                    </span>
+                    <span class="site-nav__notification-copy">Notifications</span>
+                    <span class="site-nav__notification-badge" data-notification-count hidden>0</span>
                 </a>
             `;
         }

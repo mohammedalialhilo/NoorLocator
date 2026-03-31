@@ -11,6 +11,7 @@ using NoorLocator.Application.Content.Interfaces;
 using NoorLocator.Application.Centers.Interfaces;
 using NoorLocator.Application.EventAnnouncements.Interfaces;
 using NoorLocator.Application.Languages.Interfaces;
+using NoorLocator.Application.Notifications.Interfaces;
 using NoorLocator.Application.Majalis.Interfaces;
 using NoorLocator.Application.Management.Interfaces;
 using NoorLocator.Application.Profile.Interfaces;
@@ -28,9 +29,11 @@ using NoorLocator.Infrastructure.Services.EventAnnouncements;
 using NoorLocator.Infrastructure.Services.Majalis;
 using NoorLocator.Infrastructure.Services.Media;
 using NoorLocator.Infrastructure.Services.Management;
+using NoorLocator.Infrastructure.Services.Notifications;
 using NoorLocator.Infrastructure.Services.Profile;
 using NoorLocator.Infrastructure.Services.Suggestions;
 using NoorLocator.Infrastructure.Services.Languages;
+using NoorLocator.Infrastructure.Services.Email;
 
 namespace NoorLocator.Infrastructure;
 
@@ -40,7 +43,9 @@ public static class DependencyInjection
     {
         services.Configure<FrontendSettings>(configuration.GetSection(FrontendSettings.SectionName));
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
+        services.Configure<AuthFlowSettings>(configuration.GetSection(AuthFlowSettings.SectionName));
         services.Configure<MediaStorageSettings>(configuration.GetSection(MediaStorageSettings.SectionName));
+        services.Configure<SmtpSettings>(configuration.GetSection(SmtpSettings.SectionName));
         services.Configure<AzureBlobStorageSettings>(configuration.GetSection(AzureBlobStorageSettings.SectionName));
         services.PostConfigure<AzureBlobStorageSettings>(settings =>
         {
@@ -73,6 +78,9 @@ public static class DependencyInjection
         services.AddScoped<PasswordHashingService>();
         services.AddScoped<JwtTokenFactory>();
         services.AddScoped<AuditLogger>();
+        services.AddSingleton<EmailDispatchRecorder>();
+        services.AddScoped<IEmailDeliveryService, EmailDeliveryService>();
+        services.AddScoped<INoorLocatorEmailService, NoorLocatorEmailService>();
         services.AddScoped<LocalMediaStorageService>();
         services.AddScoped<AzureBlobStorageService>();
         services.AddScoped<IMediaStorageService>(serviceProvider =>
@@ -87,12 +95,14 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ICenterImageService, CenterImageService>();
         services.AddScoped<ICenterService, CenterService>();
+        services.AddScoped<IUserCenterEngagementService, UserCenterEngagementService>();
         services.AddScoped<ICenterRequestService, CenterRequestService>();
         services.AddScoped<IEventAnnouncementService, EventAnnouncementService>();
         services.AddScoped<ILanguageService, LanguageService>();
         services.AddScoped<IMajlisService, MajlisService>();
         services.AddScoped<IManagerCenterAccessService, ManagerCenterAccessService>();
         services.AddScoped<IManagerService, ManagerService>();
+        services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<ISuggestionService, SuggestionService>();
 

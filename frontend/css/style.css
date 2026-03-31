@@ -312,6 +312,43 @@ body[data-auth-required="true"]:not([data-auth-ready="true"]) .auth-gate {
     background: rgba(220, 201, 175, 0.24);
 }
 
+.site-nav__link--notification {
+    position: relative;
+    gap: 0.55rem;
+    padding-inline: 0.9rem 1rem;
+}
+
+.site-nav__notification-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 1.4rem;
+    height: 1.4rem;
+}
+
+.site-nav__notification-icon svg {
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+}
+
+.site-nav__notification-copy {
+    line-height: 1;
+}
+
+.site-nav__notification-badge {
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.4rem;
+    height: 1.4rem;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: #8c2f34;
+    color: var(--color-white);
+    font-size: 0.74rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
 .site-nav__profile-mark {
     display: inline-grid;
     place-items: center;
@@ -404,6 +441,11 @@ body[data-auth-required="true"]:not([data-auth-ready="true"]) .auth-gate {
     max-width: 100%;
 }
 
+.panel--soft {
+    background: rgba(248, 243, 235, 0.95);
+    border-style: dashed;
+}
+
 .hero__content {
     padding: 2.25rem;
     animation: float-in 420ms ease-out both;
@@ -490,6 +532,10 @@ p {
     flex-wrap: wrap;
     gap: 0.9rem;
     margin-top: 1.5rem;
+}
+
+.button-row--inline {
+    margin-top: 0.75rem;
 }
 
 .button {
@@ -703,6 +749,23 @@ textarea.form__control {
 .form__hint {
     font-size: 0.9rem;
     color: rgba(13, 37, 53, 0.68);
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(13, 37, 53, 0.12);
+    background: rgba(248, 243, 235, 0.92);
+    font-weight: 600;
+}
+
+.checkbox-row input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--color-ink);
 }
 
 .upload-progress {
@@ -1191,6 +1254,11 @@ textarea.form__control {
     background: rgba(238, 228, 214, 0.42);
 }
 
+.list-card--unread {
+    border-color: rgba(16, 40, 56, 0.2);
+    box-shadow: 0 10px 20px rgba(13, 37, 53, 0.08);
+}
+
 .gallery-card {
     display: grid;
     gap: 0.8rem;
@@ -1555,6 +1623,14 @@ textarea.form__control {
         padding-inline: 0.9rem 1rem;
         border-color: rgba(255, 253, 248, 0.12);
         background: rgba(255, 255, 255, 0.07);
+    }
+
+    .site-nav__link--notification {
+        justify-content: flex-start;
+    }
+
+    .site-nav__notification-badge {
+        margin-left: auto;
     }
 
     .site-nav__profile-copy {

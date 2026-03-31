@@ -3,6 +3,7 @@ using NoorLocator.Application.Common.Models;
 using NoorLocator.Application.EventAnnouncements.Dtos;
 using NoorLocator.Application.EventAnnouncements.Interfaces;
 using NoorLocator.Application.Management.Interfaces;
+using NoorLocator.Application.Notifications.Interfaces;
 using NoorLocator.Domain.Entities;
 using NoorLocator.Domain.Enums;
 using NoorLocator.Infrastructure.Persistence;
@@ -15,7 +16,8 @@ public class EventAnnouncementService(
     NoorLocatorDbContext dbContext,
     IManagerCenterAccessService managerCenterAccessService,
     IMediaStorageService mediaStorageService,
-    AuditLogger auditLogger) : IEventAnnouncementService
+    AuditLogger auditLogger,
+    INotificationService notificationService) : IEventAnnouncementService
 {
     private const string StorageCategory = "event-announcements";
 
@@ -151,6 +153,11 @@ public class EventAnnouncementService(
             },
             cancellationToken: cancellationToken);
 
+        if (announcement.Status == EventAnnouncementStatus.Published)
+        {
+            await notificationService.NotifyEventPublishedAsync(announcement, cancellationToken);
+        }
+
         return OperationResult<EventAnnouncementDto>.Success(
             MapAnnouncement(announcement, center.Name),
             "Announcement created successfully.",
@@ -206,6 +213,7 @@ public class EventAnnouncementService(
         }
 
         var previousImageUrl = announcement.ImageUrl;
+        var previousStatus = announcement.Status;
         announcement.Title = request.Title.Trim();
         announcement.Description = request.Description.Trim();
         announcement.CenterId = request.CenterId;
@@ -240,6 +248,11 @@ public class EventAnnouncementService(
                 announcement.ImageUrl
             },
             cancellationToken: cancellationToken);
+
+        if (previousStatus != EventAnnouncementStatus.Published && announcement.Status == EventAnnouncementStatus.Published)
+        {
+            await notificationService.NotifyEventPublishedAsync(announcement, cancellationToken);
+        }
 
         return OperationResult<EventAnnouncementDto>.Success(
             MapAnnouncement(announcement, targetCenter.Name),

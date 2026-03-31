@@ -365,6 +365,27 @@ window.NoorLocatorApi = (() => {
                 body: JSON.stringify(payload)
             });
         },
+        verifyEmail(token) {
+            return request(`/api/auth/verify-email${toQueryString({ token })}`);
+        },
+        resendVerificationEmail(payload) {
+            return request("/api/auth/resend-verification-email", {
+                method: "POST",
+                body: JSON.stringify(payload || {})
+            });
+        },
+        forgotPassword(payload) {
+            return request("/api/auth/forgot-password", {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+        },
+        resetPassword(payload) {
+            return request("/api/auth/reset-password", {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+        },
         me() {
             return request("/api/auth/me");
         },
@@ -373,6 +394,15 @@ window.NoorLocatorApi = (() => {
         },
         updateMyProfile(payload) {
             return request("/api/profile/me", {
+                method: "PUT",
+                body: JSON.stringify(payload)
+            });
+        },
+        getMyNotificationPreferences() {
+            return request("/api/profile/me/notification-preferences");
+        },
+        updateMyNotificationPreferences(payload) {
+            return request("/api/profile/me/notification-preferences", {
                 method: "PUT",
                 body: JSON.stringify(payload)
             });
@@ -387,6 +417,41 @@ window.NoorLocatorApi = (() => {
             return request("/api/auth/logout", {
                 method: "POST",
                 body: JSON.stringify(payload || {})
+            });
+        },
+        trackCenterVisit(id, payload = {}) {
+            return request(`/api/centers/${id}/visit`, {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+        },
+        subscribeToCenter(id) {
+            return request(`/api/centers/${id}/subscribe`, {
+                method: "POST"
+            });
+        },
+        unsubscribeFromCenter(id) {
+            return request(`/api/centers/${id}/subscribe`, {
+                method: "DELETE"
+            });
+        },
+        getMySubscriptions() {
+            return request("/api/users/me/subscriptions");
+        },
+        getNotifications() {
+            return request("/api/notifications");
+        },
+        getUnreadNotificationCount() {
+            return request("/api/notifications/unread-count");
+        },
+        markNotificationRead(id) {
+            return request(`/api/notifications/${id}/read`, {
+                method: "PUT"
+            });
+        },
+        markAllNotificationsRead() {
+            return request("/api/notifications/read-all", {
+                method: "PUT"
             });
         }
     };

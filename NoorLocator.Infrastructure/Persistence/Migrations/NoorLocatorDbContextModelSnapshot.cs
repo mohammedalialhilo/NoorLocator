@@ -516,6 +516,76 @@ namespace NoorLocator.Infrastructure.Persistence.Migrations
                     b.ToTable("ManagerRequests", (string)null);
                 });
 
+            modelBuilder.Entity("NoorLocator.Domain.Entities.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime(6)")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+                    b.Property<string>("DeduplicationKey")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("varchar(160)");
+
+                    b.Property<DateTime?>("EmailSentAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("LinkUrl")
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<DateTime?>("ReadAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("RelatedEntityId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RelatedEntityType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<bool>("SentByEmail")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "DeduplicationKey")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "IsRead");
+
+                    b.ToTable("Notifications", (string)null);
+                });
+
             modelBuilder.Entity("NoorLocator.Domain.Entities.RefreshToken", b =>
                 {
                     b.Property<int>("Id")
@@ -616,6 +686,19 @@ namespace NoorLocator.Infrastructure.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("varchar(256)");
 
+                    b.Property<DateTime?>("EmailVerificationTokenExpiresAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("EmailVerificationTokenHash")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<bool>("IsEmailVerified")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("LastLoginAtUtc")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -626,17 +709,142 @@ namespace NoorLocator.Infrastructure.Persistence.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("varchar(512)");
 
+                    b.Property<DateTime?>("PasswordResetTokenExpiresAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("PasswordResetTokenHash")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("varchar(32)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
                         .IsUnique();
 
+                    b.HasIndex("EmailVerificationTokenHash");
+
+                    b.HasIndex("PasswordResetTokenHash");
+
                     b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("NoorLocator.Domain.Entities.UserCenterSubscription", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CenterId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime(6)")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+                    b.Property<bool>("IsAppNotificationsEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsEmailNotificationsEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CenterId");
+
+                    b.HasIndex("UserId", "CenterId")
+                        .IsUnique();
+
+                    b.ToTable("UserCenterSubscriptions", (string)null);
+                });
+
+            modelBuilder.Entity("NoorLocator.Domain.Entities.UserCenterVisit", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CenterId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime(6)")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("VisitCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("VisitedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CenterId");
+
+                    b.HasIndex("UserId", "CenterId")
+                        .IsUnique();
+
+                    b.ToTable("UserCenterVisits", (string)null);
+                });
+
+            modelBuilder.Entity("NoorLocator.Domain.Entities.UserNotificationPreference", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("AppNotificationsEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("CenterUpdatesEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime(6)")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+                    b.Property<bool>("EmailNotificationsEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("EventNotificationsEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("MajlisNotificationsEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("UserNotificationPreferences", (string)null);
                 });
 
             modelBuilder.Entity("NoorLocator.Domain.Entities.AuditLog", b =>
@@ -820,6 +1028,17 @@ namespace NoorLocator.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("NoorLocator.Domain.Entities.Notification", b =>
+                {
+                    b.HasOne("NoorLocator.Domain.Entities.User", "User")
+                        .WithMany("Notifications")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("NoorLocator.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("NoorLocator.Domain.Entities.User", "User")
@@ -842,6 +1061,55 @@ namespace NoorLocator.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("NoorLocator.Domain.Entities.UserCenterSubscription", b =>
+                {
+                    b.HasOne("NoorLocator.Domain.Entities.Center", "Center")
+                        .WithMany("UserSubscriptions")
+                        .HasForeignKey("CenterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("NoorLocator.Domain.Entities.User", "User")
+                        .WithMany("CenterSubscriptions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Center");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("NoorLocator.Domain.Entities.UserCenterVisit", b =>
+                {
+                    b.HasOne("NoorLocator.Domain.Entities.Center", "Center")
+                        .WithMany("UserVisits")
+                        .HasForeignKey("CenterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("NoorLocator.Domain.Entities.User", "User")
+                        .WithMany("CenterVisits")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Center");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("NoorLocator.Domain.Entities.UserNotificationPreference", b =>
+                {
+                    b.HasOne("NoorLocator.Domain.Entities.User", "User")
+                        .WithOne("NotificationPreference")
+                        .HasForeignKey("NoorLocator.Domain.Entities.UserNotificationPreference", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("NoorLocator.Domain.Entities.Center", b =>
                 {
                     b.Navigation("CenterImages");
@@ -857,6 +1125,10 @@ namespace NoorLocator.Infrastructure.Persistence.Migrations
                     b.Navigation("Majalis");
 
                     b.Navigation("ManagerRequests");
+
+                    b.Navigation("UserSubscriptions");
+
+                    b.Navigation("UserVisits");
                 });
 
             modelBuilder.Entity("NoorLocator.Domain.Entities.Language", b =>
@@ -881,6 +1153,10 @@ namespace NoorLocator.Infrastructure.Persistence.Migrations
 
                     b.Navigation("CenterRequests");
 
+                    b.Navigation("CenterSubscriptions");
+
+                    b.Navigation("CenterVisits");
+
                     b.Navigation("CreatedMajalis");
 
                     b.Navigation("EventAnnouncements");
@@ -888,6 +1164,10 @@ namespace NoorLocator.Infrastructure.Persistence.Migrations
                     b.Navigation("ManagedCenters");
 
                     b.Navigation("ManagerRequests");
+
+                    b.Navigation("NotificationPreference");
+
+                    b.Navigation("Notifications");
 
                     b.Navigation("RefreshTokens");
 

@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.NoorLocatorLayout.init();
     window.NoorLocatorAuth.bindLogoutControls(document);
     notifyAuthStatus();
+    syncNotificationBell();
 
     const page = document.body.dataset.page;
 
@@ -33,8 +34,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         case "register":
             initRegisterPage();
             break;
+        case "verify-email":
+            initVerifyEmailPage();
+            break;
+        case "forgot-password":
+            initForgotPasswordPage();
+            break;
+        case "reset-password":
+            initResetPasswordPage();
+            break;
         case "profile":
             initProfilePage();
+            break;
+        case "notifications":
+            initNotificationsPage();
             break;
         case "dashboard":
             initDashboardPage();
@@ -58,6 +71,12 @@ function notifyAuthStatus() {
     if (url.searchParams.get("loggedOut") === "1") {
         url.searchParams.delete("loggedOut");
         message = "You have been signed out successfully.";
+    } else if (url.searchParams.get("verified") === "1") {
+        url.searchParams.delete("verified");
+        message = "Your email has been verified. You can now sign in.";
+    } else if (url.searchParams.get("passwordReset") === "1") {
+        url.searchParams.delete("passwordReset");
+        message = "Your password has been reset. Please sign in with your new password.";
     } else if (url.searchParams.get("sessionExpired") === "1") {
         url.searchParams.delete("sessionExpired");
         message = "Your session ended. Please sign in again.";
@@ -382,6 +401,28 @@ function setSubmitButtonState(form, isBusy, busyLabel) {
 
     submitButton.disabled = isBusy;
     submitButton.textContent = isBusy ? busyLabel : submitButton.dataset.defaultLabel;
+}
+
+function updateNotificationBellCount(count) {
+    document.querySelectorAll("[data-notification-count]").forEach(badge => {
+        const normalizedCount = Number(count || 0);
+        badge.textContent = normalizedCount > 99 ? "99+" : String(normalizedCount);
+        badge.hidden = normalizedCount <= 0;
+    });
+}
+
+async function syncNotificationBell() {
+    if (!window.NoorLocatorAuth.isAuthenticated() || !window.NoorLocatorAuth.isEmailVerified()) {
+        updateNotificationBellCount(0);
+        return;
+    }
+
+    try {
+        const response = await window.NoorLocatorApi.getUnreadNotificationCount();
+        updateNotificationBellCount(response.data?.count || 0);
+    } catch {
+        updateNotificationBellCount(0);
+    }
 }
 
 function renderCenterCards(container, centers, emptyMessage, options = {}) {
@@ -1095,6 +1136,8 @@ async function initCenterDetailsPage() {
     const infoGrid = document.getElementById("center-info-grid");
     const detailMessage = document.getElementById("center-detail-message");
     const mapLink = document.getElementById("center-map-link");
+    const subscribeButton = document.getElementById("center-subscribe-button");
+    const subscribeMessage = document.getElementById("center-subscribe-message");
     const heroImage = document.getElementById("center-hero-image");
     const heroFallback = document.getElementById("center-logo-fallback");
     const params = new URLSearchParams(window.location.search);
@@ -1157,6 +1200,72 @@ async function initCenterDetailsPage() {
                 <span class="skeleton skeleton--line"></span>
             </div>
         `).join("");
+    }
+
+    async function configureCenterSubscription(centerId) {
+        if (!subscribeButton || !subscribeMessage) {
+            return;
+        }
+
+        if (!window.NoorLocatorAuth.isAuthenticated()) {
+            subscribeButton.textContent = "Sign in to follow updates";
+            subscribeButton.disabled = false;
+            subscribeButton.onclick = () => {
+                window.location.href = `login.html?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+            };
+            setMessage(subscribeMessage, "Sign in to receive updates from this center.");
+            return;
+        }
+
+        if (!window.NoorLocatorAuth.isEmailVerified()) {
+            subscribeButton.textContent = "Verify email to follow";
+            subscribeButton.disabled = false;
+            subscribeButton.onclick = () => {
+                window.location.href = window.NoorLocatorAuth.getVerificationRoute();
+            };
+            setMessage(subscribeMessage, "Verify your email to follow center updates.", "error");
+            return;
+        }
+
+        let isSubscribed = false;
+
+        try {
+            const response = await window.NoorLocatorApi.getMySubscriptions();
+            isSubscribed = (response.data || []).some(subscription => Number(subscription.centerId) === centerId);
+        } catch {
+            isSubscribed = false;
+        }
+
+        const renderState = () => {
+            subscribeButton.textContent = isSubscribed ? "Following this center" : "Follow center updates";
+            subscribeButton.className = isSubscribed ? "button button--secondary" : "button button--primary";
+            setMessage(
+                subscribeMessage,
+                isSubscribed
+                    ? "You will receive majlis and event updates from this center."
+                    : "Follow this center to receive majlis and event updates.");
+        };
+
+        renderState();
+
+        subscribeButton.onclick = async () => {
+            subscribeButton.disabled = true;
+            setMessage(subscribeMessage, isSubscribed ? "Stopping updates..." : "Following this center...");
+
+            try {
+                const response = isSubscribed
+                    ? await window.NoorLocatorApi.unsubscribeFromCenter(centerId)
+                    : await window.NoorLocatorApi.subscribeToCenter(centerId);
+                isSubscribed = !isSubscribed;
+                renderState();
+                setMessage(subscribeMessage, response.message, "success");
+            } catch (error) {
+                renderState();
+                setMessage(subscribeMessage, normalizeErrorMessage(error, "NoorLocator could not update this center right now."), "error");
+            } finally {
+                subscribeButton.disabled = false;
+            }
+        };
     }
 
     try {
@@ -1226,6 +1335,12 @@ async function initCenterDetailsPage() {
             mapLink.href = buildMapLink(center);
         }
 
+        if (window.NoorLocatorAuth.isAuthenticated() && window.NoorLocatorAuth.isEmailVerified()) {
+            window.NoorLocatorApi.trackCenterVisit(center.id, { source: "page_view" }).catch(() => null);
+        }
+
+        await configureCenterSubscription(center.id);
+
         if (
             languagesResult.status !== "fulfilled" ||
             majalisResult.status !== "fulfilled" ||
@@ -1261,6 +1376,9 @@ async function initCenterDetailsPage() {
         }
 
         setMessage(detailMessage, error.message || "Center details could not be loaded.", "error");
+        if (subscribeMessage) {
+            setMessage(subscribeMessage, "Center updates are unavailable right now.", "error");
+        }
     }
 }
 
@@ -1270,7 +1388,55 @@ function initLoginPage() {
         return;
     }
 
-    bindAuthForm("login-form", async formData => window.NoorLocatorApi.login(formData));
+    const resendContainer = document.getElementById("login-resend-verification");
+    const resendButton = document.getElementById("login-resend-verification-button");
+    const resendMessage = document.getElementById("login-resend-verification-message");
+
+    async function resendVerification(email) {
+        if (!email) {
+            setMessage(resendMessage, "Enter your email address so NoorLocator can resend the verification link.", "error");
+            return;
+        }
+
+        resendButton.disabled = true;
+        setMessage(resendMessage, "Sending a new verification email...");
+
+        try {
+            const response = await window.NoorLocatorApi.resendVerificationEmail({ email });
+            setMessage(resendMessage, response.message || "A new verification email is on its way.", "success");
+        } catch (error) {
+            setMessage(resendMessage, normalizeErrorMessage(error, "NoorLocator could not resend the verification email right now."), "error");
+        } finally {
+            resendButton.disabled = false;
+        }
+    }
+
+    resendButton?.addEventListener("click", () => {
+        const email = document.getElementById("login-email")?.value.trim() || "";
+        resendVerification(email);
+    });
+
+    bindAuthForm("login-form", async formData => window.NoorLocatorApi.login(formData), {
+        onSuccess(response, formData, form, message) {
+            resendContainer.hidden = true;
+            setMessage(message, response.message || "Signed in successfully.", "success");
+            window.setTimeout(() => {
+                window.location.href = window.NoorLocatorAuth.getDefaultRoute();
+            }, 500);
+        },
+        onError(error, formData, form, message) {
+            const normalizedMessage = normalizeErrorMessage(error, "Sign-in could not be completed right now.");
+            setMessage(message, normalizedMessage, "error");
+
+            if (Number(error?.status) === 403) {
+                resendContainer.hidden = false;
+                setMessage(resendMessage, "Verify your email to unlock full access, then sign in again.");
+                return;
+            }
+
+            resendContainer.hidden = true;
+        }
+    });
 }
 
 function initRegisterPage() {
@@ -1279,7 +1445,259 @@ function initRegisterPage() {
         return;
     }
 
-    bindAuthForm("register-form", async formData => window.NoorLocatorApi.register(formData));
+    bindAuthForm("register-form", async formData => window.NoorLocatorApi.register(formData), {
+        onSuccess(response, formData, form, message) {
+            const email = formData.email || "";
+            const successMessage = response.message || "Please check your email to verify your account.";
+            setMessage(message, successMessage, "success");
+            showToast(successMessage, "success");
+            window.setTimeout(() => {
+                window.location.href = `verify-email.html?sent=1${email ? `&email=${encodeURIComponent(email)}` : ""}`;
+            }, 700);
+        },
+        onError(error, formData, form, message) {
+            setMessage(message, normalizeErrorMessage(error, "Registration could not be completed right now."), "error");
+        }
+    });
+}
+
+function initVerifyEmailPage() {
+    const statusTitle = document.getElementById("verify-email-status-title");
+    const statusText = document.getElementById("verify-email-status-text");
+    const pageMessage = document.getElementById("verify-email-page-message");
+    const resendForm = document.getElementById("verify-email-resend-form");
+    const resendMessage = document.querySelector('[data-form-message="verify-email-resend-form"]');
+    const resendEmailInput = document.getElementById("verify-email-resend-email");
+    const url = new URL(window.location.href);
+    const token = url.searchParams.get("token") || "";
+    const email = url.searchParams.get("email") || "";
+    const sent = url.searchParams.get("sent") === "1";
+
+    if (resendEmailInput && email) {
+        resendEmailInput.value = email;
+    }
+
+    if (sent) {
+        setMessage(pageMessage, "Please check your email to verify your account.", "success");
+    }
+
+    if (token) {
+        setMessage(pageMessage, "Verifying your email...");
+
+        window.NoorLocatorApi.verifyEmail(token)
+            .then(response => {
+                if (statusTitle) {
+                    statusTitle.textContent = "Email verified";
+                }
+
+                if (statusText) {
+                    statusText.textContent = "Your NoorLocator account is now verified and ready to use.";
+                }
+
+                if (resendEmailInput && response.data?.email) {
+                    resendEmailInput.value = response.data.email;
+                }
+
+                setMessage(pageMessage, response.message || "Your email has been verified.", "success");
+                showToast(response.message || "Your email has been verified.", "success");
+
+                window.setTimeout(() => {
+                    window.location.href = "login.html?verified=1";
+                }, 900);
+            })
+            .catch(error => {
+                const status = error?.data?.status || "";
+
+                if (statusTitle) {
+                    statusTitle.textContent = status === "expired" ? "Verification link expired" : "Verification link invalid";
+                }
+
+                if (statusText) {
+                    statusText.textContent = status === "expired"
+                        ? "Request a new verification email to continue."
+                        : "Use the resend form below to request a fresh verification email.";
+                }
+
+                if (resendEmailInput && error?.data?.email) {
+                    resendEmailInput.value = error.data.email;
+                }
+
+                setMessage(pageMessage, normalizeErrorMessage(error, "This verification link could not be used."), "error");
+            });
+    }
+
+    resendForm?.addEventListener("submit", async event => {
+        event.preventDefault();
+        const values = getTrimmedFormValues(resendForm);
+        setSubmitButtonState(resendForm, true, "Sending...");
+        setMessage(resendMessage, "Sending a fresh verification email...");
+
+        try {
+            const response = await window.NoorLocatorApi.resendVerificationEmail({ email: values.email });
+            setMessage(resendMessage, response.message || "A new verification email has been sent.", "success");
+        } catch (error) {
+            setMessage(resendMessage, normalizeErrorMessage(error, "NoorLocator could not resend the verification email right now."), "error");
+        } finally {
+            setSubmitButtonState(resendForm, false, "Sending...");
+        }
+    });
+}
+
+function initForgotPasswordPage() {
+    const form = document.getElementById("forgot-password-form");
+    const message = document.querySelector('[data-form-message="forgot-password-form"]');
+
+    if (!form) {
+        return;
+    }
+
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+        const values = getTrimmedFormValues(form);
+        setSubmitButtonState(form, true, "Sending link...");
+        setMessage(message, "Sending reset instructions...");
+
+        try {
+            const response = await window.NoorLocatorApi.forgotPassword(values);
+            setMessage(message, response.message || "If an account exists for this email, a reset link has been sent.", "success");
+        } catch (error) {
+            setMessage(message, normalizeErrorMessage(error, "NoorLocator could not start the reset flow right now."), "error");
+        } finally {
+            setSubmitButtonState(form, false, "Sending link...");
+        }
+    });
+}
+
+function initResetPasswordPage() {
+    const form = document.getElementById("reset-password-form");
+    const message = document.querySelector('[data-form-message="reset-password-form"]');
+    const tokenInput = document.getElementById("reset-password-token");
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token") || "";
+
+    if (!form || !tokenInput) {
+        return;
+    }
+
+    tokenInput.value = token;
+
+    if (!token) {
+        setMessage(message, "This reset link is incomplete. Request a new one to continue.", "error");
+    }
+
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        if (!tokenInput.value.trim()) {
+            setMessage(message, "This reset link is missing its token. Request a new one to continue.", "error");
+            return;
+        }
+
+        const values = getTrimmedFormValues(form);
+        setSubmitButtonState(form, true, "Updating password...");
+        setMessage(message, "Updating your password...");
+
+        try {
+            const response = await window.NoorLocatorApi.resetPassword(values);
+            setMessage(message, response.message || "Your password has been reset successfully.", "success");
+            showToast(response.message || "Your password has been reset successfully.", "success");
+            window.setTimeout(() => {
+                window.location.href = "login.html?passwordReset=1";
+            }, 900);
+        } catch (error) {
+            setMessage(message, normalizeErrorMessage(error, "This reset link could not be used."), "error");
+        } finally {
+            setSubmitButtonState(form, false, "Updating password...");
+        }
+    });
+}
+
+function initNotificationsPage() {
+    if (!window.NoorLocatorAuth.requireAuth()) {
+        return;
+    }
+
+    const list = document.getElementById("notifications-list");
+    const pageMessage = document.getElementById("notifications-page-message");
+    const markAllButton = document.getElementById("notifications-mark-all");
+
+    if (!list || !pageMessage || !markAllButton) {
+        return;
+    }
+
+    async function loadNotifications(successMessage = "Your notifications are ready.") {
+        setContainerMessage(list, "Loading notifications...", "soft");
+
+        try {
+            const response = await window.NoorLocatorApi.getNotifications();
+            const notifications = response.data || [];
+
+            if (!notifications.length) {
+                setContainerMessage(list, "You do not have any notifications yet.", "soft");
+            } else {
+                list.innerHTML = notifications.map(notification => `
+                    <article class="list-card${notification.isRead ? "" : " list-card--unread"}" data-notification-id="${notification.id}">
+                        <div class="list-card__head">
+                            <div>
+                                <h4>${escapeHtml(notification.title)}</h4>
+                                <p class="list-card__meta">${escapeHtml(formatDateTime(notification.createdAt))}</p>
+                            </div>
+                            <span class="status-pill${notification.isRead ? " status-pill--muted" : " status-pill--success"}">${notification.isRead ? "Read" : "New"}</span>
+                        </div>
+                        <p>${escapeHtml(notification.message)}</p>
+                        <div class="button-row">
+                            ${notification.linkUrl ? `<a class="button button--ghost" href="${escapeHtml(notification.linkUrl)}">Open</a>` : ""}
+                            ${notification.isRead ? "" : `<button class="button button--secondary" type="button" data-notification-read="${notification.id}">Mark as read</button>`}
+                        </div>
+                    </article>
+                `).join("");
+            }
+
+            setMessage(pageMessage, successMessage, "success");
+            syncNotificationBell();
+        } catch (error) {
+            setContainerMessage(list, normalizeErrorMessage(error, "Notifications are unavailable right now."), "error");
+            setMessage(pageMessage, normalizeErrorMessage(error, "Notifications are unavailable right now."), "error");
+        }
+    }
+
+    markAllButton.addEventListener("click", async () => {
+        markAllButton.disabled = true;
+        setMessage(pageMessage, "Marking notifications as read...");
+
+        try {
+            const response = await window.NoorLocatorApi.markAllNotificationsRead();
+            await loadNotifications(response.message || "All notifications marked as read.");
+        } catch (error) {
+            setMessage(pageMessage, normalizeErrorMessage(error, "NoorLocator could not update notifications right now."), "error");
+        } finally {
+            markAllButton.disabled = false;
+        }
+    });
+
+    list.addEventListener("click", async event => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement) || !target.matches("[data-notification-read]")) {
+            return;
+        }
+
+        const notificationId = Number(target.dataset.notificationRead);
+        if (!notificationId) {
+            return;
+        }
+
+        target.disabled = true;
+
+        try {
+            await window.NoorLocatorApi.markNotificationRead(notificationId);
+            await loadNotifications("Notification marked as read.");
+        } catch (error) {
+            setMessage(pageMessage, normalizeErrorMessage(error, "NoorLocator could not update this notification right now."), "error");
+            target.disabled = false;
+        }
+    });
+
+    loadNotifications();
 }
 
 function initProfilePage() {
@@ -1296,11 +1714,18 @@ function initProfilePage() {
     const displayName = document.getElementById("profile-display-name");
     const roleBadge = document.getElementById("profile-role-badge");
     const createdAt = document.getElementById("profile-created-at");
+    const lastLoginAt = document.getElementById("profile-last-login");
     const roleDisplay = document.getElementById("profile-role-display");
     const centerCount = document.getElementById("profile-center-count");
     const workspaceLink = document.getElementById("profile-workspace-link");
+    const verificationStatus = document.getElementById("profile-verification-status");
+    const verificationNote = document.getElementById("profile-verification-note");
+    const resendVerificationButton = document.getElementById("profile-resend-verification");
+    const preferencesForm = document.getElementById("notification-preferences-form");
+    const preferencesMessage = document.querySelector('[data-form-message="notification-preferences-form"]');
     const state = {
-        profile: window.NoorLocatorAuth.getSessionUser()
+        profile: window.NoorLocatorAuth.getSessionUser(),
+        preferences: null
     };
 
     if (!pageMessage || !cardsContainer || !form || !formMessage || !nameInput || !emailInput || !displayName || !roleBadge || !createdAt || !roleDisplay || !centerCount || !workspaceLink) {
@@ -1311,6 +1736,13 @@ function initProfilePage() {
     setMessage(pageMessage, "Loading your profile...");
 
     function getWorkspaceTarget(profile) {
+        if (!profile?.isEmailVerified) {
+            return {
+                href: window.NoorLocatorAuth.getVerificationRoute(profile),
+                label: "Verify your email"
+            };
+        }
+
         if (profile?.role === "Admin") {
             return {
                 href: "admin.html",
@@ -1345,10 +1777,57 @@ function initProfilePage() {
 
         const assignedCenterCount = (profile.assignedCenterIds || []).length;
         centerCount.textContent = `${assignedCenterCount} center${assignedCenterCount === 1 ? "" : "s"}`;
+        if (lastLoginAt) {
+            lastLoginAt.textContent = profile.lastLoginAtUtc ? formatDateTime(profile.lastLoginAtUtc) : "No completed sign-in yet";
+        }
+        if (verificationStatus) {
+            verificationStatus.textContent = profile.isEmailVerified ? "Verified" : "Unverified";
+            verificationStatus.className = profile.isEmailVerified ? "status-pill status-pill--success" : "status-pill";
+        }
+        if (verificationNote) {
+            verificationNote.textContent = profile.isEmailVerified
+                ? "Your email address is verified and can receive account and center updates."
+                : "Verify this email address to unlock full NoorLocator access and email notifications.";
+        }
+        if (resendVerificationButton) {
+            resendVerificationButton.hidden = Boolean(profile.isEmailVerified);
+        }
 
         const workspaceTarget = getWorkspaceTarget(profile);
         workspaceLink.href = workspaceTarget.href;
         workspaceLink.textContent = workspaceTarget.label;
+    }
+
+    function renderPreferences(preferences) {
+        if (!preferencesForm || !preferences) {
+            return;
+        }
+
+        const emailNotifications = preferencesForm.elements.namedItem("emailNotificationsEnabled");
+        const appNotifications = preferencesForm.elements.namedItem("appNotificationsEnabled");
+        const majlisNotifications = preferencesForm.elements.namedItem("majlisNotificationsEnabled");
+        const eventNotifications = preferencesForm.elements.namedItem("eventNotificationsEnabled");
+        const centerUpdates = preferencesForm.elements.namedItem("centerUpdatesEnabled");
+
+        if (emailNotifications instanceof HTMLInputElement) {
+            emailNotifications.checked = Boolean(preferences.emailNotificationsEnabled);
+        }
+
+        if (appNotifications instanceof HTMLInputElement) {
+            appNotifications.checked = Boolean(preferences.appNotificationsEnabled);
+        }
+
+        if (majlisNotifications instanceof HTMLInputElement) {
+            majlisNotifications.checked = Boolean(preferences.majlisNotificationsEnabled);
+        }
+
+        if (eventNotifications instanceof HTMLInputElement) {
+            eventNotifications.checked = Boolean(preferences.eventNotificationsEnabled);
+        }
+
+        if (centerUpdates instanceof HTMLInputElement) {
+            centerUpdates.checked = Boolean(preferences.centerUpdatesEnabled);
+        }
     }
 
     function refreshOverviewCards() {
@@ -1368,6 +1847,12 @@ function initProfilePage() {
                     : "No account email is available right now."
             },
             {
+                title: "Verification status",
+                body: profile.isEmailVerified
+                    ? "This email address is verified and trusted for protected features and email delivery."
+                    : "This email address still needs verification before NoorLocator unlocks trusted features."
+            },
+            {
                 title: "Assigned centers",
                 body: assignedCenterCount
                     ? `${assignedCenterCount} approved center assignment${assignedCenterCount === 1 ? "" : "s"} are linked to this account.`
@@ -1378,13 +1863,21 @@ function initProfilePage() {
 
     async function loadProfile(successMessage = "Your profile is ready to edit.") {
         try {
-            const [userResponse, profileResponse] = await Promise.all([
+            const requests = [
                 window.NoorLocatorAuth.syncCurrentUser(),
                 window.NoorLocatorApi.getMyProfile()
-            ]);
+            ];
+
+            if (preferencesForm) {
+                requests.push(window.NoorLocatorApi.getMyNotificationPreferences());
+            }
+
+            const [userResponse, profileResponse, preferencesResponse] = await Promise.all(requests);
 
             state.profile = profileResponse.data || userResponse || window.NoorLocatorAuth.getSessionUser();
+            state.preferences = preferencesResponse?.data || state.preferences;
             renderProfile(state.profile);
+            renderPreferences(state.preferences);
             refreshOverviewCards();
             setMessage(pageMessage, successMessage, "success");
         } catch (error) {
@@ -1429,6 +1922,46 @@ function initProfilePage() {
         }
     });
 
+    resendVerificationButton?.addEventListener("click", async () => {
+        resendVerificationButton.disabled = true;
+        setMessage(pageMessage, "Sending a fresh verification email...");
+
+        try {
+            const response = await window.NoorLocatorApi.resendVerificationEmail({ email: state.profile?.email || "" });
+            setMessage(pageMessage, response.message || "A new verification email has been sent.", "success");
+        } catch (error) {
+            setMessage(pageMessage, normalizeErrorMessage(error, "NoorLocator could not resend the verification email right now."), "error");
+        } finally {
+            resendVerificationButton.disabled = false;
+        }
+    });
+
+    preferencesForm?.addEventListener("submit", async event => {
+        event.preventDefault();
+        const values = Object.fromEntries(new FormData(preferencesForm).entries());
+        const payload = {
+            emailNotificationsEnabled: values.emailNotificationsEnabled === "on",
+            appNotificationsEnabled: values.appNotificationsEnabled === "on",
+            majlisNotificationsEnabled: values.majlisNotificationsEnabled === "on",
+            eventNotificationsEnabled: values.eventNotificationsEnabled === "on",
+            centerUpdatesEnabled: values.centerUpdatesEnabled === "on"
+        };
+
+        setSubmitButtonState(preferencesForm, true, "Saving preferences...");
+        setMessage(preferencesMessage, "Saving your notification settings...");
+
+        try {
+            const response = await window.NoorLocatorApi.updateMyNotificationPreferences(payload);
+            state.preferences = response.data || payload;
+            renderPreferences(state.preferences);
+            setMessage(preferencesMessage, response.message || "Notification settings updated successfully.", "success");
+        } catch (error) {
+            setMessage(preferencesMessage, normalizeErrorMessage(error, "Notification settings could not be updated right now."), "error");
+        } finally {
+            setSubmitButtonState(preferencesForm, false, "Saving preferences...");
+        }
+    });
+
     window.addEventListener("noorlocator:auth-changed", event => {
         if (!event.detail) {
             return;
@@ -1445,7 +1978,7 @@ function initProfilePage() {
     loadProfile();
 }
 
-function bindAuthForm(formId, submitAction) {
+function bindAuthForm(formId, submitAction, options = {}) {
     const form = document.getElementById(formId);
     const message = document.querySelector(`[data-form-message="${formId}"]`);
 
@@ -1471,10 +2004,20 @@ function bindAuthForm(formId, submitAction) {
 
             setMessage(message, response.message, "success");
 
+            if (typeof options.onSuccess === "function") {
+                options.onSuccess(response, formData, form, message);
+                return;
+            }
+
             window.setTimeout(() => {
                 window.location.href = window.NoorLocatorAuth.getDefaultRoute();
             }, 500);
         } catch (error) {
+            if (typeof options.onError === "function") {
+                options.onError(error, formData, form, message);
+                return;
+            }
+
             setMessage(message, error.message || "The request could not be completed.", "error");
         }
     });
@@ -3470,3 +4013,7 @@ function populateCards(containerId, cards) {
         </article>
     `).join("");
 }
+
+window.addEventListener("noorlocator:auth-changed", () => {
+    syncNotificationBell();
+});

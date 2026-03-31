@@ -33,6 +33,7 @@ public class JwtTokenFactory(IOptions<JwtSettings> jwtOptions)
             new(ClaimTypes.Email, user.Email),
             new(ClaimTypes.Name, user.Name),
             new(ClaimTypes.Role, user.Role.ToString()),
+            new("email_verified", user.IsEmailVerified ? "true" : "false"),
             new(JwtRegisteredClaimNames.Sid, sessionId),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N"))
         };

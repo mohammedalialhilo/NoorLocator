@@ -20,7 +20,7 @@ public class CenterLanguageSuggestionsController(
     /// <summary>
     /// Creates a pending center-language suggestion for moderation.
     /// </summary>
-    [Authorize(Roles = "User,Manager,Admin")]
+    [Authorize(Policy = "VerifiedAccount", Roles = "User,Manager,Admin")]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<object?>>> Create([FromBody] CreateCenterLanguageSuggestionDto request, CancellationToken cancellationToken)
     {

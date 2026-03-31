@@ -11,6 +11,20 @@ public class User : AuditableEntity
 
     public string PasswordHash { get; set; } = string.Empty;
 
+    public bool IsEmailVerified { get; set; }
+
+    public string? EmailVerificationTokenHash { get; set; }
+
+    public DateTime? EmailVerificationTokenExpiresAtUtc { get; set; }
+
+    public string? PasswordResetTokenHash { get; set; }
+
+    public DateTime? PasswordResetTokenExpiresAtUtc { get; set; }
+
+    public DateTime? LastLoginAtUtc { get; set; }
+
+    public DateTime? UpdatedAtUtc { get; set; }
+
     public UserRole Role { get; set; } = UserRole.User;
 
     public ICollection<CenterRequest> CenterRequests { get; set; } = new List<CenterRequest>();
@@ -32,4 +46,12 @@ public class User : AuditableEntity
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 
     public ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
+
+    public UserNotificationPreference? NotificationPreference { get; set; }
+
+    public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+
+    public ICollection<UserCenterVisit> CenterVisits { get; set; } = new List<UserCenterVisit>();
+
+    public ICollection<UserCenterSubscription> CenterSubscriptions { get; set; } = new List<UserCenterSubscription>();
 }

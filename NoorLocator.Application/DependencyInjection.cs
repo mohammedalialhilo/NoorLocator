@@ -13,6 +13,8 @@ using NoorLocator.Application.Management.Dtos;
 using NoorLocator.Application.Management.Validators;
 using NoorLocator.Application.Majalis.Dtos;
 using NoorLocator.Application.Majalis.Validators;
+using NoorLocator.Application.Notifications.Dtos;
+using NoorLocator.Application.Notifications.Validators;
 using NoorLocator.Application.Profile.Dtos;
 using NoorLocator.Application.Profile.Validators;
 using NoorLocator.Application.Suggestions.Dtos;
@@ -27,6 +29,9 @@ public static class DependencyInjection
     {
         services.AddScoped<IValidator<RegisterRequestDto>, RegisterRequestValidator>();
         services.AddScoped<IValidator<LoginRequestDto>, LoginRequestValidator>();
+        services.AddScoped<IValidator<ForgotPasswordRequestDto>, ForgotPasswordRequestValidator>();
+        services.AddScoped<IValidator<ResendVerificationEmailRequestDto>, ResendVerificationEmailRequestValidator>();
+        services.AddScoped<IValidator<ResetPasswordRequestDto>, ResetPasswordRequestValidator>();
         services.AddScoped<IValidator<CreateCenterRequestDto>, CreateCenterRequestValidator>();
         services.AddScoped<IValidator<UpdateCenterDto>, UpdateCenterValidator>();
         services.AddScoped<IValidator<CenterLocationQueryDto>, CenterLocationQueryValidator>();
@@ -38,6 +43,7 @@ public static class DependencyInjection
         services.AddScoped<IValidator<UpdateEventAnnouncementDto>, UpdateEventAnnouncementValidator>();
         services.AddScoped<IValidator<UploadCenterImageDto>, UploadCenterImageValidator>();
         services.AddScoped<IValidator<UpdateProfileDto>, UpdateProfileValidator>();
+        services.AddScoped<IValidator<UpdateNotificationPreferencesDto>, UpdateNotificationPreferencesValidator>();
         services.AddScoped<IValidator<CreateCenterLanguageSuggestionDto>, CreateCenterLanguageSuggestionValidator>();
         services.AddScoped<IValidator<ManagerRequestDto>, ManagerRequestValidator>();
         services.AddScoped<IValidator<CreateSuggestionDto>, CreateSuggestionValidator>();

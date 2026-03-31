@@ -26,6 +26,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(512)
             .IsRequired();
 
+        builder.Property(user => user.EmailVerificationTokenHash)
+            .HasMaxLength(256);
+
+        builder.Property(user => user.PasswordResetTokenHash)
+            .HasMaxLength(256);
+
         builder.Property(user => user.Role)
             .HasConversion<string>()
             .HasMaxLength(32)
@@ -33,5 +39,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(user => user.CreatedAt)
             .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+
+        builder.HasIndex(user => user.EmailVerificationTokenHash);
+        builder.HasIndex(user => user.PasswordResetTokenHash);
     }
 }

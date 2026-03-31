@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using NoorLocator.Api.Extensions;
 using NoorLocator.Application.Authentication.Dtos;
 using NoorLocator.Application.Common.Models;
+using NoorLocator.Application.Notifications.Dtos;
 using NoorLocator.Application.Profile.Dtos;
 using NoorLocator.Application.Profile.Interfaces;
 using NoorLocator.Application.Validation;
@@ -17,7 +18,8 @@ namespace NoorLocator.Api.Controllers;
 [Authorize]
 public class ProfileController(
     IProfileService profileService,
-    IValidator<UpdateProfileDto> updateProfileValidator) : ControllerBase
+    IValidator<UpdateProfileDto> updateProfileValidator,
+    IValidator<UpdateNotificationPreferencesDto> updateNotificationPreferencesValidator) : ControllerBase
 {
     /// <summary>
     /// Returns the authenticated user's editable profile details.
@@ -42,6 +44,32 @@ public class ProfileController(
         }
 
         var result = await profileService.UpdateMyProfileAsync(User.GetRequiredUserId(), request, cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Returns the authenticated user's notification delivery preferences.
+    /// </summary>
+    [HttpGet("me/notification-preferences")]
+    public async Task<ActionResult<ApiResponse<NotificationPreferenceDto>>> GetNotificationPreferences(CancellationToken cancellationToken)
+    {
+        var result = await profileService.GetNotificationPreferencesAsync(User.GetRequiredUserId(), cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Updates the authenticated user's notification delivery preferences.
+    /// </summary>
+    [HttpPut("me/notification-preferences")]
+    public async Task<ActionResult<ApiResponse<NotificationPreferenceDto>>> UpdateNotificationPreferences([FromBody] UpdateNotificationPreferencesDto request, CancellationToken cancellationToken)
+    {
+        var validation = updateNotificationPreferencesValidator.Validate(request);
+        if (!validation.IsValid)
+        {
+            return this.ToActionResult(OperationResult<NotificationPreferenceDto>.Failure(validation.Errors.First(), 400));
+        }
+
+        var result = await profileService.UpdateNotificationPreferencesAsync(User.GetRequiredUserId(), request, cancellationToken);
         return this.ToActionResult(result);
     }
 }

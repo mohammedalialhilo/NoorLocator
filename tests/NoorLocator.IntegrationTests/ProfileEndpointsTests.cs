@@ -43,6 +43,7 @@ public class ProfileEndpointsTests
         Assert.Equal(updatedName, updatePayload.Data!.Name);
         Assert.Equal(updatedEmail, updatePayload.Data.Email);
         Assert.Equal("User", updatePayload.Data.Role);
+        Assert.False(updatePayload.Data.IsEmailVerified);
 
         var refreshedProfileResponse = await client.GetAsync("/api/profile/me");
         var refreshedProfile = await refreshedProfileResponse.Content.ReadFromJsonAsync<ApiEnvelope<ProfilePayload>>();
@@ -63,6 +64,8 @@ public class ProfileEndpointsTests
             Assert.Equal(updatedName, storedUser.Name);
             Assert.Equal(updatedEmail, storedUser.Email);
             Assert.Equal(UserRole.User, storedUser.Role);
+            Assert.False(storedUser.IsEmailVerified);
+            Assert.False(string.IsNullOrWhiteSpace(storedUser.EmailVerificationTokenHash));
         }
 
         using var reloginClient = factory.CreateClient();
@@ -71,7 +74,9 @@ public class ProfileEndpointsTests
             email = updatedEmail,
             password = "User123!Pass"
         });
-        Assert.Equal(HttpStatusCode.OK, reloginResponse.StatusCode);
+        var reloginPayload = await reloginResponse.Content.ReadFromJsonAsync<ApiEnvelope<AuthPayload>>();
+        Assert.Equal(HttpStatusCode.Forbidden, reloginResponse.StatusCode);
+        Assert.Equal("Please verify your email before signing in.", reloginPayload?.Message);
     }
 
     [Fact]
@@ -163,6 +168,7 @@ public class ProfileEndpointsTests
         Assert.Equal("Restricted Update User", payload.Data!.Name);
         Assert.Equal(updatedEmail, payload.Data.Email);
         Assert.Equal("User", payload.Data.Role);
+        Assert.False(payload.Data.IsEmailVerified);
 
         using (var scope = factory.Services.CreateScope())
         {
@@ -176,6 +182,8 @@ public class ProfileEndpointsTests
             Assert.Equal(passwordHashBefore, currentUser.PasswordHash);
             Assert.Equal("Restricted Update User", currentUser.Name);
             Assert.Equal(updatedEmail, currentUser.Email);
+            Assert.False(currentUser.IsEmailVerified);
+            Assert.False(string.IsNullOrWhiteSpace(currentUser.EmailVerificationTokenHash));
         }
 
         using var reloginClient = factory.CreateClient();
@@ -184,7 +192,9 @@ public class ProfileEndpointsTests
             email = updatedEmail,
             password = "User123!Pass"
         });
-        Assert.Equal(HttpStatusCode.OK, reloginResponse.StatusCode);
+        var reloginPayload = await reloginResponse.Content.ReadFromJsonAsync<ApiEnvelope<AuthPayload>>();
+        Assert.Equal(HttpStatusCode.Forbidden, reloginResponse.StatusCode);
+        Assert.Equal("Please verify your email before signing in.", reloginPayload?.Message);
     }
 
     [Theory]
@@ -242,6 +252,8 @@ public sealed class ProfilePayload
     public string Name { get; set; } = string.Empty;
 
     public string Email { get; set; } = string.Empty;
+
+    public bool IsEmailVerified { get; set; }
 
     public string Role { get; set; } = string.Empty;
 

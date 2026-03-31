@@ -15,7 +15,7 @@ namespace NoorLocator.IntegrationTests;
 public class AuthEndpointsTests(NoorLocatorWebApplicationFactory factory) : IClassFixture<NoorLocatorWebApplicationFactory>
 {
     [Fact]
-    public async Task Register_ReturnsCreatedUserWithUserRole()
+    public async Task Register_CreatesUnverifiedUser_WithoutTrustedSession()
     {
         using var client = factory.CreateClient();
 
@@ -34,6 +34,9 @@ public class AuthEndpointsTests(NoorLocatorWebApplicationFactory factory) : ICla
         Assert.NotNull(payload.Data);
         Assert.Equal("User", payload.Data!.Role);
         Assert.Equal("new-user@test.local", payload.Data.User!.Email);
+        Assert.False(payload.Data.User.IsEmailVerified);
+        Assert.True(string.IsNullOrWhiteSpace(payload.Data.Token));
+        Assert.True(string.IsNullOrWhiteSpace(payload.Data.RefreshToken));
     }
 
     [Fact]
@@ -182,4 +185,6 @@ public sealed class AuthPayload
 public sealed class CurrentUserPayload
 {
     public string Email { get; set; } = string.Empty;
+
+    public bool IsEmailVerified { get; set; }
 }

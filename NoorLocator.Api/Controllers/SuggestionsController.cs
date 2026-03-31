@@ -20,7 +20,7 @@ public class SuggestionsController(
     /// <summary>
     /// Submits a new suggestion for admin review.
     /// </summary>
-    [Authorize(Roles = "User,Manager,Admin")]
+    [Authorize(Policy = "VerifiedAccount", Roles = "User,Manager,Admin")]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<object?>>> Create([FromBody] CreateSuggestionDto request, CancellationToken cancellationToken)
     {

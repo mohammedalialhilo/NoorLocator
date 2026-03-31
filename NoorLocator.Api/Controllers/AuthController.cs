@@ -16,7 +16,10 @@ namespace NoorLocator.Api.Controllers;
 public class AuthController(
     IAuthService authService,
     IValidator<RegisterRequestDto> registerValidator,
-    IValidator<LoginRequestDto> loginValidator) : ControllerBase
+    IValidator<LoginRequestDto> loginValidator,
+    IValidator<ResendVerificationEmailRequestDto> resendVerificationValidator,
+    IValidator<ForgotPasswordRequestDto> forgotPasswordValidator,
+    IValidator<ResetPasswordRequestDto> resetPasswordValidator) : ControllerBase
 {
     /// <summary>
     /// Registers a new NoorLocator account with the default <c>User</c> role.
@@ -49,6 +52,71 @@ public class AuthController(
         }
 
         var result = await authService.LoginAsync(request, cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Verifies a user's email ownership by consuming a single-use verification token.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("verify-email")]
+    public async Task<ActionResult<ApiResponse<VerifyEmailResultDto>>> VerifyEmail([FromQuery] string token, CancellationToken cancellationToken)
+    {
+        var result = await authService.VerifyEmailAsync(token, cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Sends a fresh verification email when an account is still awaiting verification.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("resend-verification-email")]
+    public async Task<ActionResult<ApiResponse<object?>>> ResendVerificationEmail([FromBody] ResendVerificationEmailRequestDto request, CancellationToken cancellationToken)
+    {
+        var validationResult = Validate(resendVerificationValidator, request);
+        if (validationResult is not null)
+        {
+            return validationResult;
+        }
+
+        int? currentUserId = User.Identity?.IsAuthenticated == true
+            ? User.GetRequiredUserId()
+            : null;
+        var result = await authService.ResendVerificationEmailAsync(currentUserId, request.Email, cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Starts the password reset flow without revealing whether the email exists.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("forgot-password")]
+    public async Task<ActionResult<ApiResponse<object?>>> ForgotPassword([FromBody] ForgotPasswordRequestDto request, CancellationToken cancellationToken)
+    {
+        var validationResult = Validate(forgotPasswordValidator, request);
+        if (validationResult is not null)
+        {
+            return validationResult;
+        }
+
+        var result = await authService.ForgotPasswordAsync(request, cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Resets a password by consuming a secure, expiring, single-use token.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("reset-password")]
+    public async Task<ActionResult<ApiResponse<object?>>> ResetPassword([FromBody] ResetPasswordRequestDto request, CancellationToken cancellationToken)
+    {
+        var validationResult = Validate(resetPasswordValidator, request);
+        if (validationResult is not null)
+        {
+            return validationResult;
+        }
+
+        var result = await authService.ResetPasswordAsync(request, cancellationToken);
         return this.ToActionResult(result);
     }
 

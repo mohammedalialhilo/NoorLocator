@@ -66,7 +66,9 @@ public class NoorLocatorWebApplicationFactory : WebApplicationFactory<Program>
             Email = "admin@test.local",
             PasswordHash = passwordHashingService.HashPassword("Admin123!Pass"),
             Role = UserRole.Admin,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow,
+            IsEmailVerified = true
         };
         var user = new User
         {
@@ -75,7 +77,9 @@ public class NoorLocatorWebApplicationFactory : WebApplicationFactory<Program>
             Email = "user@test.local",
             PasswordHash = passwordHashingService.HashPassword("User123!Pass"),
             Role = UserRole.User,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow,
+            IsEmailVerified = true
         };
         var manager = new User
         {
@@ -84,7 +88,9 @@ public class NoorLocatorWebApplicationFactory : WebApplicationFactory<Program>
             Email = "manager@test.local",
             PasswordHash = passwordHashingService.HashPassword("Manager123!Pass"),
             Role = UserRole.Manager,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow,
+            IsEmailVerified = true
         };
 
         var arabic = new Language { Id = 1, Name = "Arabic", Code = "ar" };
@@ -117,6 +123,10 @@ public class NoorLocatorWebApplicationFactory : WebApplicationFactory<Program>
         };
 
         dbContext.Users.AddRange(admin, user, manager);
+        dbContext.UserNotificationPreferences.AddRange(
+            new UserNotificationPreference { UserId = admin.Id, CreatedAtUtc = DateTime.UtcNow },
+            new UserNotificationPreference { UserId = user.Id, CreatedAtUtc = DateTime.UtcNow },
+            new UserNotificationPreference { UserId = manager.Id, CreatedAtUtc = DateTime.UtcNow });
         dbContext.Languages.AddRange(arabic, english, swedish);
         dbContext.Centers.AddRange(copenhagenCenter, stockholmCenter);
         dbContext.CenterLanguages.AddRange(

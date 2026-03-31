@@ -20,7 +20,7 @@ public class CenterRequestsController(
     /// <summary>
     /// Lists the current user's previously submitted center requests.
     /// </summary>
-    [Authorize(Roles = "User,Manager,Admin")]
+    [Authorize(Policy = "VerifiedAccount", Roles = "User,Manager,Admin")]
     [HttpGet("my")]
     public async Task<ActionResult<ApiResponse<IReadOnlyCollection<CenterRequestSummaryDto>>>> GetMine(CancellationToken cancellationToken)
     {
@@ -31,7 +31,7 @@ public class CenterRequestsController(
     /// <summary>
     /// Creates a pending center request for admin moderation.
     /// </summary>
-    [Authorize(Roles = "User,Manager,Admin")]
+    [Authorize(Policy = "VerifiedAccount", Roles = "User,Manager,Admin")]
     [HttpPost]
     public async Task<ActionResult<ApiResponse<object?>>> Create([FromBody] CreateCenterRequestDto request, CancellationToken cancellationToken)
     {

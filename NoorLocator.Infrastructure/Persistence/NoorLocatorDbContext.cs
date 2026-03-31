@@ -37,6 +37,14 @@ public class NoorLocatorDbContext(DbContextOptions<NoorLocatorDbContext> options
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+    public DbSet<Notification> Notifications => Set<Notification>();
+
+    public DbSet<UserCenterSubscription> UserCenterSubscriptions => Set<UserCenterSubscription>();
+
+    public DbSet<UserCenterVisit> UserCenterVisits => Set<UserCenterVisit>();
+
+    public DbSet<UserNotificationPreference> UserNotificationPreferences => Set<UserNotificationPreference>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasCharSet("utf8mb4");

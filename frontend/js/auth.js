@@ -91,6 +91,10 @@ window.NoorLocatorAuth = (() => {
         return document.body?.dataset.authRequired === "true";
     }
 
+    function allowsUnverifiedOnPage() {
+        return document.body?.dataset.authAllowUnverified === "true";
+    }
+
     function getRequiredRoles() {
         return (document.body?.dataset.authRoles || "")
             .split(",")
@@ -133,6 +137,10 @@ window.NoorLocatorAuth = (() => {
 
     function isAuthenticated() {
         return Boolean(getSessionUser());
+    }
+
+    function isEmailVerified(user = getSessionUser()) {
+        return Boolean(user?.isEmailVerified);
     }
 
     function hasRole(...roles) {
@@ -330,6 +338,10 @@ window.NoorLocatorAuth = (() => {
     }
 
     function getDefaultRoute() {
+        if (isAuthenticated() && !isEmailVerified()) {
+            return getVerificationRoute();
+        }
+
         if (hasRole("Admin")) {
             return "admin.html";
         }
@@ -345,9 +357,21 @@ window.NoorLocatorAuth = (() => {
         return "index.html";
     }
 
+    function getVerificationRoute(user = getSessionUser()) {
+        const email = typeof user?.email === "string" ? user.email.trim() : "";
+        return email
+            ? `verify-email.html?email=${encodeURIComponent(email)}`
+            : "verify-email.html";
+    }
+
     function requireAuth(roles = []) {
         if (!isAuthenticated()) {
             redirectTo("login.html");
+            return false;
+        }
+
+        if (!allowsUnverifiedOnPage() && !isEmailVerified()) {
+            redirectTo(getVerificationRoute());
             return false;
         }
 
@@ -417,6 +441,12 @@ window.NoorLocatorAuth = (() => {
             }
 
             const requiredRoles = getRequiredRoles();
+            if (!allowsUnverifiedOnPage() && !isEmailVerified(user)) {
+                setProtectedPageReady(false);
+                redirectTo(getVerificationRoute(user));
+                return false;
+            }
+
             if (requiredRoles.length && !requiredRoles.some(role => hasRole(role))) {
                 setProtectedPageReady(false);
                 redirectTo(getDefaultRoute());
@@ -481,9 +511,11 @@ window.NoorLocatorAuth = (() => {
         bootstrapPageAuth,
         clearSession,
         getDefaultRoute,
+        getVerificationRoute,
         getRefreshToken,
         formatUserDisplayName,
         getSessionUser,
+        isEmailVerified,
         getToken,
         getUser,
         handleUnauthorized,
