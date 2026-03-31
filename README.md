@@ -289,9 +289,9 @@ dotnet test NoorLocator.sln
 
 Current automated coverage:
 
-- `19` unit tests
+- `28` unit tests
 - `32` integration tests
-- `51` passing tests in the current deployment-readiness verification pass
+- `60` passing tests in the current deployment-readiness verification pass
 
 Important test areas:
 
@@ -419,6 +419,30 @@ Recommended App Service configuration:
 - keep `Seeding__ApplyMigrations=false` for steady-state production instances
 - set `MediaStorage__Provider=AzureBlob` plus the required `AzureBlobStorage__*` settings
 
+## Custom Domain And HTTPS Readiness
+
+Recommended launch shape:
+
+- use one public HTTPS origin for the bundled frontend and API together, for example `https://www.noorlocator.example`
+- let the same deployed ASP.NET app answer both the public pages and `/api/*`
+- leave `Frontend__ApiBaseUrl` empty for this same-origin model
+- set `Frontend__PublicOrigin` and `Cors__AllowedOrigins__*` only to the real production browser origins
+
+Optional API subdomain shape:
+
+- use a separate API origin such as `https://api.noorlocator.example` only when you intentionally split browser traffic away from the frontend host or front the app with a dedicated reverse proxy path
+- when you do this, set `Frontend__ApiBaseUrl=https://api.noorlocator.example`
+- keep `Frontend__PublicOrigin=https://www.noorlocator.example`
+- lock `Cors__AllowedOrigins__*` to the frontend origins only; do not use wildcards
+
+HTTPS requirements:
+
+- bind a valid certificate to every custom host name before launch
+- enable App Service `HTTPS Only`
+- keep `ReverseProxy__UseForwardedHeaders=true`
+- keep `Https__RedirectionEnabled=true`
+- verify that an `http://` request redirects to `https://` and that the final site origin stays stable after login, logout, and file uploads
+
 If you intentionally deploy source code instead of the published package, set:
 
 - `PROJECT=NoorLocator.Api/NoorLocator.Api.csproj`
@@ -466,6 +490,70 @@ powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-frontend.ps1 `
 - Set `MediaStorage__Provider=AzureBlob` plus the `AzureBlobStorage__*` settings for Azure-hosted media
 - If `WEBSITE_RUN_FROM_PACKAGE=1` is enabled on App Service, do not leave `MediaStorage__Provider=Local` on a relative path; use Azure Blob or an absolute writable path under `HOME`
 - Keep the centralized session-backed logout flow, profile session-refresh helper, protected-page auth bootstrap, and no-store workspace caching rules intact when modifying auth
+- The current auth model uses bearer tokens from `Authorization` headers and stores them in browser storage through `frontend/js/auth.js`; NoorLocator does not currently depend on authentication cookies for launch
+- Because launch auth is token-and-storage based, secure cookie flags do not harden the current JWT storage path; if you migrate auth to cookies later, require `Secure`, `HttpOnly`, `SameSite`, and CSRF review as part of that change
+- `ApiExceptionMiddleware` returns a generic `500` message outside development and omits exception type details from the response body
+- `/api/health` omits the environment name outside development and testing
+- Swagger stays disabled in production unless you explicitly enable it
+- NoorLocator does not register a development exception page in production
+- Outside development and testing, app startup fails if `Cors:AllowedOrigins` does not contain valid absolute origins
+
+## Production Launch Checklist
+
+Before public launch, verify the hosted application with a real production-style dataset and roles:
+
+- home page loads at `/` with live branding and no mixed-content warnings
+- About page loads at `/about` and fetches manifesto content successfully
+- registration succeeds from `register.html`
+- login succeeds for user, manager, and admin accounts
+- logout returns to the logged-out state and old protected requests return `401`
+- `dashboard.html` loads for a normal authenticated user
+- `manager.html` loads for a manager account
+- `admin.html` loads for an admin account
+- a user can submit a center request
+- a manager can create, edit, and delete a majlis
+- a manager can create and remove an announcement
+- a manager can upload an image and the image is publicly reachable
+- the uploaded image renders on the public center details page
+- an admin can review and approve the moderated records needed for launch
+- `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-deployed-api.ps1 -BaseUrl https://your-host ...`
+- `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-frontend.ps1 -BaseUrl https://your-host ...`
+
+## Rollback And Recovery
+
+If a deployment fails or the site is unhealthy after release:
+
+- confirm the GitHub Actions package artifact was built from the expected commit and still contains `NoorLocator.Api.dll`, `frontend/index.html`, and `frontend/assets/logo_bkg.png`
+- check App Service Log Stream and application startup logs first
+- verify `MYSQLCONNSTR_DefaultConnection` or the chosen connection-string override is present and points to the intended database
+- verify `Jwt__Key` is present and at least `32` characters
+- verify `Frontend__PublicOrigin`, `Frontend__ApiBaseUrl`, and every `Cors__AllowedOrigins__*` entry match the real launch domains exactly, including `https://`
+- verify `MediaStorage__Provider=AzureBlob` plus the required `AzureBlobStorage__*` settings, or confirm an explicit writable `HOME` path if local storage is intentionally used
+- verify the Azure Blob container is reachable and public if public image URLs are expected
+- verify migrations were applied to the production database before the app booted
+- validate database health with `GET /api/centers` and an authenticated `GET /api/admin/dashboard`
+- validate storage health with a manager image upload followed by a public fetch of the returned image URL
+- if rollback is required, redeploy the previous known-good App Service package and re-run the smoke checks before reopening traffic
+
+## Deployment Phase D8 Verification
+
+Deployment Phase D8 production-hardening verification was completed against the repository configuration, automated tests, and App Service packaging flow.
+
+- `dotnet test NoorLocator.sln -c Release`
+- `powershell -ExecutionPolicy Bypass -File .\scripts\package-app-service-api.ps1`
+- `powershell -ExecutionPolicy Bypass -File .\scripts\verify-app-service-package.ps1`
+- Verified outcomes:
+  - `28` unit tests and `32` integration tests passed for `60/60` total passing tests
+  - production exception handling returns a generic `500` payload without detailed exception type leakage
+  - production health output omits the environment name
+  - production defaults keep forwarded headers enabled, HTTPS redirection enabled, Swagger disabled, automatic migrations disabled, and demo seeding disabled
+  - the App Service publish output still contains the bundled frontend and the expected deployment ZIP
+  - the verified publish output path is `.\artifacts\publish\api`
+  - the verified deployment package path is `.\artifacts\packages\noorlocator-api-appservice.zip`
+- Remaining manual/live-host work before launch:
+  - bind the real custom domain and certificate in Azure
+  - run the deployed smoke scripts against the live production origin
+  - validate final CORS, database, and blob-storage settings on the real App Service instance
 
 ## Phase 10 Verification
 

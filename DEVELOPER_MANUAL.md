@@ -408,6 +408,21 @@ Swagger is the live reference for DTO shapes and status codes.
 - keep protected workspace pages non-cacheable after logout-sensitive changes
 - review any future refresh-token implementation carefully so it preserves revocation guarantees
 
+### Production Hosting And Hardening
+
+- the launch-default hosting model is same-origin: one HTTPS site serves the frontend and the API together
+- the recommended public shape is `https://www.noorlocator.example` or the chosen apex/root domain, with `/api/*` served by the same deployed app
+- in that same-origin model, leave `Frontend__ApiBaseUrl` empty and keep `Frontend__PublicOrigin` aligned with the public browser origin
+- an optional API subdomain such as `https://api.noorlocator.example` is supported only when you intentionally split origins; if you do that, set `Frontend__ApiBaseUrl` to the API origin and restrict `Cors__AllowedOrigins__*` to the frontend origins only
+- production custom domains are HTTPS-only; bind certificates before launch, enable App Service `HTTPS Only`, keep `ReverseProxy__UseForwardedHeaders=true`, and keep `Https__RedirectionEnabled=true`
+- outside development and testing, NoorLocator startup fails if `Cors:AllowedOrigins` does not contain valid absolute origins, which prevents a production app from silently running with open CORS
+- the app does not register `UseDeveloperExceptionPage`; unhandled exceptions flow through `ApiExceptionMiddleware`, which returns a generic message outside development
+- `/api/health` intentionally omits the environment name outside development and testing
+- Swagger stays off in production unless explicitly enabled
+- launch authentication uses bearer tokens in the `Authorization` header and stores them in browser storage, not in an HttpOnly auth cookie
+- the frontend still clears matching cookies opportunistically on logout, but those cookies are not the source of truth for authentication
+- if the auth model ever changes to cookies, the replacement must require `Secure`, `HttpOnly`, `SameSite`, and CSRF review before release
+
 ## 12. How To Extend The System
 
 - add new DTOs and interfaces in `Application`
@@ -434,7 +449,11 @@ Swagger is the live reference for DTO shapes and status codes.
 
 - `dotnet build NoorLocator.sln`
 - `dotnet test NoorLocator.sln`
-- current result during the Deployment Phase D4 pass: `47/47` tests passing
+- current result during the Deployment Phase D8 pass: `60/60` tests passing
+- current production hardening coverage includes:
+  - production exception payload redaction
+  - production health payload environment redaction
+  - production `appsettings.Production.json` defaults for forwarded headers, HTTPS redirection, Swagger disablement, migration disablement, demo-seeding disablement, and Azure Blob preference
 
 ### Live Runtime Verification
 
@@ -493,6 +512,32 @@ powershell -ExecutionPolicy Bypass -File .\scripts\apply-db-migrations.ps1 -Envi
 powershell -ExecutionPolicy Bypass -File .\scripts\generate-db-migration-script.ps1 -EnvironmentName Production -OutputPath .\artifacts\noorlocator-mysql-idempotent.sql
 powershell -ExecutionPolicy Bypass -File .\scripts\verify-e2e.ps1 -StartApp -BaseUrl http://127.0.0.1:5210 -ConnectionString "Server=127.0.0.1;Port=3306;Database=Noorlocator;User=...;Password=...;"
 ```
+
+### Production Launch Smoke Checklist
+
+- confirm the home page, About page, login page, register page, and logout page all load from the custom production origin without mixed-content warnings
+- verify register, login, logout, and post-logout `401` behavior for a normal user
+- verify `dashboard.html`, `manager.html`, and `admin.html` only open for the correct authenticated roles
+- verify a user can submit a center request
+- verify a manager can create a majlis, create an announcement, upload an image, and see that image rendered on the public center details page
+- verify an admin can approve the launch-critical moderated records and open the admin dashboard successfully
+- verify `scripts/smoke-test-deployed-api.ps1` passes against the deployed host
+- verify `scripts/smoke-test-frontend.ps1` passes against the deployed host
+
+### Rollback And Recovery Notes
+
+- when a release fails, inspect App Service startup logs and the GitHub Actions package artifact before changing code
+- the most common bad settings are:
+  - missing or wrong MySQL connection string
+  - missing or too-short `Jwt__Key`
+  - mismatched `Frontend__PublicOrigin`
+  - incorrect `Frontend__ApiBaseUrl`
+  - incorrect `Cors__AllowedOrigins__*`
+  - incomplete `AzureBlobStorage__*` settings
+  - forgotten `WEBSITE_RUN_FROM_PACKAGE=1`
+- validate database configuration with `GET /api/centers`, `GET /api/health`, and an authenticated `GET /api/admin/dashboard`
+- validate storage configuration with a real manager upload plus a public fetch of the returned image URL
+- if rollback is required, redeploy the previous known-good package and repeat the smoke checklist before reopening launch traffic
 
 ## 15. Attribution
 

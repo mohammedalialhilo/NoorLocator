@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\NoorLocator.Api\NoorLocator.Api.csproj" />
     <ProjectReference Include="..\..\NoorLocator.Application\NoorLocator.Application.csproj" />
     <ProjectReference Include="..\..\NoorLocator.Domain\NoorLocator.Domain.csproj" />
     <ProjectReference Include="..\..\NoorLocator.Infrastructure\NoorLocator.Infrastructure.csproj" />

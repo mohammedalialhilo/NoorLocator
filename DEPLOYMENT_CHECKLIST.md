@@ -30,6 +30,20 @@
 - [ ] Set `Frontend__PublicOrigin` to the public frontend origin used by browsers
 - [ ] Confirm `frontend/assets/logo_bkg.png` resolves in the deployed site for the favicon, navbar, hero, workspace, and footer branding
 
+## Custom Domains And HTTPS
+
+- [ ] Decide the launch frontend origin, for example `https://www.noorlocator.example`
+- [ ] Prefer the current same-origin deployment shape where the frontend domain and API origin are the same host
+- [ ] If you intentionally use a separate API origin such as `https://api.noorlocator.example`, set `Frontend__ApiBaseUrl` to that API origin and keep `Frontend__PublicOrigin` on the browser-facing frontend domain
+- [ ] Add the custom host name(s) to Azure App Service
+- [ ] Bind a valid TLS certificate to every host name
+- [ ] Enable App Service `HTTPS Only`
+- [ ] Keep `ReverseProxy__UseForwardedHeaders=true`
+- [ ] Keep `Https__RedirectionEnabled=true`
+- [ ] Verify `http://` requests redirect to `https://`
+- [ ] Lock `Cors__AllowedOrigins__*` to the real production browser origins only
+- [ ] If you later enable host filtering, set `AllowedHosts` to the final production host names instead of `*`
+
 ## Database Setup
 
 - [ ] Choose public-access firewall rules or private networking for MySQL
@@ -78,7 +92,7 @@
 - [ ] `Cors__AllowedOrigins__0`
 - [ ] `Cors__AllowedOrigins__1`
 - [ ] `ReverseProxy__UseForwardedHeaders`
-- [ ] `Https__RedirectionEnabled`
+- [ ] `Https__RedirectionEnabled=true`
 - [ ] `Swagger__Enabled=false`
 - [ ] `Seeding__ApplyMigrations=false`
 - [ ] `Seeding__SeedReferenceData=true` only for the first bootstrap that needs reference content
@@ -105,7 +119,16 @@
 - [ ] Store MySQL credentials securely unless you switch to passwordless DB auth in a later phase
 - [ ] Store Blob connection string securely if you are not using managed identity
 
-## Final Verification
+## Production Hardening
+
+- [ ] Confirm the app does not expose Swagger in production unless intentionally enabled
+- [ ] Confirm `/api/health` does not expose the environment name in production
+- [ ] Confirm unhandled production failures return the generic NoorLocator error payload instead of detailed exception traces
+- [ ] Confirm no development exception page is enabled in the production host
+- [ ] Confirm auth uses bearer tokens and not a required auth cookie in the current launch model
+- [ ] If any auth cookies are introduced later, require `Secure`, `HttpOnly`, `SameSite`, and CSRF review before launch
+
+## Production Smoke Test Checklist
 
 - [ ] `GET /api/health/ping` returns `200`
 - [ ] `GET /api/health` returns `200`
@@ -113,8 +136,18 @@
 - [ ] `GET /` serves the frontend shell
 - [ ] `GET /assets/logo_bkg.png` returns `200`
 - [ ] `GET /about` returns the branded About page
+- [ ] `GET /register.html` and `GET /login.html` load correctly from the final production origin
+- [ ] Registration succeeds for a fresh user
+- [ ] Login succeeds for user, manager, and admin accounts
+- [ ] Logout clears the session and old protected requests return `401`
+- [ ] `dashboard.html` loads for a user account
+- [ ] `manager.html` loads for a manager account
+- [ ] `admin.html` loads for an admin account
 - [ ] `GET /api/languages` returns the expected reference languages if bootstrap seeding was enabled
 - [ ] `GET /api/centers` returns `200`
+- [ ] User center-request submission succeeds
+- [ ] Manager majlis create/update/delete succeeds
+- [ ] Manager announcement create/delete succeeds
 - [ ] `POST /api/auth/login` succeeds for the bootstrap admin account if first-run admin seeding was enabled
 - [ ] `GET /api/auth/me` succeeds with the issued JWT
 - [ ] `GET /api/admin/dashboard` succeeds with the bootstrap admin JWT
@@ -124,5 +157,29 @@
 - [ ] Uploads succeed with the configured storage provider
 - [ ] Manager image uploads return the expected local `/uploads/...` URL or blob/CDN URL for the active provider
 - [ ] Uploaded images render correctly in public pages
+- [ ] Admin approvals for center requests, manager requests, and language suggestions succeed when launch data depends on them
 - [ ] Run `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-deployed-api.ps1 -BaseUrl https://your-app-name.azurewebsites.net ...`
 - [ ] Run `powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-frontend.ps1 -BaseUrl https://your-app-name.azurewebsites.net ...`
+
+## Rollback And Basic Recovery
+
+- [ ] If deployment fails, confirm the GitHub Actions package artifact came from the intended commit and still contains the published frontend plus `NoorLocator.Api.dll`
+- [ ] Check App Service Log Stream and startup logs before changing code
+- [ ] Reconfirm `MYSQLCONNSTR_DefaultConnection` or the chosen connection-string override
+- [ ] Reconfirm `Jwt__Key` exists and is at least `32` characters
+- [ ] Reconfirm `Frontend__PublicOrigin`, `Frontend__ApiBaseUrl`, and every `Cors__AllowedOrigins__*` value match the final launch domains exactly
+- [ ] Reconfirm `MediaStorage__Provider=AzureBlob` and the corresponding `AzureBlobStorage__*` settings
+- [ ] Reconfirm the Azure Blob container exists, is reachable, and has the intended public-read behavior for NoorLocator image URLs
+- [ ] Reconfirm EF Core migrations were applied to the production database before the app started serving traffic
+- [ ] Validate database configuration with `/api/health`, `/api/centers`, and `/api/admin/dashboard`
+- [ ] Validate storage configuration with a manager image upload followed by a public fetch of the returned image URL
+- [ ] If rollback is needed, redeploy the previous known-good package and rerun the production smoke checklist before reopening traffic
+
+## Final Deployment Verification Notes
+
+- [ ] Document the exact production frontend origin and any optional API origin used for launch
+- [ ] Document the commit SHA and package artifact used for launch
+- [ ] Document whether the launch used same-origin hosting or a separate API subdomain
+- [ ] Document the final database connection strategy and migration method used
+- [ ] Document the final media storage strategy and validation result
+- [ ] Document the date and operator for the final smoke-test pass
