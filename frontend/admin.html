@@ -59,6 +59,8 @@
                 <a class="dashboard-nav__link" href="#center-management" data-i18n="admin.nav.centers">Centers</a>
                 <a class="dashboard-nav__link" href="#image-moderation" data-i18n="admin.nav.images">Images</a>
                 <a class="dashboard-nav__link" href="#user-management" data-i18n="admin.nav.users">Users</a>
+                <a class="dashboard-nav__link" href="#manager-assignments" data-i18n="admin.nav.managerAssignments">Manager assignments</a>
+                <a class="dashboard-nav__link" href="#ownership-overview" data-i18n="admin.nav.ownership">Ownership</a>
                 <a class="dashboard-nav__link" href="#audit-logs" data-i18n="admin.nav.auditLogs">Audit logs</a>
             </nav>
         </section>
@@ -191,12 +193,172 @@
             <div class="section__heading">
                 <div class="section__copy">
                     <span class="card__meta" data-i18n="admin.users.meta">Users</span>
-                    <h2 data-i18n="admin.users.title">View platform users and roles</h2>
-                    <p data-i18n="admin.users.description">User role changes come from approval workflows, while this table gives admins a current overview.</p>
+                    <h2 data-i18n="admin.users.title">Manage users, roles, and account details</h2>
+                    <p data-i18n="admin.users.description">Search users, update account details, review language and notification settings, and safely remove accounts when NoorLocator allows it.</p>
                 </div>
             </div>
-            <div id="admin-users-table" class="table-shell">
-                <div class="empty-state" data-i18n="admin.users.loading">Loading users...</div>
+            <div class="toolbar-row">
+                <label class="form__group toolbar-row__control">
+                    <span class="form__label" data-i18n="admin.users.searchLabel">Search users</span>
+                    <input id="admin-user-search" class="form__control form__control--compact" type="search" data-i18n-placeholder="admin.users.searchPlaceholder" placeholder="Search by name or email">
+                </label>
+                <label class="form__group toolbar-row__control">
+                    <span class="form__label" data-i18n="admin.users.roleFilter">Role</span>
+                    <select id="admin-user-role-filter" class="form__control form__control--compact">
+                        <option value="" data-i18n="admin.users.allRoles">All roles</option>
+                        <option value="User" data-i18n="roles.user">User</option>
+                        <option value="Manager" data-i18n="roles.manager">Manager</option>
+                        <option value="Admin" data-i18n="roles.admin">Admin</option>
+                    </select>
+                </label>
+                <label class="form__group toolbar-row__control">
+                    <span class="form__label" data-i18n="admin.users.verificationFilter">Email status</span>
+                    <select id="admin-user-verification-filter" class="form__control form__control--compact">
+                        <option value="" data-i18n="admin.users.allVerification">All users</option>
+                        <option value="verified" data-i18n="status.verified">Verified</option>
+                        <option value="unverified" data-i18n="status.unverified">Unverified</option>
+                    </select>
+                </label>
+                <button id="admin-users-refresh-button" class="button button--secondary" type="button" data-i18n="actions.refreshList">Refresh list</button>
+            </div>
+            <article class="panel panel--stretch">
+                <div class="section__heading section__heading--tight">
+                    <div class="section__copy">
+                        <span class="card__meta" data-i18n="admin.users.listMeta">Users list</span>
+                        <h3 data-i18n="admin.users.listTitle">Search, edit, and remove user records</h3>
+                        <p data-i18n="admin.users.listDescription">Scan the most important account details, open the editor directly from each row, and remove accounts safely when NoorLocator allows it.</p>
+                    </div>
+                </div>
+                <div id="admin-users-table" class="admin-user-list-shell">
+                    <div class="empty-state" data-i18n="admin.users.loading">Loading users...</div>
+                </div>
+            </article>
+
+            <div id="admin-user-editor-drawer" class="admin-user-drawer" hidden aria-hidden="true">
+                <button class="admin-user-drawer__scrim" type="button" data-admin-user-editor-close aria-label="Close user editor"></button>
+                <article class="admin-user-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="admin-user-form-heading">
+                    <div class="admin-user-drawer__header">
+                        <div class="admin-user-drawer__header-copy">
+                            <span class="card__meta" data-i18n="admin.users.detailsMeta">Selected user</span>
+                            <h3 id="admin-user-form-heading" data-i18n="admin.users.detailsTitle">Select a user to manage</h3>
+                            <p data-i18n="admin.users.editorDescription">Update the user profile, preferred language, role, and review account protections from this editor.</p>
+                        </div>
+                        <button id="admin-user-editor-close-button" class="button button--ghost button--inline" type="button" data-admin-user-editor-close data-i18n="actions.close">Close</button>
+                    </div>
+                    <div class="admin-user-drawer__body">
+                        <div id="admin-user-detail-summary" class="stack-list">
+                            <div class="empty-state empty-state--soft" data-i18n="admin.users.selectPrompt">Choose a user from the list to load editable account details.</div>
+                        </div>
+                        <form id="admin-user-form" class="form">
+                            <input type="hidden" name="userId">
+                            <div class="filter-grid">
+                                <label class="form__group">
+                                    <span class="form__label" data-i18n="admin.users.form.name">Name</span>
+                                    <input class="form__control" type="text" name="name" maxlength="150" required>
+                                </label>
+                                <label class="form__group">
+                                    <span class="form__label" data-i18n="admin.users.form.email">Email</span>
+                                    <input class="form__control" type="email" name="email" maxlength="256" required>
+                                </label>
+                                <label class="form__group">
+                                    <span class="form__label" data-i18n="admin.users.form.role">Role</span>
+                                    <select id="admin-user-role-select" class="form__control" name="role" required>
+                                        <option value="User" data-i18n="roles.user">User</option>
+                                        <option value="Manager" data-i18n="roles.manager">Manager</option>
+                                        <option value="Admin" data-i18n="roles.admin">Admin</option>
+                                    </select>
+                                </label>
+                                <label class="form__group">
+                                    <span class="form__label" data-i18n="admin.users.form.language">Preferred language</span>
+                                    <select id="admin-user-language-select" class="form__control" name="preferredLanguageCode"></select>
+                                </label>
+                            </div>
+                            <div id="admin-user-status-chips" class="chip-list"></div>
+                            <div id="admin-user-notification-status" class="chip-list"></div>
+                            <div class="button-row">
+                                <button id="admin-user-submit-button" class="button button--primary" type="submit" data-i18n="actions.saveChanges">Save changes</button>
+                                <button id="admin-user-delete-button" class="button button--danger" type="button" data-i18n="admin.users.deleteAction">Delete user</button>
+                            </div>
+                            <p data-form-message="admin-user-form" class="message"></p>
+                        </form>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="section" id="manager-assignments">
+            <div class="section__heading">
+                <div class="section__copy">
+                    <span class="card__meta" data-i18n="admin.assignments.meta">Manager assignments</span>
+                    <h2 data-i18n="admin.assignments.title">Control which centers each manager can maintain</h2>
+                    <p data-i18n="admin.assignments.description">Assignments determine which centers a manager can edit and, by extension, which majalis and announcements they can publish there.</p>
+                </div>
+            </div>
+            <div class="detail-grid detail-grid--dashboard admin-assignment-grid">
+                <article class="panel">
+                    <span class="card__meta" data-i18n="admin.assignments.editorMeta">Assignment editor</span>
+                    <h3 id="admin-manager-assignment-form-heading" data-i18n="admin.assignments.editorTitle">Create or update a manager assignment</h3>
+                    <form id="admin-manager-assignment-form" class="form">
+                        <input type="hidden" name="assignmentId">
+                        <label class="form__group">
+                            <span class="form__label" data-i18n="admin.assignments.form.user">Manager account</span>
+                            <select id="admin-manager-assignment-user-select" class="form__control" name="userId" required></select>
+                        </label>
+                        <label class="form__group">
+                            <span class="form__label" data-i18n="admin.assignments.form.center">Center</span>
+                            <select id="admin-manager-assignment-center-select" class="form__control" name="centerId" required></select>
+                        </label>
+                        <div class="button-row">
+                            <button id="admin-manager-assignment-submit-button" class="button button--primary" type="submit" data-i18n="admin.assignments.submit">Save assignment</button>
+                            <button id="admin-manager-assignment-cancel-button" class="button button--ghost" type="button" hidden data-i18n="actions.cancelEdit">Cancel edit</button>
+                        </div>
+                        <p data-form-message="admin-manager-assignment-form" class="message"></p>
+                    </form>
+                </article>
+
+                <article class="panel">
+                    <span class="card__meta" data-i18n="admin.assignments.listMeta">Approved assignments</span>
+                    <h3 data-i18n="admin.assignments.listTitle">Review who manages each center</h3>
+                    <div id="admin-manager-assignments-table" class="table-shell">
+                        <div class="empty-state" data-i18n="admin.assignments.loading">Loading manager assignments...</div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="section" id="ownership-overview">
+            <div class="section__heading">
+                <div class="section__copy">
+                    <span class="card__meta" data-i18n="admin.ownership.meta">Content ownership</span>
+                    <h2 data-i18n="admin.ownership.title">Review selected-user center and majlis ownership</h2>
+                    <p id="admin-ownership-description" data-i18n="admin.ownership.description">Select a user to inspect their approved center assignments, created majalis, and center announcements.</p>
+                </div>
+            </div>
+            <div class="detail-grid detail-grid--dashboard admin-ownership-grid">
+                <article class="panel">
+                    <span class="card__meta" data-i18n="admin.ownership.centersMeta">Managed centers</span>
+                    <h3 data-i18n="admin.ownership.centersTitle">Center assignments for the selected user</h3>
+                    <div id="admin-selected-user-centers" class="stack-list">
+                        <div class="empty-state empty-state--soft" data-i18n="admin.ownership.selectPrompt">Choose a user to review their assignments.</div>
+                    </div>
+                </article>
+
+                <article class="panel">
+                    <span class="card__meta" data-i18n="admin.ownership.majalisMeta">Created majalis</span>
+                    <h3 data-i18n="admin.ownership.majalisTitle">Majalis created by the selected user</h3>
+                    <div id="admin-selected-user-majalis" class="stack-list">
+                        <div class="empty-state empty-state--soft" data-i18n="admin.ownership.selectPrompt">Choose a user to review their assignments.</div>
+                    </div>
+                </article>
+            </div>
+            <div class="detail-grid detail-grid--dashboard admin-ownership-grid">
+                <article class="panel">
+                    <span class="card__meta" data-i18n="admin.ownership.announcementsMeta">Created announcements</span>
+                    <h3 data-i18n="admin.ownership.announcementsTitle">Announcements created by the selected user</h3>
+                    <div id="admin-selected-user-announcements" class="stack-list">
+                        <div class="empty-state empty-state--soft" data-i18n="admin.ownership.selectPrompt">Choose a user to review their assignments.</div>
+                    </div>
+                </article>
             </div>
         </section>
 

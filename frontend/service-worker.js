@@ -1,4 +1,4 @@
-const CACHE_NAME = "noorlocator-shell-v9";
+const CACHE_NAME = "noorlocator-shell-v10";
 const SHELL_ASSETS = [
     "./",
     "index.html",
@@ -24,6 +24,47 @@ const NON_CACHEABLE_PATHS = new Set([
     "/admin.html",
     "/logout.html"
 ]);
+const NETWORK_FIRST_EXTENSIONS = new Set([
+    ".html",
+    ".js",
+    ".css",
+    ".json",
+    ".webmanifest"
+]);
+
+function shouldUseNetworkFirst(request, requestUrl) {
+    if (request.mode === "navigate") {
+        return true;
+    }
+
+    const pathname = (requestUrl.pathname || "").toLowerCase();
+    if (!pathname || pathname === "/") {
+        return true;
+    }
+
+    if (pathname.startsWith("/js/") || pathname.startsWith("/css/") || pathname.startsWith("/locales/")) {
+        return true;
+    }
+
+    const extensionIndex = pathname.lastIndexOf(".");
+    if (extensionIndex < 0) {
+        return false;
+    }
+
+    return NETWORK_FIRST_EXTENSIONS.has(pathname.slice(extensionIndex));
+}
+
+async function fetchAndRefreshCache(request) {
+    const networkResponse = await fetch(request);
+    if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== "basic") {
+        return networkResponse;
+    }
+
+    const responseClone = networkResponse.clone();
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(request, responseClone);
+    return networkResponse;
+}
 
 self.addEventListener("install", event => {
     event.waitUntil(
@@ -51,20 +92,28 @@ self.addEventListener("fetch", event => {
         return;
     }
 
+    if (shouldUseNetworkFirst(event.request, requestUrl)) {
+        event.respondWith((async () => {
+            try {
+                return await fetchAndRefreshCache(event.request);
+            } catch {
+                const cachedResponse = await caches.match(event.request);
+                if (cachedResponse) {
+                    return cachedResponse;
+                }
+
+                throw;
+            }
+        })());
+        return;
+    }
+
     event.respondWith(
         caches.match(event.request).then(cachedResponse => {
             if (cachedResponse) {
                 return cachedResponse;
             }
 
-            return fetch(event.request).then(networkResponse => {
-                if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== "basic") {
-                    return networkResponse;
-                }
-
-                const responseClone = networkResponse.clone();
-                caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
-                return networkResponse;
-            });
+            return fetchAndRefreshCache(event.request);
         }));
 });

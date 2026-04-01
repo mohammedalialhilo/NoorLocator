@@ -12,7 +12,17 @@ public class AdminUserDto
 
     public UserRole Role { get; set; }
 
+    public bool IsEmailVerified { get; set; }
+
+    public string PreferredLanguageCode { get; set; } = "en";
+
     public int AssignedCenterCount { get; set; }
+
+    public DateTime? LastLoginAtUtc { get; set; }
+
+    public bool CanDelete { get; set; }
+
+    public string DeleteBlockedReason { get; set; } = string.Empty;
 
     public DateTime CreatedAt { get; set; }
 }

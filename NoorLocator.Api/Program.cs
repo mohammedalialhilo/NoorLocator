@@ -292,6 +292,21 @@ if (!string.IsNullOrWhiteSpace(frontendPath))
         "/admin.html",
         "/logout.html"
     };
+    var noCacheableFrontendExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ".html",
+        ".js",
+        ".css",
+        ".json",
+        ".webmanifest"
+    };
+
+    static void ApplyNoCacheHeaders(HttpContext context)
+    {
+        context.Response.Headers.CacheControl = "no-store, no-cache, must-revalidate";
+        context.Response.Headers.Pragma = "no-cache";
+        context.Response.Headers.Expires = "0";
+    }
 
     app.UseDefaultFiles(new DefaultFilesOptions
     {
@@ -304,14 +319,19 @@ if (!string.IsNullOrWhiteSpace(frontendPath))
         OnPrepareResponse = context =>
         {
             var requestPath = context.Context.Request.Path.Value ?? string.Empty;
-            if (!nonCacheableFrontendPages.Contains(requestPath))
+            var shouldDisableCaching = nonCacheableFrontendPages.Contains(requestPath)
+                || requestPath.StartsWith("/js/", StringComparison.OrdinalIgnoreCase)
+                || requestPath.StartsWith("/css/", StringComparison.OrdinalIgnoreCase)
+                || requestPath.StartsWith("/locales/", StringComparison.OrdinalIgnoreCase)
+                || requestPath.Equals("/service-worker.js", StringComparison.OrdinalIgnoreCase)
+                || noCacheableFrontendExtensions.Contains(Path.GetExtension(requestPath));
+
+            if (!shouldDisableCaching)
             {
                 return;
             }
 
-            context.Context.Response.Headers.CacheControl = "no-store, no-cache, must-revalidate";
-            context.Context.Response.Headers.Pragma = "no-cache";
-            context.Context.Response.Headers.Expires = "0";
+            ApplyNoCacheHeaders(context.Context);
         }
     });
 

@@ -185,6 +185,21 @@ function formatDateTime(dateValue) {
     }).format(date);
 }
 
+function formatDate(dateValue) {
+    if (!dateValue) {
+        return t("common.dateToBeAnnounced", "Date to be announced");
+    }
+
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) {
+        return t("common.dateToBeAnnounced", "Date to be announced");
+    }
+
+    return new Intl.DateTimeFormat(window.NoorLocatorI18n?.getLocaleCode?.() || undefined, {
+        dateStyle: "medium"
+    }).format(date);
+}
+
 function buildMapLink(center) {
     if (typeof center?.latitude !== "number" || typeof center?.longitude !== "number") {
         return "#";
@@ -408,6 +423,48 @@ function renderStatusBadge(status) {
     return `<span class="status-badge status-badge--${modifier}">${escapeHtml(translateStatusValue(value))}</span>`;
 }
 
+function getLanguageDisplayLabel(code, options = {}) {
+    const localeCode = window.NoorLocatorI18n?.getLocaleCode?.();
+    const native = options.native !== false;
+
+    return window.NoorLocatorI18n.getLanguageOptionLabel?.(code, {
+        native,
+        includeFlag: false,
+        locale: localeCode
+    }) || window.NoorLocatorI18n.getLanguageLabel(code, { locale: localeCode });
+}
+
+function getLanguageOptionText(code, options = {}) {
+    const localeCode = window.NoorLocatorI18n?.getLocaleCode?.();
+    const native = options.native !== false;
+
+    return window.NoorLocatorI18n.getLanguageOptionLabel?.(code, {
+        native,
+        includeFlag: true,
+        locale: localeCode
+    }) || getLanguageDisplayLabel(code, options);
+}
+
+function renderLanguageBadgeMarkup(code, options = {}) {
+    const metadata = window.NoorLocatorI18n.getLanguageMetadata?.(code);
+    const label = options.label || getLanguageDisplayLabel(code, options);
+    const modifier = options.modifier ? ` chip--${options.modifier}` : "";
+    const extraClass = options.className ? ` ${options.className}` : "";
+
+    return `
+        <span class="chip chip--language${modifier}${extraClass}">
+            ${metadata?.flag ? `<span class="chip__flag" aria-hidden="true">${escapeHtml(metadata.flag)}</span>` : ""}
+            <span class="chip__label">${escapeHtml(label)}</span>
+        </span>
+    `;
+}
+
+function renderLanguageBadgeList(languages, options = {}) {
+    return (languages || [])
+        .map(language => renderLanguageBadgeMarkup(language.code || language, options))
+        .join("");
+}
+
 function populateSelectOptions(selectElements, items, options) {
     const selects = Array.isArray(selectElements)
         ? selectElements.filter(Boolean)
@@ -507,7 +564,7 @@ function renderCenterCards(container, centers, emptyMessage, options = {}) {
             <p class="card__excerpt">${escapeHtml(truncateText(center.description || t("centers.card.defaultDescription", "Public center details are available on the profile page."), 150))}</p>
             <p>${escapeHtml(center.address)}</p>
             ${(center.languages || []).length
-                ? `<div class="chip-list">${(center.languages || []).map(language => `<span class="chip chip--muted">${escapeHtml(window.NoorLocatorI18n.getLanguageLabel(language.code, { locale: window.NoorLocatorI18n.getLocaleCode() }))}</span>`).join("")}</div>`
+                ? `<div class="chip-list">${renderLanguageBadgeList(center.languages, { modifier: "muted" })}</div>`
                 : ""}
             <div class="button-row">
                 <a class="button button--secondary" href="${buildCenterDetailsHref(center.id)}">${escapeHtml(t("actions.viewDetails", "View details"))}</a>
@@ -528,7 +585,7 @@ function renderLanguageChips(container, languages) {
     }
 
     container.innerHTML = languages
-        .map(language => `<span class="chip">${escapeHtml(window.NoorLocatorI18n.getLanguageLabel(language.code, { locale: window.NoorLocatorI18n.getLocaleCode() }))}</span>`)
+        .map(language => renderLanguageBadgeMarkup(language.code))
         .join("");
 }
 
@@ -552,7 +609,7 @@ function renderMajalis(container, majalis) {
             <p>${escapeHtml(majlis.description || t("center.majalis.defaultDescription", "Majlis details will appear here when available."))}</p>
             <div class="utility-row utility-row--wrap">
                 <span class="card__meta">${escapeHtml(majlis.time || t("common.timeToBeConfirmed", "Time to be confirmed"))}</span>
-                ${(majlis.languages || []).map(language => `<span class="chip chip--muted">${escapeHtml(window.NoorLocatorI18n.getLanguageLabel(language.code, { locale: window.NoorLocatorI18n.getLocaleCode() }))}</span>`).join("")}
+                ${renderLanguageBadgeList(majlis.languages, { modifier: "muted" })}
             </div>
         </article>
     `).join("");
@@ -886,12 +943,12 @@ async function initCentersPage() {
             const response = await window.NoorLocatorApi.getLanguages();
             const languages = (response.data || [])
                 .filter(language => window.NoorLocatorI18n.getSupportedLanguages().some(item => item.code === language.code))
-                .sort((left, right) => window.NoorLocatorI18n.getLanguageLabel(left.code).localeCompare(window.NoorLocatorI18n.getLanguageLabel(right.code), window.NoorLocatorI18n.getLocaleCode()));
+                .sort((left, right) => getLanguageDisplayLabel(left.code).localeCompare(getLanguageDisplayLabel(right.code), window.NoorLocatorI18n.getLocaleCode()));
 
             populateSelectOptions(languageSelect, languages, {
                 placeholder: t("centers.filters.language.placeholder", "Any language"),
                 getValue: language => language.code,
-                getLabel: language => window.NoorLocatorI18n.getLanguageLabel(language.code)
+                getLabel: language => getLanguageOptionText(language.code)
             });
         } catch {
             populateSelectOptions(languageSelect, [], {
@@ -2111,7 +2168,7 @@ function initDashboardPage() {
                 ? t("common.selectLanguage", "Select a language")
                 : t("common.noLanguagesAvailable", "No languages available"),
             getValue: language => String(language.id),
-            getLabel: language => `${window.NoorLocatorI18n.getLanguageLabel(language.code)} (${language.code})`
+            getLabel: language => `${getLanguageOptionText(language.code)} (${language.code})`
         });
     }
 
@@ -2408,8 +2465,11 @@ function renderMajlisLanguageOptions(container, languages, selectedIds = []) {
     container.innerHTML = languages.map(language => `
         <label class="checkbox-card">
             <input type="checkbox" name="languageIds" value="${escapeHtml(language.id)}"${selected.has(Number(language.id)) ? " checked" : ""}>
-            <span>
-                <strong>${escapeHtml(window.NoorLocatorI18n.getLanguageLabel(language.code))}</strong>
+            <span class="checkbox-card__copy">
+                <strong class="checkbox-card__title">
+                    ${window.NoorLocatorI18n.getLanguageMetadata?.(language.code)?.flag ? `<span class="checkbox-card__flag" aria-hidden="true">${escapeHtml(window.NoorLocatorI18n.getLanguageMetadata(language.code).flag)}</span>` : ""}
+                    <span>${escapeHtml(getLanguageDisplayLabel(language.code))}</span>
+                </strong>
                 <span>${escapeHtml(language.code)}</span>
             </span>
         </label>
@@ -2449,7 +2509,7 @@ function renderManagerMajalis(container, majalis) {
             <p>${escapeHtml(truncateText(majlis.description || t("manager.majlisList.defaultDescription", "No public description is available for this majlis yet."), 190))}</p>
             <div class="utility-row utility-row--wrap">
                 <span class="card__meta">${escapeHtml(t("manager.majlisList.time", "Time: {time}", { time: majlis.time || t("common.timeToBeConfirmed", "To be announced") }))}</span>
-                ${(majlis.languages || []).map(language => `<span class="chip chip--muted">${escapeHtml(window.NoorLocatorI18n.getLanguageLabel(language.code))}</span>`).join("")}
+                ${renderLanguageBadgeList(majlis.languages, { modifier: "muted" })}
             </div>
             <div class="button-row">
                 <button class="button button--secondary" type="button" data-edit-majlis-id="${escapeHtml(majlis.id)}">${escapeHtml(t("actions.edit", "Edit"))}</button>
@@ -3381,7 +3441,12 @@ function renderAdminLanguageSuggestions(container, suggestions) {
             <div class="list-card__head">
                 <div>
                     <h4>${escapeHtml(suggestion.centerName)}</h4>
-                    <p class="list-card__meta">${escapeHtml(`${window.NoorLocatorI18n.getLanguageLabel(suggestion.languageCode)} (${suggestion.languageCode})`)}</p>
+                    <div class="chip-list">
+                        ${renderLanguageBadgeMarkup(suggestion.languageCode, {
+                            modifier: "muted",
+                            label: `${getLanguageDisplayLabel(suggestion.languageCode)} (${suggestion.languageCode})`
+                        })}
+                    </div>
                 </div>
                 ${renderStatusBadge(suggestion.status)}
             </div>
@@ -3461,42 +3526,293 @@ function renderAdminCenters(container, centers) {
     `).join("");
 }
 
-function renderAdminUsersTable(container, users) {
+function renderAdminUsersTable(container, users, options = {}) {
     if (!container) {
         return;
     }
 
+    const selectedUserId = Number(options.selectedUserId || 0);
+    const hasFilters = Boolean(options.searchTerm || options.roleFilter || options.verificationFilter);
+
     if (!users.length) {
-        container.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("admin.users.empty", "No users are available."))}</div>`;
+        container.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(hasFilters
+            ? t("admin.users.filteredEmpty", "No users match the current filters.")
+            : t("admin.users.empty", "No users are available."))}</div>`;
         return;
     }
 
     container.innerHTML = `
-        <div class="table-shell">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>${escapeHtml(t("admin.users.table.name", "Name"))}</th>
-                        <th>${escapeHtml(t("admin.users.table.email", "Email"))}</th>
-                        <th>${escapeHtml(t("admin.users.table.role", "Role"))}</th>
-                        <th>${escapeHtml(t("admin.users.table.assignedCenters", "Assigned centers"))}</th>
-                        <th>${escapeHtml(t("admin.users.table.created", "Created"))}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${users.map(user => `
-                        <tr>
-                            <td data-label="${escapeHtml(t("admin.users.table.name", "Name"))}">${escapeHtml(user.name)}</td>
-                            <td data-label="${escapeHtml(t("admin.users.table.email", "Email"))}">${escapeHtml(user.email)}</td>
-                            <td data-label="${escapeHtml(t("admin.users.table.role", "Role"))}">${escapeHtml(window.NoorLocatorAuth.getLocalizedRoleLabel(user.role))}</td>
-                            <td data-label="${escapeHtml(t("admin.users.table.assignedCenters", "Assigned centers"))}">${escapeHtml(String(user.assignedCenterCount))}</td>
-                            <td data-label="${escapeHtml(t("admin.users.table.created", "Created"))}">${escapeHtml(formatDateTime(user.createdAt))}</td>
-                        </tr>
-                    `).join("")}
-                </tbody>
-            </table>
+        <div class="admin-user-list" role="list">
+            <div class="admin-user-list__legend" aria-hidden="true">
+                <span>${escapeHtml(t("admin.users.columns.user", "User"))}</span>
+                <span>${escapeHtml(t("admin.users.columns.snapshot", "Account snapshot"))}</span>
+                <span>${escapeHtml(t("admin.users.columns.actions", "Actions"))}</span>
+            </div>
+            ${users.map(user => `
+                <article class="admin-user-row${selectedUserId === Number(user.id) ? " is-selected" : ""}" role="listitem">
+                    <div class="admin-user-row__primary">
+                        <div class="admin-user-row__identity">
+                            <p class="admin-user-row__name">${escapeHtml(user.name)}</p>
+                            <p class="admin-user-row__email">${escapeHtml(user.email)}</p>
+                        </div>
+                        ${!user.canDelete && user.deleteBlockedReason
+                            ? `<span class="chip chip--danger chip--compact" title="${escapeHtml(user.deleteBlockedReason)}">${escapeHtml(t("admin.users.protected", "Protected"))}</span>`
+                            : ""}
+                    </div>
+                    <div class="admin-user-row__snapshot">
+                        <span class="status-pill status-pill--muted">${escapeHtml(window.NoorLocatorAuth.getLocalizedRoleLabel(user.role))}</span>
+                        <span class="status-pill${user.isEmailVerified ? " status-pill--success" : ""}">${escapeHtml(user.isEmailVerified
+                            ? t("status.verified", "Verified")
+                            : t("status.unverified", "Unverified"))}</span>
+                        ${renderLanguageBadgeMarkup(user.preferredLanguageCode || "en", {
+                            modifier: "muted",
+                            className: "admin-user-row__language"
+                        })}
+                        <span class="status-pill status-pill--muted">${escapeHtml(t("admin.users.assignedCenterCountCompact", "{count} centers", { count: user.assignedCenterCount || 0 }))}</span>
+                    </div>
+                    <div class="admin-user-row__actions">
+                        <button class="button button--secondary button--inline" type="button" data-admin-user-edit="${escapeHtml(user.id)}">${escapeHtml(t("actions.edit", "Edit"))}</button>
+                        <button class="button button--danger button--inline" type="button" data-admin-user-delete="${escapeHtml(user.id)}" data-admin-user-name="${escapeHtml(user.name)}"${user.canDelete ? "" : ` disabled title="${escapeHtml(user.deleteBlockedReason || t("admin.users.deleteBlocked", "Deletion blocked"))}"`}>${escapeHtml(t("actions.delete", "Delete"))}</button>
+                    </div>
+                </article>
+            `).join("")}
         </div>
     `;
+}
+
+function renderAdminUserDetailSummary(container, user) {
+    if (!container) {
+        return;
+    }
+
+    if (!user) {
+        container.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("admin.users.selectPrompt", "Choose a user from the list to load editable account details."))}</div>`;
+        return;
+    }
+
+    const deleteStatusLabel = user.canDelete
+        ? t("admin.users.deleteReady", "Safe to delete")
+        : t("admin.users.deleteBlocked", "Deletion blocked");
+
+    container.innerHTML = `
+        <article class="admin-summary">
+            <div class="admin-summary__header">
+                <div>
+                    <h4>${escapeHtml(user.name)}</h4>
+                    <p class="admin-summary__subtle">${escapeHtml(user.email)}</p>
+                </div>
+                <span class="status-pill">${escapeHtml(window.NoorLocatorAuth.getLocalizedRoleLabel(user.role))}</span>
+            </div>
+            <div class="chip-list">
+                <span class="chip${user.isEmailVerified ? " chip--success" : " chip--warning"}">${escapeHtml(user.isEmailVerified
+                    ? t("status.verified", "Verified")
+                    : t("status.unverified", "Unverified"))}</span>
+                ${renderLanguageBadgeMarkup(user.preferredLanguageCode || "en", { modifier: "muted" })}
+                <span class="chip chip--muted">${escapeHtml(t("admin.users.assignedCenterCount", "{count} assigned centers", { count: user.assignedCenterCount || 0 }))}</span>
+                <span class="chip${user.canDelete ? " chip--success" : " chip--danger"}">${escapeHtml(deleteStatusLabel)}</span>
+            </div>
+            <div class="admin-summary__grid">
+                <div class="admin-summary__item">
+                    <span class="admin-summary__label">${escapeHtml(t("admin.users.summary.created", "Created"))}</span>
+                    <strong>${escapeHtml(formatDateTime(user.createdAt))}</strong>
+                </div>
+                <div class="admin-summary__item">
+                    <span class="admin-summary__label">${escapeHtml(t("admin.users.summary.lastSignIn", "Last sign-in"))}</span>
+                    <strong>${escapeHtml(user.lastLoginAtUtc
+                        ? formatDateTime(user.lastLoginAtUtc)
+                        : t("profile.lastLogin.none", "No completed sign-in yet"))}</strong>
+                </div>
+                <div class="admin-summary__item">
+                    <span class="admin-summary__label">${escapeHtml(t("admin.users.summary.updated", "Last updated"))}</span>
+                    <strong>${escapeHtml(user.updatedAtUtc
+                        ? formatDateTime(user.updatedAtUtc)
+                        : t("common.unavailable", "Unavailable"))}</strong>
+                </div>
+                <div class="admin-summary__item">
+                    <span class="admin-summary__label">${escapeHtml(t("admin.users.summary.emailStatus", "Email status"))}</span>
+                    <strong>${escapeHtml(user.isEmailVerified
+                        ? t("status.verified", "Verified")
+                        : t("status.unverified", "Unverified"))}</strong>
+                </div>
+            </div>
+            ${!user.canDelete && user.deleteBlockedReason
+                ? `<p class="admin-summary__note">${escapeHtml(user.deleteBlockedReason)}</p>`
+                : ""}
+        </article>
+    `;
+}
+
+function renderAdminUserNotificationStatus(container, notificationPreference) {
+    if (!container) {
+        return;
+    }
+
+    if (!notificationPreference) {
+        container.innerHTML = "";
+        return;
+    }
+
+    const preferences = [
+        [t("profile.notifications.email", "Email notifications"), notificationPreference.emailNotificationsEnabled],
+        [t("profile.notifications.app", "In-app notifications"), notificationPreference.appNotificationsEnabled],
+        [t("profile.notifications.majlis", "Majlis updates"), notificationPreference.majlisNotificationsEnabled],
+        [t("profile.notifications.events", "Event announcements"), notificationPreference.eventNotificationsEnabled],
+        [t("profile.notifications.centerUpdates", "Center activity updates"), notificationPreference.centerUpdatesEnabled]
+    ];
+
+    container.innerHTML = preferences
+        .map(([label, enabled]) => `<span class="chip${enabled ? " chip--success" : " chip--muted"}">${escapeHtml(`${label}: ${enabled ? t("common.enabled", "Enabled") : t("common.disabled", "Disabled")}`)}</span>`)
+        .join("");
+}
+
+function renderAdminManagerAssignmentsTable(container, assignments, options = {}) {
+    if (!container) {
+        return;
+    }
+
+    if (!assignments.length) {
+        container.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("admin.assignments.empty", "No approved manager assignments are available."))}</div>`;
+        return;
+    }
+
+    const editingAssignmentId = Number(options.editingAssignmentId || 0);
+    const selectedUserId = Number(options.selectedUserId || 0);
+
+    container.innerHTML = `
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>${escapeHtml(t("admin.assignments.table.manager", "Manager"))}</th>
+                    <th>${escapeHtml(t("admin.assignments.table.role", "Role"))}</th>
+                    <th>${escapeHtml(t("admin.assignments.table.center", "Center"))}</th>
+                    <th>${escapeHtml(t("admin.assignments.table.majalis", "Majalis"))}</th>
+                    <th>${escapeHtml(t("admin.assignments.table.announcements", "Announcements"))}</th>
+                    <th>${escapeHtml(t("admin.assignments.table.actions", "Actions"))}</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${assignments.map(assignment => `
+                    <tr${editingAssignmentId === Number(assignment.id) || selectedUserId === Number(assignment.userId) ? ' class="is-selected"' : ""}>
+                        <td data-label="${escapeHtml(t("admin.assignments.table.manager", "Manager"))}">
+                            <strong>${escapeHtml(assignment.userName)}</strong>
+                            <div class="data-table__subtle">${escapeHtml(assignment.userEmail)}</div>
+                        </td>
+                        <td data-label="${escapeHtml(t("admin.assignments.table.role", "Role"))}">${escapeHtml(window.NoorLocatorAuth.getLocalizedRoleLabel(assignment.userRole))}</td>
+                        <td data-label="${escapeHtml(t("admin.assignments.table.center", "Center"))}">
+                            <strong>${escapeHtml(assignment.centerName)}</strong>
+                            <div class="data-table__subtle">${escapeHtml(`${assignment.centerCity}, ${assignment.centerCountry}`)}</div>
+                        </td>
+                        <td data-label="${escapeHtml(t("admin.assignments.table.majalis", "Majalis"))}">${escapeHtml(String(assignment.majlisCount || 0))}</td>
+                        <td data-label="${escapeHtml(t("admin.assignments.table.announcements", "Announcements"))}">${escapeHtml(String(assignment.announcementCount || 0))}</td>
+                        <td data-label="${escapeHtml(t("admin.assignments.table.actions", "Actions"))}">
+                            <div class="utility-row utility-row--wrap">
+                                <button class="button button--ghost button--inline" type="button" data-admin-manager-assignment-open-user="${escapeHtml(assignment.userId)}">${escapeHtml(t("actions.open", "Open"))}</button>
+                                <button class="button button--secondary button--inline" type="button" data-admin-manager-assignment-edit="${escapeHtml(assignment.id)}">${escapeHtml(t("actions.edit", "Edit"))}</button>
+                                <button class="button button--danger button--inline" type="button" data-admin-manager-assignment-delete="${escapeHtml(assignment.id)}" data-admin-manager-assignment-name="${escapeHtml(`${assignment.userName} -> ${assignment.centerName}`)}">${escapeHtml(t("actions.delete", "Delete"))}</button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join("")}
+            </tbody>
+        </table>
+    `;
+}
+
+function renderAdminSelectedUserCenters(container, user) {
+    if (!container) {
+        return;
+    }
+
+    if (!user) {
+        container.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("admin.ownership.selectPrompt", "Choose a user to review their assignments."))}</div>`;
+        return;
+    }
+
+    if (!(user.managedCenters || []).length) {
+        container.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("admin.ownership.centersEmpty", "This user does not currently manage any approved centers."))}</div>`;
+        return;
+    }
+
+    container.innerHTML = user.managedCenters.map(center => `
+        <article class="list-card">
+            <div class="list-card__head">
+                <div>
+                    <h4>${escapeHtml(center.centerName)}</h4>
+                    <p class="list-card__meta">${escapeHtml(`${center.centerCity}, ${center.centerCountry}`)}</p>
+                </div>
+                <span class="status-pill${center.approved ? " status-pill--success" : ""}">${escapeHtml(center.approved ? t("status.assigned", "Assigned") : t("status.pending", "Pending"))}</span>
+            </div>
+            <div class="button-row">
+                <button class="button button--secondary button--inline" type="button" data-admin-managed-center-edit="${escapeHtml(center.assignmentId)}">${escapeHtml(t("actions.edit", "Edit"))}</button>
+                <button class="button button--danger button--inline" type="button" data-admin-managed-center-remove="${escapeHtml(center.assignmentId)}" data-admin-managed-center-name="${escapeHtml(center.centerName)}">${escapeHtml(t("admin.assignments.removeAction", "Remove assignment"))}</button>
+            </div>
+        </article>
+    `).join("");
+}
+
+function renderAdminSelectedUserMajalis(container, user) {
+    if (!container) {
+        return;
+    }
+
+    if (!user) {
+        container.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("admin.ownership.selectPrompt", "Choose a user to review their assignments."))}</div>`;
+        return;
+    }
+
+    if (!(user.createdMajalis || []).length) {
+        container.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("admin.ownership.majalisEmpty", "This user has not created any majalis."))}</div>`;
+        return;
+    }
+
+    container.innerHTML = user.createdMajalis.map(majlis => `
+        <article class="list-card">
+            <div class="list-card__head">
+                <div>
+                    <h4>${escapeHtml(majlis.title)}</h4>
+                    <p class="list-card__meta">${escapeHtml(`${formatDate(majlis.date)} | ${majlis.time}`)}</p>
+                </div>
+                <span class="status-pill status-pill--muted">${escapeHtml(majlis.centerName)}</span>
+            </div>
+            <p>${escapeHtml(truncateText(majlis.description || t("manager.majlisList.emptyDescription", "No description is available for this majlis."), 180))}</p>
+            <div class="utility-row utility-row--wrap">
+                <span class="card__meta">${escapeHtml(`${majlis.centerCity}, ${majlis.centerCountry}`)}</span>
+            </div>
+            <div class="chip-list">${renderLanguageBadgeList(majlis.languages || [], { modifier: "muted" })}</div>
+        </article>
+    `).join("");
+}
+
+function renderAdminSelectedUserAnnouncements(container, user) {
+    if (!container) {
+        return;
+    }
+
+    if (!user) {
+        container.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("admin.ownership.selectPrompt", "Choose a user to review their assignments."))}</div>`;
+        return;
+    }
+
+    if (!(user.createdAnnouncements || []).length) {
+        container.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("admin.ownership.announcementsEmpty", "This user has not created any center announcements."))}</div>`;
+        return;
+    }
+
+    container.innerHTML = user.createdAnnouncements.map(announcement => `
+        <article class="list-card">
+            <div class="list-card__head">
+                <div>
+                    <h4>${escapeHtml(announcement.title)}</h4>
+                    <p class="list-card__meta">${escapeHtml(`${announcement.centerName} | ${announcement.centerCity}, ${announcement.centerCountry}`)}</p>
+                </div>
+                ${renderStatusBadge(announcement.status)}
+            </div>
+            <p>${escapeHtml(truncateText(announcement.description || t("manager.announcements.emptyDescription", "No description is available for this announcement."), 180))}</p>
+            <div class="utility-row utility-row--wrap">
+                <span class="card__meta">${escapeHtml(t("common.publishedOn", "Published {date}", { date: formatDateTime(announcement.createdAt) }))}</span>
+            </div>
+        </article>
+    `).join("");
 }
 
 function renderAdminAuditLogsTable(container, auditLogs) {
@@ -3557,7 +3873,34 @@ function initAdminPage() {
     const adminCenterImagesContainer = document.getElementById("admin-center-images");
     const adminCenterImageFilterCenter = document.getElementById("admin-center-image-filter-center");
     const refreshAdminCenterImagesButton = document.getElementById("refresh-admin-center-images-button");
+    const userSearchInput = document.getElementById("admin-user-search");
+    const userRoleFilterSelect = document.getElementById("admin-user-role-filter");
+    const userVerificationFilterSelect = document.getElementById("admin-user-verification-filter");
+    const usersRefreshButton = document.getElementById("admin-users-refresh-button");
     const usersTableContainer = document.getElementById("admin-users-table");
+    const userEditorDrawer = document.getElementById("admin-user-editor-drawer");
+    const userEditorCloseButtons = Array.from(document.querySelectorAll("[data-admin-user-editor-close]"));
+    const userForm = document.getElementById("admin-user-form");
+    const userFormHeading = document.getElementById("admin-user-form-heading");
+    const userFormMessage = document.querySelector('[data-form-message="admin-user-form"]');
+    const userSubmitButton = document.getElementById("admin-user-submit-button");
+    const userDeleteButton = document.getElementById("admin-user-delete-button");
+    const userDetailSummaryContainer = document.getElementById("admin-user-detail-summary");
+    const userStatusChipsContainer = document.getElementById("admin-user-status-chips");
+    const userNotificationStatusContainer = document.getElementById("admin-user-notification-status");
+    const userLanguageSelect = document.getElementById("admin-user-language-select");
+    const managerAssignmentForm = document.getElementById("admin-manager-assignment-form");
+    const managerAssignmentFormHeading = document.getElementById("admin-manager-assignment-form-heading");
+    const managerAssignmentFormMessage = document.querySelector('[data-form-message="admin-manager-assignment-form"]');
+    const managerAssignmentSubmitButton = document.getElementById("admin-manager-assignment-submit-button");
+    const managerAssignmentCancelButton = document.getElementById("admin-manager-assignment-cancel-button");
+    const managerAssignmentUserSelect = document.getElementById("admin-manager-assignment-user-select");
+    const managerAssignmentCenterSelect = document.getElementById("admin-manager-assignment-center-select");
+    const managerAssignmentsTableContainer = document.getElementById("admin-manager-assignments-table");
+    const ownershipDescription = document.getElementById("admin-ownership-description");
+    const selectedUserCentersContainer = document.getElementById("admin-selected-user-centers");
+    const selectedUserMajalisContainer = document.getElementById("admin-selected-user-majalis");
+    const selectedUserAnnouncementsContainer = document.getElementById("admin-selected-user-announcements");
     const auditLogsTableContainer = document.getElementById("admin-audit-logs-table");
     const centerForm = document.getElementById("admin-center-form");
     const centerFormHeading = document.getElementById("admin-center-form-heading");
@@ -3572,15 +3915,130 @@ function initAdminPage() {
         languageSuggestions: [],
         suggestions: [],
         users: [],
+        managerAssignments: [],
         centers: [],
         centerImages: [],
         auditLogs: [],
+        selectedUserId: null,
+        selectedUser: null,
+        userSearch: "",
+        userRoleFilter: "",
+        userVerificationFilter: "",
+        editingManagerAssignmentId: null,
         editingCenterId: null,
         selectedImageCenterId: null
     };
+    const adminAssetRecoveryKey = "noorlocator.admin.asset-recovery";
 
-    if (!pageMessage || !pendingCount || !auditCount || !cardsContainer || !centerRequestsContainer || !managerRequestsContainer || !languageSuggestionsContainer || !suggestionsContainer || !centersContainer || !adminCenterImagesMessage || !adminCenterImagesContainer || !adminCenterImageFilterCenter || !refreshAdminCenterImagesButton || !usersTableContainer || !auditLogsTableContainer || !centerForm || !centerFormHeading || !centerFormMessage || !centerSubmitButton || !centerCancelButton) {
+    if (!pageMessage || !pendingCount || !auditCount || !cardsContainer || !centerRequestsContainer || !managerRequestsContainer || !languageSuggestionsContainer || !suggestionsContainer || !centersContainer || !adminCenterImagesMessage || !adminCenterImagesContainer || !adminCenterImageFilterCenter || !refreshAdminCenterImagesButton || !userSearchInput || !userRoleFilterSelect || !userVerificationFilterSelect || !usersRefreshButton || !usersTableContainer || !userEditorDrawer || !userForm || !userFormHeading || !userFormMessage || !userSubmitButton || !userDeleteButton || !userDetailSummaryContainer || !userStatusChipsContainer || !userNotificationStatusContainer || !userLanguageSelect || !managerAssignmentForm || !managerAssignmentFormHeading || !managerAssignmentFormMessage || !managerAssignmentSubmitButton || !managerAssignmentCancelButton || !managerAssignmentUserSelect || !managerAssignmentCenterSelect || !managerAssignmentsTableContainer || !ownershipDescription || !selectedUserCentersContainer || !selectedUserMajalisContainer || !selectedUserAnnouncementsContainer || !auditLogsTableContainer || !centerForm || !centerFormHeading || !centerFormMessage || !centerSubmitButton || !centerCancelButton) {
         return;
+    }
+
+    async function ensureAdminApiSurface() {
+        const requiredMethods = [
+            "getAdminUser",
+            "updateAdminUser",
+            "deleteAdminUser",
+            "getAdminManagerAssignments",
+            "createAdminManagerAssignment",
+            "updateAdminManagerAssignment",
+            "deleteAdminManagerAssignment"
+        ];
+        const missingMethod = requiredMethods.find(methodName => typeof window.NoorLocatorApi?.[methodName] !== "function");
+
+        if (!missingMethod) {
+            try {
+                window.sessionStorage.removeItem(adminAssetRecoveryKey);
+            } catch {
+                // Ignore session storage cleanup issues.
+            }
+
+            return true;
+        }
+
+        const alreadyRetried = (() => {
+            try {
+                return window.sessionStorage.getItem(adminAssetRecoveryKey) === "1";
+            } catch {
+                return false;
+            }
+        })();
+
+        if (alreadyRetried) {
+            const message = t(
+                "admin.page.reloadRequired",
+                "The admin page is still using outdated files. Refresh the page once to load the latest NoorLocator assets.");
+            setMessage(pageMessage, message, "error");
+            throw new Error(message);
+        }
+
+        setMessage(
+            pageMessage,
+            t(
+                "admin.page.refreshingAssets",
+                "Refreshing admin assets after a NoorLocator update..."));
+
+        try {
+            window.sessionStorage.setItem(adminAssetRecoveryKey, "1");
+        } catch {
+            // Ignore session storage failures.
+        }
+
+        try {
+            if ("serviceWorker" in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                await Promise.all(registrations.map(registration => registration.unregister()));
+            }
+
+            if ("caches" in window) {
+                const cacheKeys = await caches.keys();
+                await Promise.all(
+                    cacheKeys
+                        .filter(key => key.startsWith("noorlocator-"))
+                        .map(key => caches.delete(key)));
+            }
+        } catch {
+            // Ignore cache cleanup failures and continue with a reload.
+        }
+
+        window.location.reload();
+        return false;
+    }
+
+    function isAdminUserEditorOpen() {
+        return !userEditorDrawer.hidden;
+    }
+
+    function openAdminUserEditorDrawer() {
+        if (isAdminUserEditorOpen()) {
+            userEditorDrawer.classList.add("is-open");
+            userEditorDrawer.setAttribute("aria-hidden", "false");
+            document.body.classList.add("has-admin-user-drawer");
+            return;
+        }
+
+        userEditorDrawer.hidden = false;
+        userEditorDrawer.setAttribute("aria-hidden", "false");
+        document.body.classList.add("has-admin-user-drawer");
+        window.requestAnimationFrame(() => {
+            userEditorDrawer.classList.add("is-open");
+        });
+    }
+
+    function closeAdminUserEditorDrawer() {
+        if (!isAdminUserEditorOpen()) {
+            return;
+        }
+
+        userEditorDrawer.classList.remove("is-open");
+        userEditorDrawer.setAttribute("aria-hidden", "true");
+        document.body.classList.remove("has-admin-user-drawer");
+
+        window.setTimeout(() => {
+            if (!userEditorDrawer.classList.contains("is-open")) {
+                userEditorDrawer.hidden = true;
+            }
+        }, 220);
     }
 
     function updateCounters() {
@@ -3648,6 +4106,43 @@ function initAdminPage() {
         refreshOverviewCards();
     });
 
+    function getFilteredUsers() {
+        const searchTerm = state.userSearch.trim().toLowerCase();
+
+        return state.users.filter(user => {
+            const matchesSearch = !searchTerm
+                || user.name.toLowerCase().includes(searchTerm)
+                || user.email.toLowerCase().includes(searchTerm);
+            const matchesRole = !state.userRoleFilter || String(user.role) === state.userRoleFilter;
+            const matchesVerification = !state.userVerificationFilter
+                || (state.userVerificationFilter === "verified" && Boolean(user.isEmailVerified))
+                || (state.userVerificationFilter === "unverified" && !user.isEmailVerified);
+
+            return matchesSearch && matchesRole && matchesVerification;
+        });
+    }
+
+    function getAssignableUsers() {
+        return state.users.filter(user => String(user.role) !== "Admin");
+    }
+
+    function getEditingManagerAssignment() {
+        return state.managerAssignments.find(assignment => assignment.id === state.editingManagerAssignmentId) || null;
+    }
+
+    function populateAdminUserLanguageSelect() {
+        populateSelectOptions(
+            [userLanguageSelect],
+            window.NoorLocatorI18n.getSupportedLanguages(),
+            {
+                placeholder: t("profile.language.placeholder", "Choose language"),
+                getValue: language => language.code,
+                getLabel: language => window.NoorLocatorI18n.getLanguageOptionLabel?.(language.code, {
+                    native: true
+                }) || language.nativeName
+            });
+    }
+
     function syncAdminImageCenterSelection(centerId) {
         const validCenterId = state.centers.some(center => center.id === centerId)
             ? centerId
@@ -3675,6 +4170,52 @@ function initAdminPage() {
         }
 
         syncAdminImageCenterSelection(state.selectedImageCenterId || state.editingCenterId || state.centers[0].id);
+    }
+
+    function populateAdminAssignmentControls() {
+        const assignableUsers = getAssignableUsers();
+        const selectedUserCandidate = state.selectedUser && String(state.selectedUser.role) !== "Admin"
+            ? String(state.selectedUser.id)
+            : "";
+        const editingAssignment = getEditingManagerAssignment();
+        const currentUserValue = editingAssignment
+            ? String(editingAssignment.userId)
+            : (managerAssignmentUserSelect.value || selectedUserCandidate);
+        const currentCenterValue = editingAssignment
+            ? String(editingAssignment.centerId)
+            : managerAssignmentCenterSelect.value;
+
+        populateSelectOptions(
+            [managerAssignmentUserSelect],
+            assignableUsers,
+            {
+                placeholder: assignableUsers.length
+                    ? t("admin.assignments.selectUser", "Select a manager account")
+                    : t("admin.assignments.noUsers", "No eligible users"),
+                getValue: user => String(user.id),
+                getLabel: user => `${window.NoorLocatorAuth.formatUserDisplayName(user)} (${user.email})`
+            });
+
+        populateSelectOptions(
+            [managerAssignmentCenterSelect],
+            state.centers,
+            {
+                placeholder: state.centers.length
+                    ? t("common.selectCenter", "Select a center")
+                    : t("common.noCentersAvailable", "No centers available"),
+                getValue: center => String(center.id),
+                getLabel: center => `${center.name} (${center.city}, ${center.country})`
+            });
+
+        if (assignableUsers.some(user => String(user.id) === currentUserValue)) {
+            managerAssignmentUserSelect.value = currentUserValue;
+        } else if (selectedUserCandidate && assignableUsers.some(user => String(user.id) === selectedUserCandidate)) {
+            managerAssignmentUserSelect.value = selectedUserCandidate;
+        }
+
+        if (state.centers.some(center => String(center.id) === currentCenterValue)) {
+            managerAssignmentCenterSelect.value = currentCenterValue;
+        }
     }
 
     async function loadAdminCenterImages() {
@@ -3739,6 +4280,127 @@ function initAdminPage() {
         });
     }
 
+    function getAdminUserStatusChipsMarkup(user) {
+        if (!user) {
+            return "";
+        }
+
+        return [
+            `<span class="chip${user.isEmailVerified ? " chip--success" : " chip--warning"}">${escapeHtml(user.isEmailVerified ? t("status.verified", "Verified") : t("status.unverified", "Unverified"))}</span>`,
+            renderLanguageBadgeMarkup(user.preferredLanguageCode || "en", { modifier: "muted" }),
+            `<span class="chip chip--muted">${escapeHtml(t("admin.users.assignedCenterCount", "{count} assigned centers", { count: user.assignedCenterCount || 0 }))}</span>`,
+            `<span class="chip${user.canDelete ? " chip--success" : " chip--danger"}">${escapeHtml(user.canDelete ? t("admin.users.deleteReady", "Safe to delete") : t("admin.users.deleteBlocked", "Deletion blocked"))}</span>`
+        ].join("");
+    }
+
+    function setAdminUserFormEnabled(enabled) {
+        ["name", "email", "role", "preferredLanguageCode"].forEach(fieldName => {
+            const field = userForm.elements.namedItem(fieldName);
+            if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
+                field.disabled = !enabled;
+            }
+        });
+
+        userSubmitButton.disabled = !enabled;
+        userDeleteButton.disabled = !enabled;
+    }
+
+    function syncSelectedUserPresentation() {
+        renderAdminUserDetailSummary(userDetailSummaryContainer, state.selectedUser);
+        userStatusChipsContainer.innerHTML = getAdminUserStatusChipsMarkup(state.selectedUser);
+        renderAdminUserNotificationStatus(userNotificationStatusContainer, state.selectedUser?.notificationPreference);
+        renderAdminSelectedUserCenters(selectedUserCentersContainer, state.selectedUser);
+        renderAdminSelectedUserMajalis(selectedUserMajalisContainer, state.selectedUser);
+        renderAdminSelectedUserAnnouncements(selectedUserAnnouncementsContainer, state.selectedUser);
+        ownershipDescription.textContent = state.selectedUser
+            ? t("admin.ownership.selectedDescription", "Showing assignment and content ownership details for {name}.", { name: state.selectedUser.name })
+            : t("admin.ownership.description", "Select a user to inspect their approved center assignments, created majalis, and center announcements.");
+    }
+
+    function resetAdminUserForm(options = {}) {
+        state.selectedUser = null;
+        state.selectedUserId = null;
+        userForm.reset();
+        userForm.elements.namedItem("userId").value = "";
+        populateAdminUserLanguageSelect();
+        userFormHeading.textContent = t("admin.users.detailsTitle", "Select a user to manage");
+        userSubmitButton.textContent = t("actions.saveChanges", "Save changes");
+        userSubmitButton.dataset.defaultLabel = t("actions.saveChanges", "Save changes");
+        userDeleteButton.textContent = t("admin.users.deleteAction", "Delete user");
+        userDeleteButton.title = "";
+        setAdminUserFormEnabled(false);
+        syncSelectedUserPresentation();
+
+        if (!options.preserveMessage) {
+            setMessage(userFormMessage, t("admin.users.selectPrompt", "Choose a user from the list to load editable account details."));
+        }
+    }
+
+    function populateAdminUserForm(user, options = {}) {
+        if (!user) {
+            resetAdminUserForm(options);
+            return;
+        }
+
+        populateAdminUserLanguageSelect();
+        setAdminUserFormEnabled(true);
+        userForm.elements.namedItem("userId").value = String(user.id);
+        userForm.elements.namedItem("name").value = user.name || "";
+        userForm.elements.namedItem("email").value = user.email || "";
+        userForm.elements.namedItem("role").value = String(user.role || "User");
+        userForm.elements.namedItem("preferredLanguageCode").value = user.preferredLanguageCode || "en";
+        userFormHeading.textContent = t("admin.users.editingTitle", "Editing {name}", { name: user.name });
+        userSubmitButton.textContent = t("actions.saveChanges", "Save changes");
+        userSubmitButton.dataset.defaultLabel = t("actions.saveChanges", "Save changes");
+        userDeleteButton.textContent = t("admin.users.deleteAction", "Delete user");
+        userDeleteButton.disabled = !user.canDelete;
+        userDeleteButton.title = user.canDelete ? "" : (user.deleteBlockedReason || "");
+        syncSelectedUserPresentation();
+
+        if (!options.preserveMessage) {
+            setMessage(userFormMessage, t("admin.users.editingMessage", "Editing {name}.", { name: user.name }), "success");
+        }
+    }
+
+    function resetManagerAssignmentForm(options = {}) {
+        state.editingManagerAssignmentId = null;
+        managerAssignmentForm.reset();
+        managerAssignmentForm.elements.namedItem("assignmentId").value = "";
+        managerAssignmentFormHeading.textContent = t("admin.assignments.editorTitle", "Create or update a manager assignment");
+        managerAssignmentSubmitButton.textContent = t("admin.assignments.submit", "Save assignment");
+        managerAssignmentSubmitButton.dataset.defaultLabel = t("admin.assignments.submit", "Save assignment");
+        managerAssignmentCancelButton.hidden = true;
+        populateAdminAssignmentControls();
+
+        if (!options.preserveMessage) {
+            setMessage(managerAssignmentFormMessage, t("admin.assignments.ready", "Choose a user and center to create an assignment."));
+        }
+    }
+
+    function populateManagerAssignmentForm(assignment, options = {}) {
+        if (!assignment) {
+            resetManagerAssignmentForm(options);
+            return;
+        }
+
+        state.editingManagerAssignmentId = assignment.id;
+        populateAdminAssignmentControls();
+        managerAssignmentForm.elements.namedItem("assignmentId").value = String(assignment.id);
+        managerAssignmentUserSelect.value = String(assignment.userId);
+        managerAssignmentCenterSelect.value = String(assignment.centerId);
+        managerAssignmentFormHeading.textContent = t("admin.assignments.editingTitle", "Editing {user} and {center}", {
+            user: assignment.userName,
+            center: assignment.centerName
+        });
+        managerAssignmentSubmitButton.textContent = t("actions.saveChanges", "Save changes");
+        managerAssignmentSubmitButton.dataset.defaultLabel = t("actions.saveChanges", "Save changes");
+        managerAssignmentCancelButton.hidden = false;
+
+        if (!options.preserveMessage) {
+            setMessage(managerAssignmentFormMessage, t("admin.assignments.editingMessage", "Editing the assignment for {user}.", { user: assignment.userName }), "success");
+        }
+    }
+
     function resetCenterForm() {
         state.editingCenterId = null;
         centerForm.reset();
@@ -3774,17 +4436,42 @@ function initAdminPage() {
         document.getElementById("center-management")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
-    function renderAllSections() {
+    function renderAllSections(options = {}) {
         renderAdminCenterRequests(centerRequestsContainer, state.centerRequests);
         renderAdminManagerRequests(managerRequestsContainer, state.managerRequests);
         renderAdminLanguageSuggestions(languageSuggestionsContainer, state.languageSuggestions);
         renderAdminSuggestions(suggestionsContainer, state.suggestions);
         renderAdminCenters(centersContainer, state.centers);
         populateAdminImageControls();
-        renderAdminUsersTable(usersTableContainer, state.users);
+        renderAdminUsersTable(usersTableContainer, getFilteredUsers(), {
+            selectedUserId: state.selectedUserId,
+            searchTerm: state.userSearch,
+            roleFilter: state.userRoleFilter,
+            verificationFilter: state.userVerificationFilter
+        });
+        renderAdminManagerAssignmentsTable(managerAssignmentsTableContainer, state.managerAssignments, {
+            selectedUserId: state.selectedUserId,
+            editingAssignmentId: state.editingManagerAssignmentId
+        });
         renderAdminAuditLogsTable(auditLogsTableContainer, state.auditLogs);
+        populateAdminAssignmentControls();
+        populateAdminUserForm(state.selectedUser, {
+            preserveMessage: options.preserveUserFormMessage
+        });
+
+        if (state.editingManagerAssignmentId) {
+            populateManagerAssignmentForm(getEditingManagerAssignment(), {
+                preserveMessage: options.preserveAssignmentFormMessage
+            });
+        } else {
+            resetManagerAssignmentForm({
+                preserveMessage: options.preserveAssignmentFormMessage
+            });
+        }
+
         updateCounters();
         refreshOverviewCards();
+        bindModerationActions();
 
         if (state.editingCenterId) {
             const editedCenter = state.centers.find(center => center.id === state.editingCenterId);
@@ -3795,6 +4482,73 @@ function initAdminPage() {
         }
 
         resetCenterForm();
+    }
+
+    async function hydrateSelectedUser() {
+        if (!state.selectedUserId || !state.users.some(user => user.id === state.selectedUserId)) {
+            state.selectedUser = null;
+            state.selectedUserId = null;
+            return;
+        }
+
+        try {
+            const response = await window.NoorLocatorApi.getAdminUser(state.selectedUserId);
+            state.selectedUser = response.data || null;
+        } catch {
+            state.selectedUser = null;
+        }
+    }
+
+    async function selectAdminUser(id, options = {}) {
+        const userId = Number(id);
+        if (!Number.isInteger(userId) || userId <= 0) {
+            resetAdminUserForm();
+            renderAllSections({
+                preserveUserFormMessage: false,
+                preserveAssignmentFormMessage: true
+            });
+            return;
+        }
+
+        state.selectedUserId = userId;
+        setMessage(userFormMessage, t("admin.users.loadingDetails", "Loading user details..."));
+        userDetailSummaryContainer.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("admin.users.loadingDetails", "Loading user details..."))}</div>`;
+
+        try {
+            const response = await window.NoorLocatorApi.getAdminUser(userId);
+            state.selectedUser = response.data || null;
+            renderAllSections({
+                preserveUserFormMessage: true,
+                preserveAssignmentFormMessage: true
+            });
+            setMessage(userFormMessage, t("admin.users.editingMessage", "Editing {name}.", { name: state.selectedUser?.name || "" }), "success");
+
+            if (options.scroll !== false) {
+                document.getElementById("user-management")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+        } catch (error) {
+            const message = normalizeErrorMessage(error, "User details could not be loaded.");
+            state.selectedUser = null;
+            renderAllSections({
+                preserveUserFormMessage: true,
+                preserveAssignmentFormMessage: true
+            });
+            setMessage(userFormMessage, message, "error");
+            showToast(message, "error");
+        }
+    }
+
+    async function openAdminUserEditor(id) {
+        openAdminUserEditorDrawer();
+        await selectAdminUser(id, { scroll: false });
+
+        const nameField = userForm.elements.namedItem("name");
+        if (nameField instanceof HTMLInputElement) {
+            window.requestAnimationFrame(() => {
+                nameField.focus();
+                nameField.select();
+            });
+        }
     }
 
     async function loadAdminWorkspace(showLoading = false) {
@@ -3808,7 +4562,10 @@ function initAdminPage() {
             setMessage(adminCenterImagesMessage, t("admin.images.loading", "Loading center gallery moderation tools..."));
             setContainerMessage(adminCenterImagesContainer, t("admin.gallery.loading", "Loading center gallery..."), "soft");
             usersTableContainer.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("admin.users.loading", "Loading users..."))}</div>`;
+            managerAssignmentsTableContainer.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("admin.assignments.loading", "Loading manager assignments..."))}</div>`;
             auditLogsTableContainer.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("admin.audit.loading", "Loading audit logs..."))}</div>`;
+            setMessage(userFormMessage, t("admin.users.selectPrompt", "Choose a user from the list to load editable account details."));
+            setMessage(managerAssignmentFormMessage, t("admin.assignments.ready", "Choose a user and center to create an assignment."));
         }
 
         const [
@@ -3819,6 +4576,7 @@ function initAdminPage() {
             languageSuggestionsResponse,
             suggestionsResponse,
             usersResponse,
+            managerAssignmentsResponse,
             centersResponse,
             auditLogsResponse
         ] = await Promise.all([
@@ -3829,6 +4587,7 @@ function initAdminPage() {
             window.NoorLocatorApi.getAdminCenterLanguageSuggestions(),
             window.NoorLocatorApi.getAdminSuggestions(),
             window.NoorLocatorApi.getAdminUsers(),
+            window.NoorLocatorApi.getAdminManagerAssignments(),
             window.NoorLocatorApi.getAdminCenters(),
             window.NoorLocatorApi.getAdminAuditLogs()
         ]);
@@ -3840,15 +4599,20 @@ function initAdminPage() {
         state.languageSuggestions = languageSuggestionsResponse.data || [];
         state.suggestions = suggestionsResponse.data || [];
         state.users = usersResponse.data || [];
+        state.managerAssignments = managerAssignmentsResponse.data || [];
         state.centers = centersResponse.data || [];
         state.auditLogs = auditLogsResponse.data || [];
+        await hydrateSelectedUser();
 
-        renderAllSections();
+        renderAllSections({
+            preserveUserFormMessage: true,
+            preserveAssignmentFormMessage: true
+        });
         await loadAdminCenterImages();
         setMessage(pageMessage, t("admin.page.ready", "Admin workspace is ready."), "success");
     }
 
-    async function runAdminAction(confirmMessage, action) {
+    async function runAdminAction(confirmMessage, action, options = {}) {
         if (confirmMessage && !window.confirm(confirmMessage)) {
             return;
         }
@@ -3856,6 +4620,11 @@ function initAdminPage() {
         try {
             const response = await action();
             await loadAdminWorkspace();
+
+            if (typeof options.afterSuccess === "function") {
+                await options.afterSuccess(response);
+            }
+
             setMessage(pageMessage, response.message, "success");
             showToast(response.message, "success");
         } catch (error) {
@@ -3863,6 +4632,35 @@ function initAdminPage() {
             setMessage(pageMessage, message, "error");
             showToast(message, "error");
         }
+    }
+
+    async function deleteAdminUserFromList(id, name) {
+        const userId = Number(id);
+        if (!Number.isInteger(userId) || userId <= 0) {
+            return;
+        }
+
+        const targetUser = state.users.find(user => user.id === userId);
+        if (targetUser && !targetUser.canDelete) {
+            const blockedMessage = targetUser.deleteBlockedReason || t("admin.users.deleteBlocked", "Deletion blocked");
+            setMessage(pageMessage, blockedMessage, "error");
+            showToast(blockedMessage, "error");
+            return;
+        }
+
+        const isSelectedUser = state.selectedUserId === userId;
+        await runAdminAction(
+            t("admin.confirm.deleteUser", "Delete the account for {name}?", {
+                name: name || targetUser?.name || t("common.member", "Member")
+            }),
+            () => window.NoorLocatorApi.deleteAdminUser(userId),
+            {
+                afterSuccess: () => {
+                    if (isSelectedUser) {
+                        closeAdminUserEditorDrawer();
+                    }
+                }
+            });
     }
 
     function bindModerationActions() {
@@ -3954,13 +4752,83 @@ function initAdminPage() {
                     });
             });
         });
-    }
 
-    const originalRenderAllSections = renderAllSections;
-    renderAllSections = () => {
-        originalRenderAllSections();
-        bindModerationActions();
-    };
+        usersTableContainer.querySelectorAll("[data-admin-user-edit]").forEach(button => {
+            button.addEventListener("click", async () => {
+                await openAdminUserEditor(Number(button.getAttribute("data-admin-user-edit")));
+            });
+        });
+
+        usersTableContainer.querySelectorAll("[data-admin-user-delete]").forEach(button => {
+            button.addEventListener("click", async () => {
+                await deleteAdminUserFromList(
+                    Number(button.getAttribute("data-admin-user-delete")),
+                    button.getAttribute("data-admin-user-name") || "");
+            });
+        });
+
+        managerAssignmentsTableContainer.querySelectorAll("[data-admin-manager-assignment-open-user]").forEach(button => {
+            button.addEventListener("click", async () => {
+                await openAdminUserEditor(Number(button.getAttribute("data-admin-manager-assignment-open-user")));
+            });
+        });
+
+        managerAssignmentsTableContainer.querySelectorAll("[data-admin-manager-assignment-edit]").forEach(button => {
+            button.addEventListener("click", () => {
+                const assignment = state.managerAssignments.find(currentAssignment => currentAssignment.id === Number(button.getAttribute("data-admin-manager-assignment-edit")));
+                if (!assignment) {
+                    return;
+                }
+
+                populateManagerAssignmentForm(assignment);
+                document.getElementById("manager-assignments")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+        });
+
+        managerAssignmentsTableContainer.querySelectorAll("[data-admin-manager-assignment-delete]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const id = Number(button.getAttribute("data-admin-manager-assignment-delete"));
+                const label = button.getAttribute("data-admin-manager-assignment-name") || t("admin.assignments.item", "this assignment");
+                await runAdminAction(
+                    t("admin.confirm.deleteAssignment", "Remove the assignment for {name}?", { name: label }),
+                    async () => {
+                        if (state.editingManagerAssignmentId === id) {
+                            state.editingManagerAssignmentId = null;
+                        }
+
+                        return await window.NoorLocatorApi.deleteAdminManagerAssignment(id);
+                    });
+            });
+        });
+
+        selectedUserCentersContainer.querySelectorAll("[data-admin-managed-center-edit]").forEach(button => {
+            button.addEventListener("click", () => {
+                const assignment = state.managerAssignments.find(currentAssignment => currentAssignment.id === Number(button.getAttribute("data-admin-managed-center-edit")));
+                if (!assignment) {
+                    return;
+                }
+
+                populateManagerAssignmentForm(assignment);
+                document.getElementById("manager-assignments")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+        });
+
+        selectedUserCentersContainer.querySelectorAll("[data-admin-managed-center-remove]").forEach(button => {
+            button.addEventListener("click", async () => {
+                const id = Number(button.getAttribute("data-admin-managed-center-remove"));
+                const centerName = button.getAttribute("data-admin-managed-center-name") || t("common.selectCenter", "center");
+                await runAdminAction(
+                    t("admin.confirm.deleteAssignment", "Remove the assignment for {name}?", { name: centerName }),
+                    async () => {
+                        if (state.editingManagerAssignmentId === id) {
+                            state.editingManagerAssignmentId = null;
+                        }
+
+                        return await window.NoorLocatorApi.deleteAdminManagerAssignment(id);
+                    });
+            });
+        });
+    }
 
     centerForm.addEventListener("submit", async event => {
         event.preventDefault();
@@ -4017,20 +4885,166 @@ function initAdminPage() {
         await loadAdminCenterImages();
     });
 
-    loadAdminWorkspace(true).catch(error => {
-        const message = normalizeErrorMessage(error, "The admin workspace could not be loaded right now.");
-        setMessage(pageMessage, message, "error");
-        setContainerMessage(centerRequestsContainer, message, "error");
-        setContainerMessage(managerRequestsContainer, message, "error");
-        setContainerMessage(languageSuggestionsContainer, message, "error");
-        setContainerMessage(suggestionsContainer, message, "error");
-        setContainerMessage(centersContainer, message, "error");
-        setMessage(adminCenterImagesMessage, message, "error");
-        setContainerMessage(adminCenterImagesContainer, message, "error");
-        usersTableContainer.innerHTML = `<div class="empty-state empty-state--error">${escapeHtml(message)}</div>`;
-        auditLogsTableContainer.innerHTML = `<div class="empty-state empty-state--error">${escapeHtml(message)}</div>`;
-        showToast(message, "error");
+    userSearchInput.addEventListener("input", event => {
+        state.userSearch = String(event.target.value || "");
+        renderAllSections({
+            preserveUserFormMessage: true,
+            preserveAssignmentFormMessage: true
+        });
     });
+
+    userRoleFilterSelect.addEventListener("change", event => {
+        state.userRoleFilter = String(event.target.value || "");
+        renderAllSections({
+            preserveUserFormMessage: true,
+            preserveAssignmentFormMessage: true
+        });
+    });
+
+    userVerificationFilterSelect.addEventListener("change", event => {
+        state.userVerificationFilter = String(event.target.value || "");
+        renderAllSections({
+            preserveUserFormMessage: true,
+            preserveAssignmentFormMessage: true
+        });
+    });
+
+    usersRefreshButton.addEventListener("click", async () => {
+        await loadAdminWorkspace();
+    });
+
+    userEditorCloseButtons.forEach(button => {
+        button.addEventListener("click", () => {
+            closeAdminUserEditorDrawer();
+        });
+    });
+
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && isAdminUserEditorOpen()) {
+            closeAdminUserEditorDrawer();
+        }
+    });
+
+    userForm.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        if (!state.selectedUserId) {
+            setMessage(userFormMessage, t("admin.users.selectPrompt", "Choose a user from the list to load editable account details."), "error");
+            return;
+        }
+
+        setSubmitButtonState(userForm, true, t("actions.saveChanges", "Saving changes..."));
+        setMessage(userFormMessage, t("admin.users.saving", "Saving user changes..."));
+
+        const values = getTrimmedFormValues(userForm);
+        const payload = {
+            name: values.name,
+            email: values.email,
+            role: values.role,
+            preferredLanguageCode: values.preferredLanguageCode
+        };
+
+        try {
+            const response = await window.NoorLocatorApi.updateAdminUser(state.selectedUserId, payload);
+            await loadAdminWorkspace();
+            if (state.selectedUserId) {
+                await selectAdminUser(state.selectedUserId, { scroll: false });
+            }
+            setMessage(userFormMessage, response.message || "User updated successfully.", "success");
+            setMessage(pageMessage, response.message || "User updated successfully.", "success");
+            showToast(response.message || "User updated successfully.", "success");
+        } catch (error) {
+            const message = normalizeErrorMessage(error, "User changes could not be saved.");
+            setMessage(userFormMessage, message, "error");
+            showToast(message, "error");
+        } finally {
+            setSubmitButtonState(userForm, false, t("actions.saveChanges", "Saving changes..."));
+        }
+    });
+
+    userDeleteButton.addEventListener("click", async () => {
+        if (!state.selectedUser) {
+            setMessage(userFormMessage, t("admin.users.selectPrompt", "Choose a user from the list to load editable account details."), "error");
+            return;
+        }
+
+        await deleteAdminUserFromList(state.selectedUser.id, state.selectedUser.name);
+    });
+
+    managerAssignmentForm.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const values = getTrimmedFormValues(managerAssignmentForm);
+        const payload = {
+            userId: Number(values.userId),
+            centerId: Number(values.centerId)
+        };
+
+        if (!Number.isInteger(payload.userId) || payload.userId <= 0 || !Number.isInteger(payload.centerId) || payload.centerId <= 0) {
+            setMessage(managerAssignmentFormMessage, t("admin.assignments.validation", "Choose both a user and a center to continue."), "error");
+            return;
+        }
+
+        setSubmitButtonState(managerAssignmentForm, true, t("admin.assignments.saving", "Saving assignment..."));
+        setMessage(managerAssignmentFormMessage, t("admin.assignments.saving", "Saving assignment..."));
+
+        try {
+            const response = state.editingManagerAssignmentId
+                ? await window.NoorLocatorApi.updateAdminManagerAssignment(state.editingManagerAssignmentId, payload)
+                : await window.NoorLocatorApi.createAdminManagerAssignment(payload);
+
+            await loadAdminWorkspace();
+            state.editingManagerAssignmentId = null;
+
+            if (state.selectedUserId) {
+                await selectAdminUser(state.selectedUserId, { scroll: false });
+            }
+
+            setMessage(managerAssignmentFormMessage, response.message || "Manager assignment saved successfully.", "success");
+            setMessage(pageMessage, response.message || "Manager assignment saved successfully.", "success");
+            showToast(response.message || "Manager assignment saved successfully.", "success");
+        } catch (error) {
+            const message = normalizeErrorMessage(error, "Manager assignment changes could not be saved.");
+            setMessage(managerAssignmentFormMessage, message, "error");
+            showToast(message, "error");
+        } finally {
+            setSubmitButtonState(managerAssignmentForm, false, t("admin.assignments.saving", "Saving assignment..."));
+        }
+    });
+
+    managerAssignmentCancelButton.addEventListener("click", () => {
+        resetManagerAssignmentForm();
+    });
+
+    ensureAdminApiSurface()
+        .then(isReady => {
+            if (!isReady) {
+                return;
+            }
+
+            loadAdminWorkspace(true).catch(error => {
+                const message = normalizeErrorMessage(error, "The admin workspace could not be loaded right now.");
+                setMessage(pageMessage, message, "error");
+                setContainerMessage(centerRequestsContainer, message, "error");
+                setContainerMessage(managerRequestsContainer, message, "error");
+                setContainerMessage(languageSuggestionsContainer, message, "error");
+                setContainerMessage(suggestionsContainer, message, "error");
+                setContainerMessage(centersContainer, message, "error");
+                setMessage(adminCenterImagesMessage, message, "error");
+                setContainerMessage(adminCenterImagesContainer, message, "error");
+                usersTableContainer.innerHTML = `<div class="empty-state empty-state--error">${escapeHtml(message)}</div>`;
+                managerAssignmentsTableContainer.innerHTML = `<div class="empty-state empty-state--error">${escapeHtml(message)}</div>`;
+                auditLogsTableContainer.innerHTML = `<div class="empty-state empty-state--error">${escapeHtml(message)}</div>`;
+                showToast(message, "error");
+            });
+        })
+        .catch(error => {
+            const message = normalizeErrorMessage(error, "The admin workspace could not be loaded right now.");
+            setMessage(pageMessage, message, "error");
+            usersTableContainer.innerHTML = `<div class="empty-state empty-state--error">${escapeHtml(message)}</div>`;
+            managerAssignmentsTableContainer.innerHTML = `<div class="empty-state empty-state--error">${escapeHtml(message)}</div>`;
+            auditLogsTableContainer.innerHTML = `<div class="empty-state empty-state--error">${escapeHtml(message)}</div>`;
+        });
 }
 
 function populateCards(containerId, cards) {

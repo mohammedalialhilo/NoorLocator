@@ -318,6 +318,40 @@ window.NoorLocatorApi = (() => {
         getAdminUsers() {
             return request("/api/admin/users");
         },
+        getAdminUser(id) {
+            return request(`/api/admin/users/${id}`);
+        },
+        updateAdminUser(id, payload) {
+            return request(`/api/admin/users/${id}`, {
+                method: "PUT",
+                body: JSON.stringify(payload)
+            });
+        },
+        deleteAdminUser(id) {
+            return request(`/api/admin/users/${id}`, {
+                method: "DELETE"
+            });
+        },
+        getAdminManagerAssignments() {
+            return request("/api/admin/manager-assignments");
+        },
+        createAdminManagerAssignment(payload) {
+            return request("/api/admin/manager-assignments", {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+        },
+        updateAdminManagerAssignment(id, payload) {
+            return request(`/api/admin/manager-assignments/${id}`, {
+                method: "PUT",
+                body: JSON.stringify(payload)
+            });
+        },
+        deleteAdminManagerAssignment(id) {
+            return request(`/api/admin/manager-assignments/${id}`, {
+                method: "DELETE"
+            });
+        },
         getAdminCenters() {
             return request("/api/admin/centers");
         },

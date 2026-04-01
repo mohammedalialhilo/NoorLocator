@@ -538,7 +538,7 @@ try {
     }
 
     if (-not [string]::IsNullOrWhiteSpace($AdminEmail) -and -not [string]::IsNullOrWhiteSpace($AdminPassword)) {
-        Login-ThroughUi ([ref]$webSocket) $debugPort $normalizedBaseUrl $AdminEmail $AdminPassword "/admin.html" "document.body.dataset.authReady === 'true' && document.getElementById('admin-page-message')?.textContent.includes('Admin workspace loaded from the secured API')" "The admin workspace did not finish loading after login." "The admin flow"
+        Login-ThroughUi ([ref]$webSocket) $debugPort $normalizedBaseUrl $AdminEmail $AdminPassword "/admin.html" "document.body.dataset.authReady === 'true' && !!document.getElementById('admin-user-search') && !document.body.innerText.includes('window.NoorLocatorApi.getAdminManagerAssignments is not a function') && !document.body.innerText.includes('outdated files')" "The admin workspace did not finish loading after login." "The admin flow"
         Assert-Branding $webSocket "The admin workspace"
         Wait-ForJsCondition $webSocket "document.querySelectorAll('#admin-cards .card, #admin-cards article').length >= 1" 15 "The admin dashboard summary cards did not render."
         Logout-ThroughUi ([ref]$webSocket) $debugPort "The admin flow"

@@ -10,6 +10,7 @@ window.NoorLocatorLayout = (() => {
     const attribution = "Driven by Mowkab Khoddam Ahlulbayt (AS), Copenhagen, Denmark.";
     const defaultTagline = "Connecting you to Shia centers and majalis worldwide";
     let serviceWorkerSetupStarted = false;
+    let serviceWorkerReloadTriggered = false;
     let installPromptSetupStarted = false;
     let navCleanupController = null;
     let notificationCount = 0;
@@ -555,7 +556,17 @@ window.NoorLocatorLayout = (() => {
         }
 
         try {
-            await navigator.serviceWorker.register("service-worker.js");
+            navigator.serviceWorker.addEventListener("controllerchange", () => {
+                if (serviceWorkerReloadTriggered) {
+                    return;
+                }
+
+                serviceWorkerReloadTriggered = true;
+                window.location.reload();
+            });
+
+            const registration = await navigator.serviceWorker.register("service-worker.js");
+            await registration.update();
         } catch (error) {
             console.warn("NoorLocator service worker registration failed.", error);
         }

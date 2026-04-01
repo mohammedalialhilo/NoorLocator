@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NoorLocator.Application.Admin.Dtos;
 using NoorLocator.Application.Admin.Interfaces;
+using NoorLocator.Application.Common.Localization;
 using NoorLocator.Application.Centers.Dtos;
 using NoorLocator.Application.Common.Models;
 using NoorLocator.Domain.Entities;
@@ -14,6 +15,76 @@ public class AdminService(
     NoorLocatorDbContext dbContext,
     AuditLogger auditLogger) : IAdminService
 {
+    public async Task<OperationResult<AdminManagerAssignmentDto>> CreateManagerAssignmentAsync(CreateAdminManagerAssignmentDto request, int adminUserId, CancellationToken cancellationToken = default)
+    {
+        var user = await dbContext.Users.SingleOrDefaultAsync(currentUser => currentUser.Id == request.UserId, cancellationToken);
+        if (user is null)
+        {
+            return OperationResult<AdminManagerAssignmentDto>.Failure("User not found.", 404);
+        }
+
+        if (user.Role == UserRole.Admin)
+        {
+            return OperationResult<AdminManagerAssignmentDto>.Failure("Admin accounts do not need manager-center assignments.", 409);
+        }
+
+        var center = await dbContext.Centers.SingleOrDefaultAsync(currentCenter => currentCenter.Id == request.CenterId, cancellationToken);
+        if (center is null)
+        {
+            return OperationResult<AdminManagerAssignmentDto>.Failure("Center not found.", 404);
+        }
+
+        var existingAssignment = await dbContext.CenterManagers.SingleOrDefaultAsync(
+            centerManager => centerManager.UserId == request.UserId && centerManager.CenterId == request.CenterId,
+            cancellationToken);
+
+        if (existingAssignment is not null && existingAssignment.Approved)
+        {
+            return OperationResult<AdminManagerAssignmentDto>.Failure("This manager assignment already exists.", 409);
+        }
+
+        CenterManager assignment;
+        if (existingAssignment is null)
+        {
+            assignment = new CenterManager
+            {
+                UserId = request.UserId,
+                CenterId = request.CenterId,
+                Approved = true
+            };
+            dbContext.CenterManagers.Add(assignment);
+        }
+        else
+        {
+            assignment = existingAssignment;
+            assignment.Approved = true;
+        }
+
+        if (user.Role == UserRole.User)
+        {
+            user.Role = UserRole.Manager;
+            user.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        await auditLogger.WriteAsync(
+            action: "AdminCreatedManagerAssignment",
+            entityName: nameof(CenterManager),
+            entityId: assignment.Id.ToString(),
+            userId: adminUserId,
+            metadata: new
+            {
+                assignment.UserId,
+                assignment.CenterId,
+                assignment.Approved
+            },
+            cancellationToken: cancellationToken);
+
+        var payload = await GetManagerAssignmentDtoAsync(assignment.Id, cancellationToken);
+        return OperationResult<AdminManagerAssignmentDto>.Success(payload, "Manager assignment created successfully.");
+    }
+
     public async Task<OperationResult> ApproveCenterLanguageSuggestionAsync(int id, int adminUserId, CancellationToken cancellationToken = default)
     {
         var suggestion = await dbContext.CenterLanguageSuggestions
@@ -278,6 +349,184 @@ public class AdminService(
         return OperationResult.Success("Center deleted successfully.");
     }
 
+    public async Task<OperationResult<AdminManagerAssignmentDto>> UpdateManagerAssignmentAsync(int id, UpdateAdminManagerAssignmentDto request, int adminUserId, CancellationToken cancellationToken = default)
+    {
+        var assignment = await dbContext.CenterManagers
+            .Include(centerManager => centerManager.User)
+            .SingleOrDefaultAsync(centerManager => centerManager.Id == id, cancellationToken);
+
+        if (assignment is null)
+        {
+            return OperationResult<AdminManagerAssignmentDto>.Failure("Manager assignment not found.", 404);
+        }
+
+        var targetUser = await dbContext.Users.SingleOrDefaultAsync(currentUser => currentUser.Id == request.UserId, cancellationToken);
+        if (targetUser is null)
+        {
+            return OperationResult<AdminManagerAssignmentDto>.Failure("User not found.", 404);
+        }
+
+        if (targetUser.Role == UserRole.Admin)
+        {
+            return OperationResult<AdminManagerAssignmentDto>.Failure("Admin accounts do not need manager-center assignments.", 409);
+        }
+
+        var centerExists = await dbContext.Centers.AnyAsync(currentCenter => currentCenter.Id == request.CenterId, cancellationToken);
+        if (!centerExists)
+        {
+            return OperationResult<AdminManagerAssignmentDto>.Failure("Center not found.", 404);
+        }
+
+        var duplicateExists = await dbContext.CenterManagers.AnyAsync(
+            centerManager => centerManager.Id != id &&
+                             centerManager.UserId == request.UserId &&
+                             centerManager.CenterId == request.CenterId,
+            cancellationToken);
+
+        if (duplicateExists)
+        {
+            return OperationResult<AdminManagerAssignmentDto>.Failure("Another assignment already links this user to the selected center.", 409);
+        }
+
+        var previousUserId = assignment.UserId;
+        var previousCenterId = assignment.CenterId;
+
+        assignment.UserId = request.UserId;
+        assignment.CenterId = request.CenterId;
+        assignment.Approved = true;
+
+        if (targetUser.Role == UserRole.User)
+        {
+            targetUser.Role = UserRole.Manager;
+            targetUser.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await DowngradeManagerIfUnassignedAsync(previousUserId, cancellationToken);
+
+        await auditLogger.WriteAsync(
+            action: "AdminUpdatedManagerAssignment",
+            entityName: nameof(CenterManager),
+            entityId: assignment.Id.ToString(),
+            userId: adminUserId,
+            metadata: new
+            {
+                PreviousUserId = previousUserId,
+                PreviousCenterId = previousCenterId,
+                assignment.UserId,
+                assignment.CenterId
+            },
+            cancellationToken: cancellationToken);
+
+        var payload = await GetManagerAssignmentDtoAsync(assignment.Id, cancellationToken);
+        return OperationResult<AdminManagerAssignmentDto>.Success(payload, "Manager assignment updated successfully.");
+    }
+
+    public async Task<OperationResult> DeleteManagerAssignmentAsync(int id, int adminUserId, CancellationToken cancellationToken = default)
+    {
+        var assignment = await dbContext.CenterManagers.SingleOrDefaultAsync(centerManager => centerManager.Id == id, cancellationToken);
+        if (assignment is null)
+        {
+            return OperationResult.Failure("Manager assignment not found.", 404);
+        }
+
+        var userId = assignment.UserId;
+        dbContext.CenterManagers.Remove(assignment);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await DowngradeManagerIfUnassignedAsync(userId, cancellationToken);
+
+        await auditLogger.WriteAsync(
+            action: "AdminDeletedManagerAssignment",
+            entityName: nameof(CenterManager),
+            entityId: id.ToString(),
+            userId: adminUserId,
+            metadata: new
+            {
+                assignment.UserId,
+                assignment.CenterId
+            },
+            cancellationToken: cancellationToken);
+
+        return OperationResult.Success("Manager assignment removed successfully.");
+    }
+
+    public async Task<OperationResult> DeleteUserAsync(int id, int adminUserId, CancellationToken cancellationToken = default)
+    {
+        var user = await dbContext.Users
+            .Include(currentUser => currentUser.CenterRequests)
+            .Include(currentUser => currentUser.ManagedCenters)
+            .Include(currentUser => currentUser.ManagerRequests)
+            .Include(currentUser => currentUser.CenterLanguageSuggestions)
+            .Include(currentUser => currentUser.Suggestions)
+            .Include(currentUser => currentUser.CreatedMajalis)
+            .Include(currentUser => currentUser.EventAnnouncements)
+            .Include(currentUser => currentUser.UploadedCenterImages)
+            .Include(currentUser => currentUser.AuditLogs)
+            .SingleOrDefaultAsync(currentUser => currentUser.Id == id, cancellationToken);
+
+        if (user is null)
+        {
+            return OperationResult.Failure("User not found.", 404);
+        }
+
+        var adminCount = await dbContext.Users.CountAsync(currentUser => currentUser.Role == UserRole.Admin, cancellationToken);
+        var deleteGuard = BuildDeleteGuard(
+            isSelf: user.Id == adminUserId,
+            isLastAdmin: user.Role == UserRole.Admin && adminCount <= 1,
+            hasMajalis: user.CreatedMajalis.Count > 0,
+            hasAnnouncements: user.EventAnnouncements.Count > 0,
+            hasImages: user.UploadedCenterImages.Count > 0,
+            hasAuditLogs: user.AuditLogs.Count > 0);
+
+        if (!deleteGuard.canDelete)
+        {
+            return OperationResult.Failure(deleteGuard.reason, 409);
+        }
+
+        if (user.CenterRequests.Count > 0)
+        {
+            dbContext.CenterRequests.RemoveRange(user.CenterRequests);
+        }
+
+        if (user.ManagedCenters.Count > 0)
+        {
+            dbContext.CenterManagers.RemoveRange(user.ManagedCenters);
+        }
+
+        if (user.ManagerRequests.Count > 0)
+        {
+            dbContext.ManagerRequests.RemoveRange(user.ManagerRequests);
+        }
+
+        if (user.CenterLanguageSuggestions.Count > 0)
+        {
+            dbContext.CenterLanguageSuggestions.RemoveRange(user.CenterLanguageSuggestions);
+        }
+
+        if (user.Suggestions.Count > 0)
+        {
+            dbContext.Suggestions.RemoveRange(user.Suggestions);
+        }
+
+        dbContext.Users.Remove(user);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        await auditLogger.WriteAsync(
+            action: "AdminDeletedUser",
+            entityName: nameof(User),
+            entityId: id.ToString(),
+            userId: adminUserId,
+            metadata: new
+            {
+                user.Name,
+                user.Email,
+                Role = user.Role.ToString()
+            },
+            cancellationToken: cancellationToken);
+
+        return OperationResult.Success("User deleted successfully.");
+    }
+
     public async Task<OperationResult<IReadOnlyCollection<AdminAuditLogDto>>> GetAuditLogsAsync(CancellationToken cancellationToken = default)
     {
         var auditLogs = await dbContext.AuditLogs
@@ -300,6 +549,37 @@ public class AdminService(
             .ToArrayAsync(cancellationToken);
 
         return OperationResult<IReadOnlyCollection<AdminAuditLogDto>>.Success(auditLogs);
+    }
+
+    public async Task<OperationResult<IReadOnlyCollection<AdminManagerAssignmentDto>>> GetManagerAssignmentsAsync(CancellationToken cancellationToken = default)
+    {
+        var assignments = await dbContext.CenterManagers
+            .AsNoTracking()
+            .Where(centerManager => centerManager.Approved)
+            .Include(centerManager => centerManager.User)
+            .Include(centerManager => centerManager.Center)
+            .OrderBy(centerManager => centerManager.User!.Name)
+            .ThenBy(centerManager => centerManager.Center!.Country)
+            .ThenBy(centerManager => centerManager.Center!.City)
+            .ThenBy(centerManager => centerManager.Center!.Name)
+            .Select(centerManager => new AdminManagerAssignmentDto
+            {
+                Id = centerManager.Id,
+                UserId = centerManager.UserId,
+                UserName = centerManager.User != null ? centerManager.User.Name : string.Empty,
+                UserEmail = centerManager.User != null ? centerManager.User.Email : string.Empty,
+                UserRole = centerManager.User != null ? centerManager.User.Role.ToString() : UserRole.User.ToString(),
+                CenterId = centerManager.CenterId,
+                CenterName = centerManager.Center != null ? centerManager.Center.Name : string.Empty,
+                CenterCity = centerManager.Center != null ? centerManager.Center.City : string.Empty,
+                CenterCountry = centerManager.Center != null ? centerManager.Center.Country : string.Empty,
+                Approved = centerManager.Approved,
+                MajlisCount = dbContext.Majalis.Count(majlis => majlis.CenterId == centerManager.CenterId && majlis.CreatedByManagerId == centerManager.UserId),
+                AnnouncementCount = dbContext.EventAnnouncements.Count(announcement => announcement.CenterId == centerManager.CenterId && announcement.CreatedByManagerId == centerManager.UserId)
+            })
+            .ToArrayAsync(cancellationToken);
+
+        return OperationResult<IReadOnlyCollection<AdminManagerAssignmentDto>>.Success(assignments);
     }
 
     public async Task<OperationResult<IReadOnlyCollection<AdminCenterDto>>> GetCentersAsync(CancellationToken cancellationToken = default)
@@ -449,24 +729,197 @@ public class AdminService(
         return OperationResult<IReadOnlyCollection<AdminSuggestionDto>>.Success(suggestions);
     }
 
+    public async Task<OperationResult<AdminUserDetailsDto>> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var user = await dbContext.Users
+            .AsNoTracking()
+            .Include(currentUser => currentUser.NotificationPreference)
+            .Include(currentUser => currentUser.ManagedCenters)
+                .ThenInclude(centerManager => centerManager.Center)
+            .Include(currentUser => currentUser.CreatedMajalis)
+                .ThenInclude(majlis => majlis.Center)
+            .Include(currentUser => currentUser.CreatedMajalis)
+                .ThenInclude(majlis => majlis.MajlisLanguages)
+                    .ThenInclude(majlisLanguage => majlisLanguage.Language)
+            .Include(currentUser => currentUser.EventAnnouncements)
+                .ThenInclude(announcement => announcement.Center)
+            .Include(currentUser => currentUser.UploadedCenterImages)
+            .Include(currentUser => currentUser.AuditLogs)
+            .SingleOrDefaultAsync(currentUser => currentUser.Id == id, cancellationToken);
+
+        if (user is null)
+        {
+            return OperationResult<AdminUserDetailsDto>.Failure("User not found.", 404);
+        }
+
+        var adminCount = await dbContext.Users.CountAsync(currentUser => currentUser.Role == UserRole.Admin, cancellationToken);
+        return OperationResult<AdminUserDetailsDto>.Success(MapAdminUserDetails(user, adminCount, isSelf: false));
+    }
+
     public async Task<OperationResult<IReadOnlyCollection<AdminUserDto>>> GetUsersAsync(CancellationToken cancellationToken = default)
     {
+        var adminCount = await dbContext.Users.CountAsync(user => user.Role == UserRole.Admin, cancellationToken);
+
         var users = await dbContext.Users
             .AsNoTracking()
             .OrderBy(user => user.Name)
             .ThenBy(user => user.Email)
-            .Select(user => new AdminUserDto
+            .Select(user => new
             {
-                Id = user.Id,
-                Name = user.Name,
-                Email = user.Email,
-                Role = user.Role,
+                user.Id,
+                user.Name,
+                user.Email,
+                user.Role,
+                user.IsEmailVerified,
+                user.PreferredLanguageCode,
                 AssignedCenterCount = user.ManagedCenters.Count(centerManager => centerManager.Approved),
-                CreatedAt = user.CreatedAt
+                user.LastLoginAtUtc,
+                user.CreatedAt,
+                HasMajalis = user.CreatedMajalis.Any(),
+                HasAnnouncements = user.EventAnnouncements.Any(),
+                HasImages = user.UploadedCenterImages.Any(),
+                HasAuditLogs = user.AuditLogs.Any()
             })
             .ToArrayAsync(cancellationToken);
 
-        return OperationResult<IReadOnlyCollection<AdminUserDto>>.Success(users);
+        var payload = users
+            .Select(user =>
+            {
+                var deleteGuard = BuildDeleteGuard(
+                    isSelf: false,
+                    isLastAdmin: user.Role == UserRole.Admin && adminCount <= 1,
+                    hasMajalis: user.HasMajalis,
+                    hasAnnouncements: user.HasAnnouncements,
+                    hasImages: user.HasImages,
+                    hasAuditLogs: user.HasAuditLogs);
+
+                return new AdminUserDto
+                {
+                    Id = user.Id,
+                    Name = user.Name,
+                    Email = user.Email,
+                    Role = user.Role,
+                    IsEmailVerified = user.IsEmailVerified,
+                    PreferredLanguageCode = SupportedLanguageCatalog.NormalizeOrFallback(user.PreferredLanguageCode),
+                    AssignedCenterCount = user.AssignedCenterCount,
+                    LastLoginAtUtc = user.LastLoginAtUtc,
+                    CanDelete = deleteGuard.canDelete,
+                    DeleteBlockedReason = deleteGuard.reason,
+                    CreatedAt = user.CreatedAt
+                };
+            })
+            .ToArray();
+
+        return OperationResult<IReadOnlyCollection<AdminUserDto>>.Success(payload);
+    }
+
+    public async Task<OperationResult<AdminUserDetailsDto>> UpdateUserAsync(int id, UpdateAdminUserDto request, int adminUserId, CancellationToken cancellationToken = default)
+    {
+        var user = await dbContext.Users
+            .Include(currentUser => currentUser.ManagedCenters)
+            .Include(currentUser => currentUser.NotificationPreference)
+            .Include(currentUser => currentUser.CreatedMajalis)
+                .ThenInclude(majlis => majlis.Center)
+            .Include(currentUser => currentUser.CreatedMajalis)
+                .ThenInclude(majlis => majlis.MajlisLanguages)
+                    .ThenInclude(majlisLanguage => majlisLanguage.Language)
+            .Include(currentUser => currentUser.EventAnnouncements)
+                .ThenInclude(announcement => announcement.Center)
+            .Include(currentUser => currentUser.UploadedCenterImages)
+            .Include(currentUser => currentUser.AuditLogs)
+            .SingleOrDefaultAsync(currentUser => currentUser.Id == id, cancellationToken);
+
+        if (user is null)
+        {
+            return OperationResult<AdminUserDetailsDto>.Failure("User not found.", 404);
+        }
+
+        if (user.Id == adminUserId && request.Role != UserRole.Admin)
+        {
+            return OperationResult<AdminUserDetailsDto>.Failure("You cannot remove your own admin access from the active session.", 409);
+        }
+
+        var adminCount = await dbContext.Users.CountAsync(currentUser => currentUser.Role == UserRole.Admin, cancellationToken);
+        if (user.Role == UserRole.Admin && request.Role != UserRole.Admin && adminCount <= 1)
+        {
+            return OperationResult<AdminUserDetailsDto>.Failure("At least one admin account must remain active.", 409);
+        }
+
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        var normalizedName = request.Name.Trim();
+
+        var duplicateEmailExists = await dbContext.Users
+            .AsNoTracking()
+            .AnyAsync(currentUser => currentUser.Id != id && currentUser.Email == normalizedEmail, cancellationToken);
+
+        if (duplicateEmailExists)
+        {
+            return OperationResult<AdminUserDetailsDto>.Failure("An account with this email already exists.", 409);
+        }
+
+        var previousName = user.Name;
+        var previousEmail = user.Email;
+        var previousRole = user.Role;
+        var previousLanguage = user.PreferredLanguageCode;
+        var removedAssignments = Array.Empty<int>();
+
+        user.Name = normalizedName;
+        user.Email = normalizedEmail;
+        user.PreferredLanguageCode = SupportedLanguageCatalog.NormalizeOrFallback(request.PreferredLanguageCode);
+        user.Role = request.Role;
+        user.UpdatedAtUtc = DateTime.UtcNow;
+
+        if (request.Role == UserRole.User && user.ManagedCenters.Count > 0)
+        {
+            removedAssignments = user.ManagedCenters
+                .Where(centerManager => centerManager.Approved)
+                .Select(centerManager => centerManager.CenterId)
+                .Distinct()
+                .ToArray();
+
+            dbContext.CenterManagers.RemoveRange(user.ManagedCenters);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        await auditLogger.WriteAsync(
+            action: "AdminUpdatedUser",
+            entityName: nameof(User),
+            entityId: user.Id.ToString(),
+            userId: adminUserId,
+            metadata: new
+            {
+                PreviousName = previousName,
+                UpdatedName = user.Name,
+                PreviousEmail = previousEmail,
+                UpdatedEmail = user.Email,
+                PreviousRole = previousRole.ToString(),
+                UpdatedRole = user.Role.ToString(),
+                PreviousPreferredLanguageCode = previousLanguage,
+                UpdatedPreferredLanguageCode = user.PreferredLanguageCode,
+                RemovedAssignmentCenterIds = removedAssignments
+            },
+            cancellationToken: cancellationToken);
+
+        var refreshedUser = await dbContext.Users
+            .AsNoTracking()
+            .Include(currentUser => currentUser.NotificationPreference)
+            .Include(currentUser => currentUser.ManagedCenters)
+                .ThenInclude(centerManager => centerManager.Center)
+            .Include(currentUser => currentUser.CreatedMajalis)
+                .ThenInclude(majlis => majlis.Center)
+            .Include(currentUser => currentUser.CreatedMajalis)
+                .ThenInclude(majlis => majlis.MajlisLanguages)
+                    .ThenInclude(majlisLanguage => majlisLanguage.Language)
+            .Include(currentUser => currentUser.EventAnnouncements)
+                .ThenInclude(announcement => announcement.Center)
+            .Include(currentUser => currentUser.UploadedCenterImages)
+            .Include(currentUser => currentUser.AuditLogs)
+            .SingleAsync(currentUser => currentUser.Id == id, cancellationToken);
+
+        return OperationResult<AdminUserDetailsDto>.Success(
+            MapAdminUserDetails(refreshedUser, adminCount, isSelf: refreshedUser.Id == adminUserId),
+            "User updated successfully.");
     }
 
     public async Task<OperationResult> RejectCenterLanguageSuggestionAsync(int id, int adminUserId, CancellationToken cancellationToken = default)
@@ -649,6 +1102,178 @@ public class AdminService(
             cancellationToken: cancellationToken);
 
         return OperationResult.Success("Center updated successfully.");
+    }
+
+    private static (bool canDelete, string reason) BuildDeleteGuard(bool isSelf, bool isLastAdmin, bool hasMajalis, bool hasAnnouncements, bool hasImages, bool hasAuditLogs)
+    {
+        if (isSelf)
+        {
+            return (false, "You cannot delete your own active admin account.");
+        }
+
+        if (isLastAdmin)
+        {
+            return (false, "At least one admin account must remain active.");
+        }
+
+        if (hasMajalis)
+        {
+            return (false, "This user cannot be deleted because they own majalis records. Reassign or delete those majalis first.");
+        }
+
+        if (hasAnnouncements)
+        {
+            return (false, "This user cannot be deleted because they own event announcements. Reassign or delete those announcements first.");
+        }
+
+        if (hasImages)
+        {
+            return (false, "This user cannot be deleted because they uploaded center gallery images. Remove those images first.");
+        }
+
+        if (hasAuditLogs)
+        {
+            return (false, "This user cannot be deleted because their audit history must remain intact.");
+        }
+
+        return (true, string.Empty);
+    }
+
+    private async Task DowngradeManagerIfUnassignedAsync(int userId, CancellationToken cancellationToken)
+    {
+        var user = await dbContext.Users.SingleOrDefaultAsync(currentUser => currentUser.Id == userId, cancellationToken);
+        if (user is null || user.Role != UserRole.Manager)
+        {
+            return;
+        }
+
+        var hasApprovedAssignment = await dbContext.CenterManagers.AnyAsync(
+            centerManager => centerManager.UserId == userId && centerManager.Approved,
+            cancellationToken);
+
+        if (hasApprovedAssignment)
+        {
+            return;
+        }
+
+        user.Role = UserRole.User;
+        user.UpdatedAtUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<AdminManagerAssignmentDto> GetManagerAssignmentDtoAsync(int id, CancellationToken cancellationToken)
+    {
+        return await dbContext.CenterManagers
+            .AsNoTracking()
+            .Where(centerManager => centerManager.Id == id)
+            .Include(centerManager => centerManager.User)
+            .Include(centerManager => centerManager.Center)
+            .Select(centerManager => new AdminManagerAssignmentDto
+            {
+                Id = centerManager.Id,
+                UserId = centerManager.UserId,
+                UserName = centerManager.User != null ? centerManager.User.Name : string.Empty,
+                UserEmail = centerManager.User != null ? centerManager.User.Email : string.Empty,
+                UserRole = centerManager.User != null ? centerManager.User.Role.ToString() : UserRole.User.ToString(),
+                CenterId = centerManager.CenterId,
+                CenterName = centerManager.Center != null ? centerManager.Center.Name : string.Empty,
+                CenterCity = centerManager.Center != null ? centerManager.Center.City : string.Empty,
+                CenterCountry = centerManager.Center != null ? centerManager.Center.Country : string.Empty,
+                Approved = centerManager.Approved,
+                MajlisCount = dbContext.Majalis.Count(majlis => majlis.CenterId == centerManager.CenterId && majlis.CreatedByManagerId == centerManager.UserId),
+                AnnouncementCount = dbContext.EventAnnouncements.Count(announcement => announcement.CenterId == centerManager.CenterId && announcement.CreatedByManagerId == centerManager.UserId)
+            })
+            .SingleAsync(cancellationToken);
+    }
+
+    private static AdminUserDetailsDto MapAdminUserDetails(User user, int adminCount, bool isSelf)
+    {
+        var deleteGuard = BuildDeleteGuard(
+            isSelf,
+            isLastAdmin: user.Role == UserRole.Admin && adminCount <= 1,
+            hasMajalis: user.CreatedMajalis.Count > 0,
+            hasAnnouncements: user.EventAnnouncements.Count > 0,
+            hasImages: user.UploadedCenterImages.Count > 0,
+            hasAuditLogs: user.AuditLogs.Count > 0);
+
+        return new AdminUserDetailsDto
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            Role = user.Role,
+            IsEmailVerified = user.IsEmailVerified,
+            PreferredLanguageCode = SupportedLanguageCatalog.NormalizeOrFallback(user.PreferredLanguageCode),
+            CreatedAt = user.CreatedAt,
+            LastLoginAtUtc = user.LastLoginAtUtc,
+            UpdatedAtUtc = user.UpdatedAtUtc,
+            AssignedCenterCount = user.ManagedCenters.Count(centerManager => centerManager.Approved),
+            CanDelete = deleteGuard.canDelete,
+            DeleteBlockedReason = deleteGuard.reason,
+            NotificationPreference = new AdminUserNotificationPreferenceDto
+            {
+                EmailNotificationsEnabled = user.NotificationPreference?.EmailNotificationsEnabled ?? true,
+                AppNotificationsEnabled = user.NotificationPreference?.AppNotificationsEnabled ?? true,
+                MajlisNotificationsEnabled = user.NotificationPreference?.MajlisNotificationsEnabled ?? true,
+                EventNotificationsEnabled = user.NotificationPreference?.EventNotificationsEnabled ?? true,
+                CenterUpdatesEnabled = user.NotificationPreference?.CenterUpdatesEnabled ?? true
+            },
+            ManagedCenters = user.ManagedCenters
+                .Where(centerManager => centerManager.Approved)
+                .OrderBy(centerManager => centerManager.Center!.Country)
+                .ThenBy(centerManager => centerManager.Center!.City)
+                .ThenBy(centerManager => centerManager.Center!.Name)
+                .Select(centerManager => new AdminManagedCenterDto
+                {
+                    AssignmentId = centerManager.Id,
+                    CenterId = centerManager.CenterId,
+                    CenterName = centerManager.Center?.Name ?? string.Empty,
+                    CenterCity = centerManager.Center?.City ?? string.Empty,
+                    CenterCountry = centerManager.Center?.Country ?? string.Empty,
+                    Approved = centerManager.Approved
+                })
+                .ToArray(),
+            CreatedMajalis = user.CreatedMajalis
+                .OrderByDescending(majlis => majlis.CreatedAt)
+                .Select(majlis => new AdminManagedMajlisDto
+                {
+                    Id = majlis.Id,
+                    Title = majlis.Title,
+                    Description = majlis.Description,
+                    Date = majlis.Date,
+                    Time = majlis.Time,
+                    CenterId = majlis.CenterId,
+                    CenterName = majlis.Center?.Name ?? string.Empty,
+                    CenterCity = majlis.Center?.City ?? string.Empty,
+                    CenterCountry = majlis.Center?.Country ?? string.Empty,
+                    Languages = majlis.MajlisLanguages
+                        .Where(majlisLanguage => majlisLanguage.Language != null)
+                        .OrderBy(majlisLanguage => majlisLanguage.Language!.Code)
+                        .Select(majlisLanguage => new AdminLanguageOptionDto
+                        {
+                            Id = majlisLanguage.LanguageId,
+                            Code = majlisLanguage.Language!.Code,
+                            Name = majlisLanguage.Language.Name
+                        })
+                        .ToArray()
+                })
+                .ToArray(),
+            CreatedAnnouncements = user.EventAnnouncements
+                .OrderByDescending(announcement => announcement.CreatedAt)
+                .Select(announcement => new AdminManagedAnnouncementDto
+                {
+                    Id = announcement.Id,
+                    Title = announcement.Title,
+                    Description = announcement.Description,
+                    Status = announcement.Status.ToString(),
+                    CenterId = announcement.CenterId,
+                    CenterName = announcement.Center?.Name ?? string.Empty,
+                    CenterCity = announcement.Center?.City ?? string.Empty,
+                    CenterCountry = announcement.Center?.Country ?? string.Empty,
+                    CreatedAt = announcement.CreatedAt
+                })
+                .ToArray()
+        };
     }
 
     private async Task<bool> SimilarCenterExistsAsync(

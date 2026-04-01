@@ -77,7 +77,7 @@ NoorLocator.sln
 - Unified frontend branding through `frontend/assets/logo_bkg.png` across the shared shell, auth pages, workspace pages, public hero areas, favicon, and web manifest
 - User contribution workflows for center requests, suggestions, language suggestions, and manager requests
 - Manager workflows for majalis CRUD, event announcements, and center gallery management
-- Admin moderation for approvals, rejections, reviews, center management, center-image cleanup, user summaries, and audit logs
+- Admin moderation for approvals, rejections, reviews, center management, center-image cleanup, searchable user management, manager-center assignments, and audit logs
 - Manifesto-driven identity content through `/about` and `/api/content/about`
 
 ## Roles
@@ -296,6 +296,7 @@ The demo content below is development-oriented seed data. Production defaults ke
 - Signed-in users switch language from the desktop profile dropdown, the mobile drawer account section, or the preferred-language form on `profile.html`.
 - Changing the language updates the page shell immediately and persists the selection across reloads.
 - When a user is signed in, `PUT /api/profile/me/preferred-language` stores the preferred UI language on the user record.
+- The same shared language metadata also powers flag-plus-label rendering in profile settings, admin/manager forms, center language chips, and admin ownership views.
 - `frontend/js/i18n.js` also defines the selector flag mapping:
   - `ar` -> Iraq
   - `fa` -> Iran
@@ -419,6 +420,13 @@ Admin:
 - `GET /api/admin/suggestions`
 - `PUT /api/admin/suggestions/{id}/review`
 - `GET /api/admin/users`
+- `GET /api/admin/users/{id}`
+- `PUT /api/admin/users/{id}`
+- `DELETE /api/admin/users/{id}`
+- `GET /api/admin/manager-assignments`
+- `POST /api/admin/manager-assignments`
+- `PUT /api/admin/manager-assignments/{id}`
+- `DELETE /api/admin/manager-assignments/{id}`
 - `GET /api/admin/centers`
 - `PUT /api/admin/centers/{id}`
 - `DELETE /api/admin/centers/{id}`

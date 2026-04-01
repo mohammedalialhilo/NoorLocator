@@ -840,7 +840,7 @@ try {
     Navigate-To ([ref]$webSocket) $debugPort (Join-BaseUrl $normalizedBaseUrl "/logout.html")
     Wait-ForJsCondition $webSocket "window.location.pathname.endsWith('/login.html')" 20 "The manager logout flow did not return to login.html."
 
-    Login-ThroughUi ([ref]$webSocket) $debugPort $normalizedBaseUrl $AdminEmail $AdminPassword "/admin.html" "document.body.dataset.authReady === 'true' && document.getElementById('admin-page-message')?.textContent.includes('Admin workspace loaded from the secured API')" "The admin workspace did not finish loading after login." "The mobile admin flow"
+    Login-ThroughUi ([ref]$webSocket) $debugPort $normalizedBaseUrl $AdminEmail $AdminPassword "/admin.html" "document.body.dataset.authReady === 'true' && !!document.getElementById('admin-user-search') && !document.body.innerText.includes('window.NoorLocatorApi.getAdminManagerAssignments is not a function') && !document.body.innerText.includes('outdated files')" "The admin workspace did not finish loading after login." "The mobile admin flow"
     Set-Viewport $webSocket 390 844 $true
     Assert-NoConsoleErrors $webSocket "The mobile admin dashboard"
     Assert-ResponsiveLayout $webSocket "The mobile admin dashboard"

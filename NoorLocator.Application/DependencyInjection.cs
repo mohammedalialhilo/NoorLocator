@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using NoorLocator.Application.Admin.Dtos;
+using NoorLocator.Application.Admin.Validators;
 using NoorLocator.Application.Authentication.Dtos;
 using NoorLocator.Application.Authentication.Validators;
 using NoorLocator.Application.CenterImages.Dtos;
@@ -29,6 +31,9 @@ public static class DependencyInjection
     {
         services.AddScoped<IValidator<RegisterRequestDto>, RegisterRequestValidator>();
         services.AddScoped<IValidator<LoginRequestDto>, LoginRequestValidator>();
+        services.AddScoped<IValidator<UpdateAdminUserDto>, UpdateAdminUserValidator>();
+        services.AddScoped<IValidator<CreateAdminManagerAssignmentDto>, CreateAdminManagerAssignmentValidator>();
+        services.AddScoped<IValidator<UpdateAdminManagerAssignmentDto>, UpdateAdminManagerAssignmentValidator>();
         services.AddScoped<IValidator<ForgotPasswordRequestDto>, ForgotPasswordRequestValidator>();
         services.AddScoped<IValidator<ResendVerificationEmailRequestDto>, ResendVerificationEmailRequestValidator>();
         services.AddScoped<IValidator<ResetPasswordRequestDto>, ResetPasswordRequestValidator>();

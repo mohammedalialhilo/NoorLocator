@@ -17,7 +17,10 @@ namespace NoorLocator.Api.Controllers.Admin;
 [Route("api/admin")]
 public class AdminController(
     IAdminService adminService,
-    IValidator<UpdateCenterDto> updateCenterValidator) : ControllerBase
+    IValidator<UpdateCenterDto> updateCenterValidator,
+    IValidator<UpdateAdminUserDto> updateAdminUserValidator,
+    IValidator<CreateAdminManagerAssignmentDto> createAdminManagerAssignmentValidator,
+    IValidator<UpdateAdminManagerAssignmentDto> updateAdminManagerAssignmentValidator) : ControllerBase
 {
     /// <summary>
     /// Returns aggregate moderation, content, and audit metrics for the admin dashboard.
@@ -146,6 +149,94 @@ public class AdminController(
     public async Task<ActionResult<ApiResponse<IReadOnlyCollection<AdminUserDto>>>> GetUsers(CancellationToken cancellationToken)
     {
         var result = await adminService.GetUsersAsync(cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Returns the full editable admin view for a single user, including assignments and manager-owned content.
+    /// </summary>
+    [HttpGet("users/{id:int}")]
+    public async Task<ActionResult<ApiResponse<AdminUserDetailsDto>>> GetUserById(int id, CancellationToken cancellationToken)
+    {
+        var result = await adminService.GetUserByIdAsync(id, cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Updates editable user account details that admins are allowed to maintain.
+    /// </summary>
+    [HttpPut("users/{id:int}")]
+    public async Task<ActionResult<ApiResponse<AdminUserDetailsDto>>> UpdateUser(int id, [FromBody] UpdateAdminUserDto request, CancellationToken cancellationToken)
+    {
+        var validation = updateAdminUserValidator.Validate(request);
+        if (!validation.IsValid)
+        {
+            return this.ToActionResult(OperationResult<AdminUserDetailsDto>.Failure(validation.Errors.First(), 400));
+        }
+
+        var result = await adminService.UpdateUserAsync(id, request, User.GetRequiredUserId(), cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Deletes a user account when doing so is safe for platform data integrity.
+    /// </summary>
+    [HttpDelete("users/{id:int}")]
+    public async Task<ActionResult<ApiResponse<object?>>> DeleteUser(int id, CancellationToken cancellationToken)
+    {
+        var result = await adminService.DeleteUserAsync(id, User.GetRequiredUserId(), cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Lists all approved manager-center assignments and related content ownership counts.
+    /// </summary>
+    [HttpGet("manager-assignments")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyCollection<AdminManagerAssignmentDto>>>> GetManagerAssignments(CancellationToken cancellationToken)
+    {
+        var result = await adminService.GetManagerAssignmentsAsync(cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Creates a manager-center assignment and upgrades the account to manager when required.
+    /// </summary>
+    [HttpPost("manager-assignments")]
+    public async Task<ActionResult<ApiResponse<AdminManagerAssignmentDto>>> CreateManagerAssignment([FromBody] CreateAdminManagerAssignmentDto request, CancellationToken cancellationToken)
+    {
+        var validation = createAdminManagerAssignmentValidator.Validate(request);
+        if (!validation.IsValid)
+        {
+            return this.ToActionResult(OperationResult<AdminManagerAssignmentDto>.Failure(validation.Errors.First(), 400));
+        }
+
+        var result = await adminService.CreateManagerAssignmentAsync(request, User.GetRequiredUserId(), cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Reassigns an existing manager-center assignment to another center or account.
+    /// </summary>
+    [HttpPut("manager-assignments/{id:int}")]
+    public async Task<ActionResult<ApiResponse<AdminManagerAssignmentDto>>> UpdateManagerAssignment(int id, [FromBody] UpdateAdminManagerAssignmentDto request, CancellationToken cancellationToken)
+    {
+        var validation = updateAdminManagerAssignmentValidator.Validate(request);
+        if (!validation.IsValid)
+        {
+            return this.ToActionResult(OperationResult<AdminManagerAssignmentDto>.Failure(validation.Errors.First(), 400));
+        }
+
+        var result = await adminService.UpdateManagerAssignmentAsync(id, request, User.GetRequiredUserId(), cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Removes a manager-center assignment and revokes manager access when no assignments remain.
+    /// </summary>
+    [HttpDelete("manager-assignments/{id:int}")]
+    public async Task<ActionResult<ApiResponse<object?>>> DeleteManagerAssignment(int id, CancellationToken cancellationToken)
+    {
+        var result = await adminService.DeleteManagerAssignmentAsync(id, User.GetRequiredUserId(), cancellationToken);
         return this.ToActionResult(result);
     }
 

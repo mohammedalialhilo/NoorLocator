@@ -294,6 +294,13 @@ Primary entities:
 - `GET /api/admin/suggestions`
 - `PUT /api/admin/suggestions/{id}/review`
 - `GET /api/admin/users`
+- `GET /api/admin/users/{id}`
+- `PUT /api/admin/users/{id}`
+- `DELETE /api/admin/users/{id}`
+- `GET /api/admin/manager-assignments`
+- `POST /api/admin/manager-assignments`
+- `PUT /api/admin/manager-assignments/{id}`
+- `DELETE /api/admin/manager-assignments/{id}`
 - `GET /api/admin/centers`
 - `PUT /api/admin/centers/{id}`
 - `DELETE /api/admin/centers/{id}`
@@ -373,6 +380,12 @@ Swagger is the live reference for DTO shapes and status codes.
 - keep the same profile, notifications, language, and logout actions available inside the mobile drawer account section at `<=1050px`
 - upload manager center images through the shared multipart upload helper in `frontend/js/api.js`
 - show upload progress, gallery refreshes, and clear validation errors for image uploads
+- keep `admin.html` split into:
+  - moderation queues and center/image maintenance
+  - a searchable full-width users list with direct row actions
+  - a slide-over selected-user editor instead of a permanent side panel
+  - manager assignment editing
+  - a selected-user ownership view for managed centers, majalis, and announcements
 - show loading states, empty states, and friendly errors
 - never act as the source of truth for security
 - the source frontend lives in `frontend/`, and `NoorLocator.Api/NoorLocator.Api.csproj` copies it into the published API artifact under `frontend/...`, so deployment and Capacitor packaging checks should inspect `artifacts/publish/api/frontend`
@@ -431,8 +444,53 @@ Swagger is the live reference for DTO shapes and status codes.
 - `CenterSummaryDto` and `CenterDetailsDto` include approved center languages so the frontend can render them directly
 - the centers directory renders supported-language chips on every center card
 - the center details page renders the same approved languages in its details layout
+- manager and admin language selectors use the same flag-plus-label metadata as the navbar/profile selectors
+- admin moderation rows and ownership views should render preferred and supported languages with both flag and text, never flag-only
 - center filtering stays server-driven through `GET /api/centers/search` with `languageCode`
 - admin approval still gates language suggestions before they become public
+
+### Admin User Management And Manager Assignments
+
+- the admin workspace is the only frontend surface for global user management
+- the backend is the only source of truth for authorization:
+  - every `/api/admin/*` user-management or assignment endpoint requires the `AdminArea` policy
+  - managers and normal users must never be trusted based on hidden buttons or client routing alone
+- `GET /api/admin/users` is the searchable summary list and exposes role, preferred language, verification, assigned-center counts, and whether safe deletion is currently allowed
+- the admin users list is intentionally action-oriented:
+  - rows show only the highest-signal fields needed for scanning: name, email, role, email status, preferred language, and assigned-center count
+  - the permanent side-by-side selected-user panel was removed so the list can use the full workspace width
+  - each row now exposes direct `Edit` and `Delete` actions
+  - the edit flow opens the shared user editor in a slide-over drawer
+  - the delete flow calls the real admin delete endpoint and refreshes the list immediately after success
+- protected or system-sensitive accounts stay visible in the list but must not expose an unsafe delete action:
+  - the row delete button is disabled when `CanDelete` is false
+  - the UI should keep the protection reason available through the disabled-button tooltip/title and the drawer summary note
+- `GET /api/admin/users/{id}` returns the selected-user detail payload for:
+  - editable account fields
+  - notification-preference visibility
+  - approved managed centers
+  - majalis created by that user
+  - event announcements created by that user
+- `PUT /api/admin/users/{id}` is intentionally overposting-safe:
+  - admins may edit only name, email, role, and preferred language
+  - duplicate emails are rejected
+  - unsupported language codes are normalized through `SupportedLanguageCatalog`
+  - an admin cannot remove their own active-session admin access
+  - the last remaining admin cannot be demoted
+- `DELETE /api/admin/users/{id}` is guarded rather than blindly destructive:
+  - self-delete is blocked
+  - deleting the last admin is blocked
+  - deleting users who still own majalis, announcements, uploaded images, or personal audit logs is blocked
+  - if deletion is allowed, dependent requests/suggestions/assignments are removed first
+- approved `CenterManager` rows are the source of truth for manager scope
+- admin assignment rules are:
+  - creating an approved assignment can promote a `User` account to `Manager`
+  - updating an assignment can move that scope to another center or another eligible non-admin user
+  - removing the final approved assignment downgrades a manager back to `User`
+- manager center access, majlis CRUD, event-announcement CRUD, and center-image upload permissions all flow through the same approved-assignment check, so changing assignments immediately changes publishing scope after the next authenticated request
+- the selected-user ownership sections below the users list still depend on the current selected user:
+  - opening a row editor also refreshes the ownership view for that user
+  - closing the drawer should not clear the selected-user ownership context unless the selected account is deleted
 
 ### Responsive Strategy And Mobile Navigation
 
@@ -474,7 +532,11 @@ Swagger is the live reference for DTO shapes and status codes.
   - add the relative route in `buildNavigation()` if it belongs in the primary menu
   - decide whether it should appear for anonymous users, authenticated users, managers, or admins
   - verify its active-link state and drawer close behavior in both desktop and mobile layouts
-- admin data tables intentionally become stacked card-like rows on small screens, so future table cells must keep `data-label` attributes when new columns are added
+- the admin users list is no longer a generic data table:
+  - desktop uses a three-part row layout for identity, account snapshot badges, and actions
+  - narrower layouts collapse the same rows into stacked cards while keeping `Edit` and `Delete` visible
+  - the slide-over user editor expands to full width on small screens instead of preserving a cramped side panel
+- other admin data tables still become stacked card-like rows on small screens, so future table cells must keep `data-label` attributes when new columns are added
 - `frontend/js/config.js` keeps the API base URL configurable through runtime config, page config, same-origin fallback, and remembered overrides
 - `frontend/js/layout.js` only registers the service worker on `http` and `https` origins, which avoids breaking `file://` or Capacitor-style packaged environments
 - `frontend/site.webmanifest` keeps `id`, `start_url`, and `scope` relative so installable and packaged builds do not assume a root-domain deployment

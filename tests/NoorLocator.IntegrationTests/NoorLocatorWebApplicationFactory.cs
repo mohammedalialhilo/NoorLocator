@@ -101,6 +101,18 @@ public class NoorLocatorWebApplicationFactory : WebApplicationFactory<Program>
             UpdatedAtUtc = DateTime.UtcNow,
             IsEmailVerified = true
         };
+        var cleanupUser = new User
+        {
+            Id = 4,
+            Name = "Cleanup Candidate",
+            Email = "cleanup@test.local",
+            PasswordHash = passwordHashingService.HashPassword("Cleanup123!Pass"),
+            PreferredLanguageCode = SupportedLanguageCatalog.FallbackLanguageCode,
+            Role = UserRole.User,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow,
+            IsEmailVerified = true
+        };
 
         var arabic = new Language { Id = 1, Name = "Arabic", Code = "ar" };
         var english = new Language { Id = 2, Name = "English", Code = "en" };
@@ -131,11 +143,12 @@ public class NoorLocatorWebApplicationFactory : WebApplicationFactory<Program>
             CreatedAt = DateTime.UtcNow
         };
 
-        dbContext.Users.AddRange(admin, user, manager);
+        dbContext.Users.AddRange(admin, user, manager, cleanupUser);
         dbContext.UserNotificationPreferences.AddRange(
             new UserNotificationPreference { UserId = admin.Id, CreatedAtUtc = DateTime.UtcNow },
             new UserNotificationPreference { UserId = user.Id, CreatedAtUtc = DateTime.UtcNow },
-            new UserNotificationPreference { UserId = manager.Id, CreatedAtUtc = DateTime.UtcNow });
+            new UserNotificationPreference { UserId = manager.Id, CreatedAtUtc = DateTime.UtcNow },
+            new UserNotificationPreference { UserId = cleanupUser.Id, CreatedAtUtc = DateTime.UtcNow });
         dbContext.Languages.AddRange(arabic, english, swedish);
         dbContext.Centers.AddRange(copenhagenCenter, stockholmCenter);
         dbContext.CenterLanguages.AddRange(
