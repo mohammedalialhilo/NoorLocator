@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0D2535">
-    <title>NoorLocator | Verify Email</title>
+    <title data-i18n="meta.verifyEmail.title">NoorLocator | Verify Email</title>
     <link rel="icon" type="image/png" href="assets/logo_bkg.png">
     <link rel="manifest" href="site.webmanifest">
     <link rel="stylesheet" href="css/style.css">
@@ -15,16 +15,16 @@
     <main class="page-shell">
         <section class="page-hero page-hero--split">
             <div class="page-hero__content">
-                <span class="eyebrow">Email verification</span>
-                <h1 id="verify-email-status-title">Check your inbox</h1>
-                <p id="verify-email-status-text">Open the verification email from NoorLocator and follow the secure link to confirm that you own this address.</p>
+                <span class="eyebrow" data-i18n="verify.hero.eyebrow">Email verification</span>
+                <h1 id="verify-email-status-title" data-i18n="verify.hero.title">Check your inbox</h1>
+                <p id="verify-email-status-text" data-i18n="verify.hero.description">Open the verification email from NoorLocator and follow the secure link to confirm that you own this address.</p>
                 <p id="verify-email-page-message" class="message"></p>
             </div>
             <aside class="hero__panel hero__panel--stack">
                 <img class="site-logo site-logo--auth hero__logo" data-brand-logo src="assets/logo_bkg.png" alt="NoorLocator logo">
                 <div class="brand-card">
-                    <span class="card__meta">Trusted access</span>
-                    <p class="brand-card__tagline">Email verification confirms ownership before NoorLocator unlocks trusted features and email notifications.</p>
+                    <span class="card__meta" data-i18n="verify.brand.meta">Trusted access</span>
+                    <p class="brand-card__tagline" data-i18n="verify.brand.tagline">Email verification confirms ownership before NoorLocator unlocks trusted features and email notifications.</p>
                 </div>
             </aside>
         </section>
@@ -33,12 +33,12 @@
             <div class="form-shell">
                 <form id="verify-email-resend-form" class="form">
                     <div class="form__group">
-                        <label class="form__label" for="verify-email-resend-email">Email</label>
-                        <input id="verify-email-resend-email" class="form__control" type="email" name="email" placeholder="you@example.com" required>
+                        <label class="form__label" for="verify-email-resend-email" data-i18n="auth.email.label">Email</label>
+                        <input id="verify-email-resend-email" class="form__control" type="email" name="email" data-i18n-placeholder="auth.email.placeholder" placeholder="you@example.com" required>
                     </div>
                     <div class="button-row">
-                        <button class="button button--primary" type="submit">Resend verification email</button>
-                        <a class="button button--ghost" href="login.html">Back to sign in</a>
+                        <button class="button button--primary" type="submit" data-i18n="actions.resendVerificationEmail">Resend verification email</button>
+                        <a class="button button--ghost" href="login.html" data-i18n="actions.backToSignIn">Back to sign in</a>
                     </div>
                     <p data-form-message="verify-email-resend-form" class="message"></p>
                 </form>
@@ -52,6 +52,7 @@
     <script defer src="js/config.js"></script>
     <script defer src="js/auth.js"></script>
     <script defer src="js/api.js"></script>
+    <script defer src="js/i18n.js"></script>
     <script defer src="js/layout.js"></script>
     <script defer src="js/app.js"></script>
 </body>

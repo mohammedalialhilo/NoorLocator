@@ -398,6 +398,12 @@ window.NoorLocatorApi = (() => {
                 body: JSON.stringify(payload)
             });
         },
+        updateMyPreferredLanguage(payload) {
+            return request("/api/profile/me/preferred-language", {
+                method: "PUT",
+                body: JSON.stringify(payload)
+            });
+        },
         getMyNotificationPreferences() {
             return request("/api/profile/me/notification-preferences");
         },

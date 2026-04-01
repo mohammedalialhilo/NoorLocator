@@ -1,3 +1,5 @@
+using NoorLocator.Application.Languages.Dtos;
+
 namespace NoorLocator.Application.Centers.Dtos;
 
 public class CenterSummaryDto
@@ -19,4 +21,6 @@ public class CenterSummaryDto
     public decimal Longitude { get; set; }
 
     public double? DistanceKm { get; set; }
+
+    public IReadOnlyCollection<LanguageDto> Languages { get; set; } = Array.Empty<LanguageDto>();
 }

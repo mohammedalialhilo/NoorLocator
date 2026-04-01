@@ -3,13 +3,29 @@ window.NoorLocatorLayout = (() => {
     const navScrimId = "site-nav-scrim";
     const mobileNavBreakpoint = 1050;
     const brandLogoPath = "assets/logo_bkg.png";
-    const brandLogoAlt = "NoorLocator logo";
+    const defaultBrandLogoAlt = "NoorLocator logo";
     const aboutPageHref = "about.html";
     const attribution = "Driven by موكب خدام أهل البيت (عليهم السلام), Copenhagen, Denmark.";
-    const tagline = "Connecting you to Shia centers and majalis worldwide";
+    const defaultTagline = "Connecting you to Shia centers and majalis worldwide";
     let serviceWorkerSetupStarted = false;
     let installPromptSetupStarted = false;
     let navCleanupController = null;
+
+    function t(key, fallback, params = {}) {
+        return window.NoorLocatorI18n?.t?.(key, params, fallback) || fallback;
+    }
+
+    function getBrandLogoAlt() {
+        return t("app.logoAlt", defaultBrandLogoAlt);
+    }
+
+    function getAttribution() {
+        return t("app.attribution", attribution || "Driven by Mowkab Khoddam Ahlulbayt (AS), Copenhagen, Denmark.");
+    }
+
+    function getTagline() {
+        return t("app.tagline", defaultTagline);
+    }
 
     function upsertHeadLink(rel, href, type = "") {
         let link = document.querySelector(`link[rel="${rel}"]`);
@@ -28,7 +44,7 @@ window.NoorLocatorLayout = (() => {
     function applyBrandAssets(root = document) {
         root.querySelectorAll("[data-brand-logo]").forEach(image => {
             image.setAttribute("src", brandLogoPath);
-            image.setAttribute("alt", image.getAttribute("alt") || brandLogoAlt);
+            image.setAttribute("alt", image.getAttribute("alt") || getBrandLogoAlt());
         });
 
         upsertHeadLink("icon", brandLogoPath, "image/png");
@@ -88,7 +104,9 @@ window.NoorLocatorLayout = (() => {
             const isOpen = canUseDrawer && expanded;
 
             toggleButton.setAttribute("aria-expanded", String(isOpen));
-            toggleButton.setAttribute("aria-label", isOpen ? "Close navigation menu" : "Open navigation menu");
+            toggleButton.setAttribute("aria-label", isOpen
+                ? t("nav.closeMenu", "Close navigation menu")
+                : t("nav.openMenu", "Open navigation menu"));
             toggleButton.classList.toggle("is-open", isOpen);
             navPanel.classList.toggle("is-open", isOpen);
             navScrim.classList.toggle("is-visible", isOpen);
@@ -177,20 +195,24 @@ window.NoorLocatorLayout = (() => {
             return;
         }
 
+        const brandLogoAlt = getBrandLogoAlt();
         const currentPage = document.body.dataset.page;
         const user = window.NoorLocatorAuth.getSessionUser();
         const navigation = buildNavigation(user);
         const navMarkup = navigation
             .map(item => renderNavigationItem(item, currentPage))
             .join("");
+        const languageOptions = window.NoorLocatorI18n.getSupportedLanguages()
+            .map(language => `<option value="${escapeHtml(language.code)}">${escapeHtml(language.nativeName)}</option>`)
+            .join("");
 
         mount.innerHTML = `
             <header class="site-header">
                 <div class="site-header__inner">
-                    <a class="brand" href="index.html" aria-label="NoorLocator home">
+                    <a class="brand" href="index.html" aria-label="${escapeHtml(t("app.homeAria", "NoorLocator home"))}">
                         <img class="site-logo site-logo--nav brand__mark" data-brand-logo src="${brandLogoPath}" alt="${brandLogoAlt}">
                         <span class="brand__copy">
-                            <span class="brand__eyebrow">Community Connection</span>
+                            <span class="brand__eyebrow">${escapeHtml(t("app.brandEyebrow", "Community Connection"))}</span>
                             <span class="brand__title">NoorLocator</span>
                         </span>
                     </a>
@@ -198,25 +220,32 @@ window.NoorLocatorLayout = (() => {
                         class="site-nav-toggle"
                         type="button"
                         aria-expanded="false"
-                        aria-label="Open navigation menu"
+                        aria-label="${escapeHtml(t("nav.openMenu", "Open navigation menu"))}"
                         aria-controls="${navPanelId}"
                         data-nav-toggle>
-                        <span class="sr-only">Toggle navigation</span>
+                        <span class="sr-only">${escapeHtml(t("nav.toggle", "Toggle navigation"))}</span>
                         <span class="site-nav-toggle__line"></span>
                         <span class="site-nav-toggle__line"></span>
                         <span class="site-nav-toggle__line"></span>
                     </button>
                     <div id="${navPanelId}" class="site-header__panel" data-nav-panel>
-                        <nav class="site-nav" aria-label="Primary navigation">
+                        <label class="site-language-switcher">
+                            <span class="site-language-switcher__label">${escapeHtml(t("language.switcher", "Language"))}</span>
+                            <select class="site-language-switcher__select" data-language-selector aria-label="${escapeHtml(t("language.switcherAria", "Choose language"))}">
+                                ${languageOptions}
+                            </select>
+                        </label>
+                        <nav class="site-nav" aria-label="${escapeHtml(t("nav.primaryAria", "Primary navigation"))}">
                             ${navMarkup}
                         </nav>
                     </div>
-                    <button id="${navScrimId}" class="site-nav-scrim" type="button" hidden tabindex="-1" aria-label="Close navigation menu" data-nav-scrim></button>
+                    <button id="${navScrimId}" class="site-nav-scrim" type="button" hidden tabindex="-1" aria-label="${escapeHtml(t("nav.closeMenu", "Close navigation menu"))}" data-nav-scrim></button>
                 </div>
             </header>
         `;
 
         bindNavigationBehavior(mount);
+        window.NoorLocatorI18n.bindLanguageSelectors(mount);
     }
 
     function renderFooter() {
@@ -225,6 +254,7 @@ window.NoorLocatorLayout = (() => {
             return;
         }
 
+        const brandLogoAlt = getBrandLogoAlt();
         const user = window.NoorLocatorAuth.getSessionUser();
         const suggestionsHref = user ? "dashboard.html#suggestion" : "login.html";
 
@@ -233,20 +263,20 @@ window.NoorLocatorLayout = (() => {
                 <div class="site-footer__inner">
                     <div class="site-footer__grid">
                         <div class="site-footer__brand">
-                            <a class="site-footer__brand-link" href="index.html" aria-label="NoorLocator home">
+                            <a class="site-footer__brand-link" href="index.html" aria-label="${escapeHtml(t("app.homeAria", "NoorLocator home"))}">
                                 <img class="site-logo site-logo--footer site-footer__logo" data-brand-logo src="${brandLogoPath}" alt="${brandLogoAlt}">
                             </a>
                             <div>
                                 <p class="site-footer__title">NoorLocator</p>
-                                <p>${tagline}</p>
-                                <p class="site-footer__credit">${attribution}</p>
+                                <p>${escapeHtml(getTagline())}</p>
+                                <p class="site-footer__credit">${escapeHtml(getAttribution())}</p>
                             </div>
                         </div>
-                        <nav class="footer-nav" aria-label="Footer navigation">
-                            <a class="footer-nav__link" href="index.html">Home</a>
-                            <a class="footer-nav__link" href="centers.html">Centers</a>
-                            <a class="footer-nav__link" href="${aboutPageHref}">About</a>
-                            <a class="footer-nav__link" href="${suggestionsHref}">Contact / Suggestions</a>
+                        <nav class="footer-nav" aria-label="${escapeHtml(t("footer.navAria", "Footer navigation"))}">
+                            <a class="footer-nav__link" href="index.html">${escapeHtml(t("nav.home", "Home"))}</a>
+                            <a class="footer-nav__link" href="centers.html">${escapeHtml(t("nav.centers", "Centers"))}</a>
+                            <a class="footer-nav__link" href="${aboutPageHref}">${escapeHtml(t("nav.about", "About"))}</a>
+                            <a class="footer-nav__link" href="${suggestionsHref}">${escapeHtml(t("footer.contactSuggestions", "Contact / Suggestions"))}</a>
                         </nav>
                     </div>
                 </div>
@@ -332,33 +362,33 @@ window.NoorLocatorLayout = (() => {
 
     function buildNavigation(user) {
         const items = [
-            { href: "index.html", label: "Home", page: "home" },
-            { href: "centers.html", label: "Centers", page: "centers" },
-            { href: aboutPageHref, label: "About", page: "about" }
+            { href: "index.html", label: t("nav.home", "Home"), page: "home" },
+            { href: "centers.html", label: t("nav.centers", "Centers"), page: "centers" },
+            { href: aboutPageHref, label: t("nav.about", "About"), page: "about" }
         ];
 
         if (user) {
             if (window.NoorLocatorAuth.isEmailVerified(user)) {
-                items.push({ href: "dashboard.html", label: "Dashboard", page: "dashboard" });
+                items.push({ href: "dashboard.html", label: t("nav.dashboard", "Dashboard"), page: "dashboard" });
 
                 if (user.role === "Manager" || user.role === "Admin") {
-                    items.push({ href: "manager.html", label: "Manager", page: "manager" });
+                    items.push({ href: "manager.html", label: t("nav.manager", "Manager"), page: "manager" });
                 }
 
                 if (user.role === "Admin") {
-                    items.push({ href: "admin.html", label: "Admin", page: "admin" });
+                    items.push({ href: "admin.html", label: t("nav.admin", "Admin"), page: "admin" });
                 }
 
                 items.push({
                     href: "notifications.html",
-                    label: "Notifications",
+                    label: t("nav.notifications", "Notifications"),
                     page: "notifications",
                     variant: "notification"
                 });
             } else {
                 items.push({
                     href: window.NoorLocatorAuth.getVerificationRoute(user),
-                    label: "Verify Email",
+                    label: t("nav.verifyEmail", "Verify Email"),
                     page: "verify-email"
                 });
             }
@@ -374,8 +404,8 @@ window.NoorLocatorLayout = (() => {
             return items;
         }
 
-        items.push({ href: "login.html", label: "Login", page: "login" });
-        items.push({ href: "register.html", label: "Register", page: "register" });
+        items.push({ href: "login.html", label: t("nav.login", "Login"), page: "login" });
+        items.push({ href: "register.html", label: t("nav.register", "Register"), page: "register" });
         return items;
     }
 
@@ -389,7 +419,7 @@ window.NoorLocatorLayout = (() => {
             const profileInitial = escapeHtml(item.initial);
 
             return `
-                <a class="${className}" href="${item.href}" data-profile-nav${ariaCurrent} aria-label="Open profile for ${profileLabel}">
+                <a class="${className}" href="${item.href}" data-profile-nav${ariaCurrent} aria-label="${escapeHtml(t("nav.profileAria", "Open profile for {name}", { name: item.label }))}">
                     <span class="site-nav__profile-mark" aria-hidden="true">${profileInitial}</span>
                     <span class="site-nav__profile-copy">${profileLabel}</span>
                 </a>
@@ -398,13 +428,13 @@ window.NoorLocatorLayout = (() => {
 
         if (item.variant === "notification") {
             return `
-                <a class="${className}" href="${item.href}" data-notification-nav${ariaCurrent} aria-label="Open notifications">
+                <a class="${className}" href="${item.href}" data-notification-nav${ariaCurrent} aria-label="${escapeHtml(t("nav.notificationsAria", "Open notifications"))}">
                     <span class="site-nav__notification-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24" focusable="false">
                             <path d="M12 22a2.5 2.5 0 0 0 2.29-1.5h-4.58A2.5 2.5 0 0 0 12 22Zm7-4H5a1 1 0 0 1-.78-1.63l1.28-1.59V10a6.5 6.5 0 1 1 13 0v4.78l1.28 1.59A1 1 0 0 1 19 18Z"></path>
                         </svg>
                     </span>
-                    <span class="site-nav__notification-copy">Notifications</span>
+                    <span class="site-nav__notification-copy">${escapeHtml(t("nav.notifications", "Notifications"))}</span>
                     <span class="site-nav__notification-badge" data-notification-count hidden>0</span>
                 </a>
             `;
@@ -422,7 +452,7 @@ window.NoorLocatorLayout = (() => {
     return {
         branding: {
             logoPath: brandLogoPath,
-            logoAlt: brandLogoAlt
+            logoAlt: getBrandLogoAlt()
         },
         init() {
             renderShell();

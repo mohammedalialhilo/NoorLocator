@@ -153,20 +153,32 @@ window.NoorLocatorAuth = (() => {
         return normalizedRole || "User";
     }
 
+    function getLocalizedRoleLabel(role) {
+        const normalizedRole = normalizeUserRole(role);
+        const translationKey = normalizedRole === "Admin"
+            ? "roles.admin"
+            : normalizedRole === "Manager"
+                ? "roles.manager"
+                : "roles.user";
+
+        return window.NoorLocatorI18n?.t?.(translationKey, {}, normalizedRole) || normalizedRole;
+    }
+
     function shouldDisplayRoleWithName(role) {
         const normalizedRole = normalizeUserRole(role);
         return normalizedRole === "Admin" || normalizedRole === "Manager";
     }
 
     function formatUserDisplayName(user) {
-        const fallbackName = "Member";
+        const fallbackName = window.NoorLocatorI18n?.t?.("common.member", {}, "Member") || "Member";
         const normalizedName = typeof user?.name === "string" && user.name.trim()
             ? user.name.trim()
             : fallbackName;
         const normalizedRole = normalizeUserRole(user?.role);
+        const localizedRole = getLocalizedRoleLabel(normalizedRole);
 
         return shouldDisplayRoleWithName(normalizedRole)
-            ? `${normalizedName} | ${normalizedRole}`
+            ? `${normalizedName} | ${localizedRole}`
             : normalizedName;
     }
 
@@ -522,6 +534,7 @@ window.NoorLocatorAuth = (() => {
         hasRole,
         isAuthenticated,
         logout,
+        getLocalizedRoleLabel,
         normalizeUserRole,
         requireAuth,
         setSession,

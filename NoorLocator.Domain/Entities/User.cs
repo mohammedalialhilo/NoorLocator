@@ -11,6 +11,8 @@ public class User : AuditableEntity
 
     public string PasswordHash { get; set; } = string.Empty;
 
+    public string PreferredLanguageCode { get; set; } = "en";
+
     public bool IsEmailVerified { get; set; }
 
     public string? EmailVerificationTokenHash { get; set; }

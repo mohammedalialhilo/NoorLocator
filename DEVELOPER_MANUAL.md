@@ -202,6 +202,8 @@ Primary entities:
   Returns the authenticated user's self-service profile payload.
 - `PUT /api/profile/me`
   Updates only the authenticated user's editable profile fields.
+- `PUT /api/profile/me/preferred-language`
+  Updates the authenticated user's preferred UI language.
 - `GET /api/profile/me/notification-preferences`
   Returns the authenticated user's notification preference payload.
 - `PUT /api/profile/me/notification-preferences`
@@ -372,6 +374,47 @@ Swagger is the live reference for DTO shapes and status codes.
 - never act as the source of truth for security
 - the source frontend lives in `frontend/`, and `NoorLocator.Api/NoorLocator.Api.csproj` copies it into the published API artifact under `frontend/...`, so deployment and Capacitor packaging checks should inspect `artifacts/publish/api/frontend`
 
+### Localization, Locale Files, And RTL
+
+- the frontend localization source of truth is `frontend/locales/`
+- the supported UI locales are:
+  - `en`
+  - `ar`
+  - `fa`
+  - `da`
+  - `de`
+  - `es`
+  - `sv`
+  - `pt`
+- `frontend/js/i18n.js` loads the active locale, merges it with `frontend/locales/en.json`, and exposes the shared translation helpers used across the app shell
+- HTML templates should prefer `data-i18n`, `data-i18n-placeholder`, `data-i18n-title`, and related attributes over hardcoded text
+- JavaScript-rendered UI should prefer `t(...)` for keyed labels and the shared message helpers for runtime status copy
+- locale resolution happens in this order:
+  - authenticated user's `PreferredLanguageCode`
+  - saved browser selection in `localStorage`
+  - supported browser language
+  - English fallback
+- when users save a preferred language from `profile.html`, the frontend calls `PUT /api/profile/me/preferred-language`
+- `SupportedLanguageCatalog` in `NoorLocator.Application/Common/Localization/SupportedLanguageCatalog.cs` is the backend source of truth for allowed preferred-language codes
+- Arabic and Farsi are the RTL locales
+- when RTL is active, `frontend/js/i18n.js` updates `document.documentElement.lang`, `document.documentElement.dir`, and the shared body RTL class
+- `frontend/css/style.css` uses logical properties and RTL-aware rules so the navbar, hamburger drawer, cards, badges, forms, filters, and notifications keep the same layout model in both directions
+- if you add a new locale later:
+  - add its metadata in `i18n.js`
+  - add `frontend/locales/<code>.json`
+  - decide whether it belongs in the RTL set
+  - verify public pages, auth pages, dashboards, and the centers flow again
+
+### Center Supported Languages And Filtering
+
+- `Language`, `CenterLanguage`, and `CenterLanguageSuggestion` remain the controlled language model
+- `NoorLocatorDbInitializer` seeds the required localization languages plus demo center-language assignments for development verification
+- `CenterSummaryDto` and `CenterDetailsDto` include approved center languages so the frontend can render them directly
+- the centers directory renders supported-language chips on every center card
+- the center details page renders the same approved languages in its details layout
+- center filtering stays server-driven through `GET /api/centers/search` with `languageCode`
+- admin approval still gates language suggestions before they become public
+
 ### Responsive Strategy And Mobile Navigation
 
 - `frontend/css/style.css` is the shared responsive layer for public pages, forms, dashboards, and admin tables
@@ -480,6 +523,7 @@ Swagger is the live reference for DTO shapes and status codes.
 - every authenticated role uses the same self-service page: `frontend/profile.html`
 - the page reads `GET /api/profile/me`
 - the page updates `PUT /api/profile/me`
+- the page updates preferred UI language through `PUT /api/profile/me/preferred-language`
 - the page also reads and writes `GET/PUT /api/profile/me/notification-preferences`
 - the backend resolves the authenticated `UserId` from the JWT and never accepts a target user id from the client
 - editable fields are limited to `Name` and `Email`
@@ -487,6 +531,7 @@ Swagger is the live reference for DTO shapes and status codes.
 - email changes are normalized to lowercase and checked for uniqueness before save
 - after an email change, the account becomes unverified again and a new verification email is sent
 - after a successful save, the frontend updates the cached session user through `updateSessionUser()` so navbar and dashboard labels refresh without forcing logout
+- after a preferred-language save, the frontend updates the cached user and reapplies the shared shell in the selected locale
 - the profile page is the only place where logout is exposed in the authenticated UI
 
 ### How Protected Pages Are Verified

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0D2535">
-    <title>NoorLocator | Center Details</title>
+    <title data-i18n="meta.centerDetails.title">NoorLocator | Center Details</title>
     <link rel="icon" type="image/png" href="assets/logo_bkg.png">
     <link rel="manifest" href="site.webmanifest">
     <link rel="stylesheet" href="css/style.css">
@@ -15,16 +15,16 @@
     <main class="page-shell">
         <section class="page-hero page-hero--split">
             <div class="page-hero__content">
-                <span class="eyebrow">Center profile</span>
-                <h1 id="center-title">Loading center details...</h1>
+                <span class="eyebrow" data-i18n="center.hero.eyebrow">Center profile</span>
+                <h1 id="center-title" data-i18n="center.title.loading">Loading center details...</h1>
                 <div id="center-meta" class="detail-meta"></div>
-                <p id="center-description">Loading this center's details, languages, and upcoming majalis.</p>
+                <p id="center-description" data-i18n="center.description.loading">Loading this center's details, languages, and upcoming majalis.</p>
                 <div class="hero__actions">
-                    <a id="center-map-link" class="button button--secondary" href="#" target="_blank" rel="noreferrer noopener">Open map</a>
-                    <button id="center-subscribe-button" class="button button--primary" type="button">Follow center updates</button>
-                    <a class="button button--ghost" href="centers.html">Back to centers</a>
+                    <a id="center-map-link" class="button button--secondary" href="#" target="_blank" rel="noreferrer noopener" data-i18n="actions.openMap">Open map</a>
+                    <button id="center-subscribe-button" class="button button--primary" type="button" data-i18n="actions.followCenter">Follow center updates</button>
+                    <a class="button button--ghost" href="centers.html" data-i18n="actions.backToCenters">Back to centers</a>
                 </div>
-                <p id="center-subscribe-message" class="message">Follow this center to receive majlis and event updates.</p>
+                <p id="center-subscribe-message" class="message" data-i18n="center.subscribe.prompt">Follow this center to receive majlis and event updates.</p>
                 <p id="center-detail-message" class="message"></p>
             </div>
             <aside class="hero__panel hero__panel--stack">
@@ -37,15 +37,15 @@
         <section class="section">
             <div class="detail-grid detail-grid--public">
                 <article class="panel">
-                    <h3>Supported languages</h3>
+                    <h3 data-i18n="center.languages.title">Supported languages</h3>
                     <div id="center-languages" class="chip-list">
-                        <span class="empty-state">Loading supported languages...</span>
+                        <span class="empty-state" data-i18n="center.languages.loading">Loading supported languages...</span>
                     </div>
                 </article>
                 <article class="panel">
-                    <h3>Upcoming majalis</h3>
+                    <h3 data-i18n="center.majalis.title">Upcoming majalis</h3>
                     <div id="center-majalis" class="stack-list">
-                        <div class="empty-state">Loading upcoming majalis...</div>
+                        <div class="empty-state" data-i18n="center.majalis.loading">Loading upcoming majalis...</div>
                     </div>
                 </article>
             </div>
@@ -54,15 +54,15 @@
         <section class="section">
             <div class="detail-grid detail-grid--public">
                 <article class="panel">
-                    <h3>Photo gallery</h3>
+                    <h3 data-i18n="center.gallery.title">Photo gallery</h3>
                     <div id="center-gallery" class="gallery-grid">
-                        <div class="empty-state">Loading center gallery...</div>
+                        <div class="empty-state" data-i18n="center.gallery.loading">Loading center gallery...</div>
                     </div>
                 </article>
                 <article class="panel">
-                    <h3>Event announcements</h3>
+                    <h3 data-i18n="center.announcements.title">Event announcements</h3>
                     <div id="center-announcements" class="stack-list">
-                        <div class="empty-state">Loading center announcements...</div>
+                        <div class="empty-state" data-i18n="center.announcements.loading">Loading center announcements...</div>
                     </div>
                 </article>
             </div>
@@ -75,6 +75,7 @@
     <script defer src="js/config.js"></script>
     <script defer src="js/auth.js"></script>
     <script defer src="js/api.js"></script>
+    <script defer src="js/i18n.js"></script>
     <script defer src="js/layout.js"></script>
     <script defer src="js/app.js"></script>
 </body>

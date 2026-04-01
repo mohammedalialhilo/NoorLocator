@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using NoorLocator.Application.Common.Localization;
 using NoorLocator.Domain.Entities;
 using NoorLocator.Domain.Enums;
 using NoorLocator.Infrastructure.Persistence;
@@ -27,7 +28,12 @@ public class NoorLocatorWebApplicationFactory : WebApplicationFactory<Program>
             resolvedUploadRootPath = Path.GetFullPath(Path.Combine(context.HostingEnvironment.ContentRootPath, uploadRootPath));
             configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["MediaStorage:RelativeRootPath"] = uploadRootPath
+                ["MediaStorage:RelativeRootPath"] = uploadRootPath,
+                ["SmtpSettings:Host"] = "",
+                ["SmtpSettings:Username"] = "",
+                ["SmtpSettings:Password"] = "",
+                ["SmtpSettings:WriteToPickupDirectoryWhenDisabled"] = "true",
+                ["SmtpSettings:PickupDirectory"] = ".codex-temp/test-email-outbox"
             });
         });
 
@@ -65,6 +71,7 @@ public class NoorLocatorWebApplicationFactory : WebApplicationFactory<Program>
             Name = "Integration Admin",
             Email = "admin@test.local",
             PasswordHash = passwordHashingService.HashPassword("Admin123!Pass"),
+            PreferredLanguageCode = SupportedLanguageCatalog.FallbackLanguageCode,
             Role = UserRole.Admin,
             CreatedAt = DateTime.UtcNow,
             UpdatedAtUtc = DateTime.UtcNow,
@@ -76,6 +83,7 @@ public class NoorLocatorWebApplicationFactory : WebApplicationFactory<Program>
             Name = "Integration User",
             Email = "user@test.local",
             PasswordHash = passwordHashingService.HashPassword("User123!Pass"),
+            PreferredLanguageCode = SupportedLanguageCatalog.FallbackLanguageCode,
             Role = UserRole.User,
             CreatedAt = DateTime.UtcNow,
             UpdatedAtUtc = DateTime.UtcNow,
@@ -87,6 +95,7 @@ public class NoorLocatorWebApplicationFactory : WebApplicationFactory<Program>
             Name = "Integration Manager",
             Email = "manager@test.local",
             PasswordHash = passwordHashingService.HashPassword("Manager123!Pass"),
+            PreferredLanguageCode = SupportedLanguageCatalog.FallbackLanguageCode,
             Role = UserRole.Manager,
             CreatedAt = DateTime.UtcNow,
             UpdatedAtUtc = DateTime.UtcNow,

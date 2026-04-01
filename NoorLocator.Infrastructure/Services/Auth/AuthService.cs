@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using NoorLocator.Application.Authentication.Dtos;
 using NoorLocator.Application.Authentication.Interfaces;
 using NoorLocator.Application.Common.Configuration;
+using NoorLocator.Application.Common.Localization;
 using NoorLocator.Application.Common.Models;
 using NoorLocator.Domain.Entities;
 using NoorLocator.Domain.Enums;
@@ -103,6 +104,7 @@ public class AuthService(
             Name = request.Name.Trim(),
             Email = email,
             PasswordHash = passwordHashingService.HashPassword(request.Password),
+            PreferredLanguageCode = SupportedLanguageCatalog.FallbackLanguageCode,
             Role = UserRole.User,
             CreatedAt = DateTime.UtcNow,
             UpdatedAtUtc = DateTime.UtcNow,
@@ -464,6 +466,7 @@ public class AuthService(
             Id = user.Id,
             Name = user.Name,
             Email = user.Email,
+            PreferredLanguageCode = SupportedLanguageCatalog.NormalizeOrFallback(user.PreferredLanguageCode),
             IsEmailVerified = user.IsEmailVerified,
             Role = user.Role.ToString(),
             CreatedAt = user.CreatedAt,

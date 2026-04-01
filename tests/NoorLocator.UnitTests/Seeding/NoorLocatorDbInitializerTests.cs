@@ -32,7 +32,7 @@ public class NoorLocatorDbInitializerTests
         var admin = await dbContext.Users.SingleAsync(user => user.Email == "admin-bootstrap@test.local");
 
         Assert.Equal(3, await dbContext.Users.CountAsync());
-        Assert.Equal(5, await dbContext.Languages.CountAsync());
+        Assert.Equal(9, await dbContext.Languages.CountAsync());
         Assert.Equal(5, await dbContext.Centers.CountAsync());
         Assert.Equal(6, await dbContext.Majalis.CountAsync());
         Assert.Equal(2, await dbContext.EventAnnouncements.CountAsync());

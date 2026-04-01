@@ -26,6 +26,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(512)
             .IsRequired();
 
+        builder.Property(user => user.PreferredLanguageCode)
+            .HasMaxLength(16)
+            .IsRequired();
+
         builder.Property(user => user.EmailVerificationTokenHash)
             .HasMaxLength(256);
 

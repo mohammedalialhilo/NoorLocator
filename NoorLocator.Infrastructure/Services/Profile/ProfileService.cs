@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NoorLocator.Application.Authentication.Dtos;
 using NoorLocator.Application.Common.Configuration;
+using NoorLocator.Application.Common.Localization;
 using NoorLocator.Application.Common.Models;
 using NoorLocator.Application.Notifications.Dtos;
 using NoorLocator.Application.Profile.Dtos;
@@ -104,6 +105,32 @@ public class ProfileService(
                 : "Profile updated successfully.");
     }
 
+    public async Task<OperationResult<CurrentUserDto>> UpdatePreferredLanguageAsync(int userId, UpdatePreferredLanguageDto request, CancellationToken cancellationToken = default)
+    {
+        var user = await LoadUserAsync(userId, asNoTracking: false, cancellationToken);
+        if (user is null)
+        {
+            return OperationResult<CurrentUserDto>.Failure("Authenticated user was not found.", 404);
+        }
+
+        user.PreferredLanguageCode = SupportedLanguageCatalog.NormalizeOrFallback(request.PreferredLanguageCode);
+        user.UpdatedAtUtc = DateTime.UtcNow;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        await auditLogger.WriteAsync(
+            action: "profile.preferred-language.updated",
+            entityName: nameof(User),
+            entityId: user.Id.ToString(),
+            userId: user.Id,
+            metadata: new { user.PreferredLanguageCode },
+            cancellationToken);
+
+        return OperationResult<CurrentUserDto>.Success(
+            MapCurrentUser(user),
+            "Preferred language updated successfully.");
+    }
+
     public async Task<OperationResult<NotificationPreferenceDto>> GetNotificationPreferencesAsync(int userId, CancellationToken cancellationToken = default)
     {
         if (!await dbContext.Users.AnyAsync(user => user.Id == userId, cancellationToken))
@@ -192,6 +219,7 @@ public class ProfileService(
             Id = user.Id,
             Name = user.Name,
             Email = user.Email,
+            PreferredLanguageCode = SupportedLanguageCatalog.NormalizeOrFallback(user.PreferredLanguageCode),
             IsEmailVerified = user.IsEmailVerified,
             Role = user.Role.ToString(),
             CreatedAt = user.CreatedAt,

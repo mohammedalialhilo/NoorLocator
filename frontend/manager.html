@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0D2535">
-    <title>NoorLocator | Manager Workspace</title>
+    <title data-i18n="meta.manager.title">NoorLocator | Manager Workspace</title>
     <link rel="icon" type="image/png" href="assets/logo_bkg.png">
     <link rel="manifest" href="site.webmanifest">
     <link rel="stylesheet" href="css/style.css">
@@ -13,60 +13,60 @@
     <div data-site-header></div>
     <div class="auth-gate" data-auth-gate>
         <div class="auth-gate__card">
-            <span class="eyebrow">Checking session</span>
-            <h2>Confirming your manager access.</h2>
-            <p>Your center tools will appear once NoorLocator verifies the session and role scope for this page.</p>
+            <span class="eyebrow" data-i18n="manager.gate.eyebrow">Checking session</span>
+            <h2 data-i18n="manager.gate.title">Confirming your manager access.</h2>
+            <p data-i18n="manager.gate.description">Your center tools will appear once NoorLocator verifies the session and role scope for this page.</p>
         </div>
     </div>
 
     <main class="page-shell">
         <section class="page-hero page-hero--split">
             <div class="page-hero__content">
-                <span class="eyebrow">Center manager</span>
-                <h1>Publish majalis, center announcements, and gallery updates for your assigned centers.</h1>
-                <p>The manager workspace is tied to real center assignments. You can publish announcements directly, maintain majalis, and curate center photos only for centers you are approved to manage.</p>
+                <span class="eyebrow" data-i18n="manager.hero.eyebrow">Center manager</span>
+                <h1 data-i18n="manager.hero.title">Publish majalis, center announcements, and gallery updates for your assigned centers.</h1>
+                <p data-i18n="manager.hero.description">The manager workspace is tied to real center assignments. You can publish announcements directly, maintain majalis, and curate center photos only for centers you are approved to manage.</p>
                 <div class="hero__actions">
-                    <a class="button button--primary" href="#majlis-editor">Create a majlis</a>
-                    <a class="button button--secondary" href="#announcement-editor">Manage announcements</a>
+                    <a class="button button--primary" href="#majlis-editor" data-i18n="manager.hero.createMajlis">Create a majlis</a>
+                    <a class="button button--secondary" href="#announcement-editor" data-i18n="manager.hero.manageAnnouncements">Manage announcements</a>
                 </div>
-                <p id="manager-page-message" class="message">Loading your manager workspace...</p>
+                <p id="manager-page-message" class="message" data-i18n="manager.page.loading">Loading your manager workspace...</p>
             </div>
             <aside class="hero__panel hero__panel--stack">
                 <div class="brand-card brand-card--compact">
                     <img class="site-logo site-logo--workspace" data-brand-logo src="assets/logo_bkg.png" alt="NoorLocator logo">
-                    <p class="brand-card__tagline">The NoorLocator brand identity carries through center publishing, announcements, majalis, and gallery management.</p>
+                    <p class="brand-card__tagline" data-i18n="manager.brand.tagline">The NoorLocator brand identity carries through center publishing, announcements, majalis, and gallery management.</p>
                 </div>
                 <article class="mini-stat">
-                    <span class="card__meta">Assigned centers</span>
+                    <span class="card__meta" data-i18n="manager.stats.centers">Assigned centers</span>
                     <strong id="manager-center-count">0</strong>
-                    <p>Only your approved centers appear in this workspace unless you are signed in as an admin.</p>
+                    <p data-i18n="manager.stats.centersDescription">Only your approved centers appear in this workspace unless you are signed in as an admin.</p>
                 </article>
                 <article class="mini-stat">
-                    <span class="card__meta">Majalis in view</span>
+                    <span class="card__meta" data-i18n="manager.stats.majalis">Majalis in view</span>
                     <strong id="manager-majlis-count">0</strong>
-                    <p>See the majalis for the center you currently have selected.</p>
+                    <p data-i18n="manager.stats.majalisDescription">See the majalis for the center you currently have selected.</p>
                 </article>
                 <article class="mini-stat">
-                    <span class="card__meta">Announcements</span>
+                    <span class="card__meta" data-i18n="manager.stats.announcements">Announcements</span>
                     <strong id="manager-announcement-count">0</strong>
-                    <p>Center announcements publish directly from managers without an admin approval step.</p>
+                    <p data-i18n="manager.stats.announcementsDescription">Center announcements publish directly from managers without an admin approval step.</p>
                 </article>
                 <article class="mini-stat">
-                    <span class="card__meta">Gallery images</span>
+                    <span class="card__meta" data-i18n="manager.stats.images">Gallery images</span>
                     <strong id="manager-image-count">0</strong>
-                    <p>Manage gallery images and choose the primary banner for each center.</p>
+                    <p data-i18n="manager.stats.imagesDescription">Manage gallery images and choose the primary banner for each center.</p>
                 </article>
             </aside>
         </section>
 
         <section class="section">
-            <nav class="dashboard-nav" aria-label="Manager navigation">
-                <a class="dashboard-nav__link" href="#manager-overview">Overview</a>
-                <a class="dashboard-nav__link" href="#my-centers">My centers</a>
-                <a class="dashboard-nav__link" href="#majlis-editor">Majlis editor</a>
-                <a class="dashboard-nav__link" href="#majlis-list">Majlis list</a>
-                <a class="dashboard-nav__link" href="#announcement-editor">Announcements</a>
-                <a class="dashboard-nav__link" href="#media-gallery">Media gallery</a>
+            <nav class="dashboard-nav" aria-label="Manager navigation" data-i18n-aria-label="manager.nav.aria">
+                <a class="dashboard-nav__link" href="#manager-overview" data-i18n="manager.nav.overview">Overview</a>
+                <a class="dashboard-nav__link" href="#my-centers" data-i18n="manager.nav.centers">My centers</a>
+                <a class="dashboard-nav__link" href="#majlis-editor" data-i18n="manager.nav.majlisEditor">Majlis editor</a>
+                <a class="dashboard-nav__link" href="#majlis-list" data-i18n="manager.nav.majlisList">Majlis list</a>
+                <a class="dashboard-nav__link" href="#announcement-editor" data-i18n="manager.nav.announcements">Announcements</a>
+                <a class="dashboard-nav__link" href="#media-gallery" data-i18n="manager.nav.gallery">Media gallery</a>
             </nav>
         </section>
 
@@ -77,74 +77,74 @@
         <section class="section" id="my-centers">
             <div class="section__heading">
                 <div class="section__copy">
-                    <span class="card__meta">My assigned centers</span>
-                    <h2>Work only where you are approved.</h2>
-                    <p>Your tools are limited to the centers you are approved to manage.</p>
+                    <span class="card__meta" data-i18n="manager.centers.meta">My assigned centers</span>
+                    <h2 data-i18n="manager.centers.title">Work only where you are approved.</h2>
+                    <p data-i18n="manager.centers.description">Your tools are limited to the centers you are approved to manage.</p>
                 </div>
             </div>
             <div id="manager-centers" class="card-grid">
-                <div class="empty-state">Loading your assigned centers...</div>
+                <div class="empty-state" data-i18n="manager.centers.loading">Loading your assigned centers...</div>
             </div>
         </section>
 
         <section class="section section-stack">
             <div class="detail-grid detail-grid--dashboard">
                 <article class="panel" id="majlis-editor">
-                    <span class="card__meta">Majlis editor</span>
-                    <h3 id="majlis-form-heading">Create a new majlis</h3>
+                    <span class="card__meta" data-i18n="manager.majlisEditor.meta">Majlis editor</span>
+                    <h3 id="majlis-form-heading" data-i18n="manager.majlisEditor.title">Create a new majlis</h3>
                     <form id="majlis-form" class="form" enctype="multipart/form-data">
                         <input type="hidden" name="majlisId">
 
                         <label class="form__group">
-                            <span class="form__label">Center</span>
+                            <span class="form__label" data-i18n="manager.form.center">Center</span>
                             <select id="majlis-center-select" class="form__control" name="centerId" required></select>
                         </label>
 
                         <div class="filter-grid">
                             <label class="form__group">
-                                <span class="form__label">Title</span>
+                                <span class="form__label" data-i18n="manager.form.title">Title</span>
                                 <input class="form__control" type="text" name="title" maxlength="200" required>
                             </label>
                             <label class="form__group">
-                                <span class="form__label">Date</span>
+                                <span class="form__label" data-i18n="manager.form.date">Date</span>
                                 <input class="form__control" type="date" name="date" required>
                             </label>
                             <label class="form__group">
-                                <span class="form__label">Time</span>
+                                <span class="form__label" data-i18n="manager.form.time">Time</span>
                                 <input class="form__control" type="time" name="time" required>
                             </label>
                         </div>
 
                         <label class="form__group">
-                            <span class="form__label">Description</span>
-                            <textarea class="form__control" name="description" placeholder="Share the majlis details that should appear publicly."></textarea>
+                            <span class="form__label" data-i18n="manager.form.description">Description</span>
+                            <textarea class="form__control" name="description" data-i18n-placeholder="manager.majlisEditor.descriptionPlaceholder" placeholder="Share the majlis details that should appear publicly."></textarea>
                         </label>
 
                         <div class="filter-grid">
                             <label class="form__group">
-                                <span class="form__label">Optional image</span>
+                                <span class="form__label" data-i18n="manager.form.optionalImage">Optional image</span>
                                 <input class="form__control" type="file" name="image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
-                                <span class="form__hint">Add a poster or banner image for this majlis. Accepted formats: JPG, PNG, WEBP. Maximum size: 5MB.</span>
+                                <span class="form__hint" data-i18n="manager.majlisEditor.imageHint">Add a poster or banner image for this majlis. Accepted formats: JPG, PNG, WEBP. Maximum size: 5MB.</span>
                             </label>
                             <div class="form__group form__group--checkbox">
-                                <span class="form__label">Image actions</span>
+                                <span class="form__label" data-i18n="manager.form.imageActions">Image actions</span>
                                 <label class="checkbox">
                                     <input type="checkbox" name="removeImage">
-                                    <span>Remove the current image when saving</span>
+                                    <span data-i18n="manager.form.removeImage">Remove the current image when saving</span>
                                 </label>
                             </div>
                         </div>
 
                         <fieldset class="form__group">
-                            <legend class="form__label">Languages</legend>
+                            <legend class="form__label" data-i18n="manager.form.languages">Languages</legend>
                             <div id="majlis-language-options" class="checkbox-grid">
-                                <div class="empty-state empty-state--soft">Loading predefined languages...</div>
+                                <div class="empty-state empty-state--soft" data-i18n="manager.form.languagesLoading">Loading predefined languages...</div>
                             </div>
                         </fieldset>
 
                         <div class="button-row">
-                            <button id="majlis-submit-button" class="button button--primary" type="submit">Create majlis</button>
-                            <button id="majlis-cancel-button" class="button button--ghost" type="button" hidden>Cancel edit</button>
+                            <button id="majlis-submit-button" class="button button--primary" type="submit" data-i18n="manager.majlisEditor.submit">Create majlis</button>
+                            <button id="majlis-cancel-button" class="button button--ghost" type="button" hidden data-i18n="actions.cancelEdit">Cancel edit</button>
                         </div>
                         <p data-form-message="majlis-form" class="message"></p>
                     </form>
@@ -153,21 +153,21 @@
                 <article class="panel" id="majlis-list">
                     <div class="section__heading section__heading--tight">
                         <div class="section__copy">
-                            <span class="card__meta">Majalis</span>
-                            <h3>Manage majalis by center</h3>
+                            <span class="card__meta" data-i18n="manager.majlisList.meta">Majalis</span>
+                            <h3 data-i18n="manager.majlisList.title">Manage majalis by center</h3>
                         </div>
                     </div>
 
                     <div class="toolbar-row">
                         <label class="form__group toolbar-row__control">
-                            <span class="form__label">Center view</span>
+                            <span class="form__label" data-i18n="manager.form.centerView">Center view</span>
                             <select id="majlis-filter-center" class="form__control form__control--compact"></select>
                         </label>
-                        <button id="refresh-majalis-button" class="button button--secondary" type="button">Refresh list</button>
+                        <button id="refresh-majalis-button" class="button button--secondary" type="button" data-i18n="actions.refreshList">Refresh list</button>
                     </div>
 
                     <div id="manager-majalis" class="stack-list">
-                        <div class="empty-state">Loading majalis...</div>
+                        <div class="empty-state" data-i18n="manager.majlisList.loading">Loading majalis...</div>
                     </div>
                 </article>
             </div>
@@ -176,53 +176,53 @@
         <section class="section section-stack">
             <div class="detail-grid detail-grid--dashboard">
                 <article class="panel" id="announcement-editor">
-                    <span class="card__meta">Event announcements</span>
-                    <h3 id="event-announcement-form-heading">Create a center announcement</h3>
+                    <span class="card__meta" data-i18n="manager.announcements.meta">Event announcements</span>
+                    <h3 id="event-announcement-form-heading" data-i18n="manager.announcements.title">Create a center announcement</h3>
                     <form id="event-announcement-form" class="form" enctype="multipart/form-data">
                         <input type="hidden" name="announcementId">
 
                         <label class="form__group">
-                            <span class="form__label">Center</span>
+                            <span class="form__label" data-i18n="manager.form.center">Center</span>
                             <select id="announcement-center-select" class="form__control" name="centerId" required></select>
                         </label>
 
                         <div class="filter-grid">
                             <label class="form__group">
-                                <span class="form__label">Title</span>
+                                <span class="form__label" data-i18n="manager.form.title">Title</span>
                                 <input class="form__control" type="text" name="title" maxlength="200" required>
                             </label>
                             <label class="form__group">
-                                <span class="form__label">Status</span>
+                                <span class="form__label" data-i18n="common.statusLabel">Status</span>
                                 <select class="form__control" name="status" required>
-                                    <option value="Published">Published</option>
-                                    <option value="Draft">Draft</option>
-                                    <option value="Archived">Archived</option>
+                                    <option value="Published" data-i18n="status.published">Published</option>
+                                    <option value="Draft" data-i18n="status.draft">Draft</option>
+                                    <option value="Archived" data-i18n="status.archived">Archived</option>
                                 </select>
                             </label>
                         </div>
 
                         <label class="form__group">
-                            <span class="form__label">Description</span>
-                            <textarea class="form__control" name="description" maxlength="4000" placeholder="Share a public update, upcoming activity, or center announcement."></textarea>
+                            <span class="form__label" data-i18n="manager.form.description">Description</span>
+                            <textarea class="form__control" name="description" maxlength="4000" data-i18n-placeholder="manager.announcements.descriptionPlaceholder" placeholder="Share a public update, upcoming activity, or center announcement."></textarea>
                         </label>
 
                         <div class="filter-grid">
                             <label class="form__group">
-                                <span class="form__label">Optional image</span>
+                                <span class="form__label" data-i18n="manager.form.optionalImage">Optional image</span>
                                 <input class="form__control" type="file" name="image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
                             </label>
                             <div class="form__group form__group--checkbox">
-                                <span class="form__label">Image actions</span>
+                                <span class="form__label" data-i18n="manager.form.imageActions">Image actions</span>
                                 <label class="checkbox">
                                     <input type="checkbox" name="removeImage">
-                                    <span>Remove the current image when saving</span>
+                                    <span data-i18n="manager.form.removeImage">Remove the current image when saving</span>
                                 </label>
                             </div>
                         </div>
 
                         <div class="button-row">
-                            <button id="event-announcement-submit-button" class="button button--primary" type="submit">Publish announcement</button>
-                            <button id="event-announcement-cancel-button" class="button button--ghost" type="button" hidden>Cancel edit</button>
+                            <button id="event-announcement-submit-button" class="button button--primary" type="submit" data-i18n="manager.announcements.submit">Publish announcement</button>
+                            <button id="event-announcement-cancel-button" class="button button--ghost" type="button" hidden data-i18n="actions.cancelEdit">Cancel edit</button>
                         </div>
                         <p data-form-message="event-announcement-form" class="message"></p>
                     </form>
@@ -231,21 +231,21 @@
                 <article class="panel" id="announcement-list">
                     <div class="section__heading section__heading--tight">
                         <div class="section__copy">
-                            <span class="card__meta">Announcement feed</span>
-                            <h3>Manage announcements by center</h3>
+                            <span class="card__meta" data-i18n="manager.announcementList.meta">Announcement feed</span>
+                            <h3 data-i18n="manager.announcementList.title">Manage announcements by center</h3>
                         </div>
                     </div>
 
                     <div class="toolbar-row">
                         <label class="form__group toolbar-row__control">
-                            <span class="form__label">Center view</span>
+                            <span class="form__label" data-i18n="manager.form.centerView">Center view</span>
                             <select id="announcement-filter-center" class="form__control form__control--compact"></select>
                         </label>
-                        <button id="refresh-announcements-button" class="button button--secondary" type="button">Refresh announcements</button>
+                        <button id="refresh-announcements-button" class="button button--secondary" type="button" data-i18n="actions.refreshAnnouncements">Refresh announcements</button>
                     </div>
 
                     <div id="manager-announcements" class="stack-list">
-                        <div class="empty-state">Loading announcements...</div>
+                        <div class="empty-state" data-i18n="manager.announcementList.loading">Loading announcements...</div>
                     </div>
                 </article>
             </div>
@@ -254,30 +254,30 @@
         <section class="section section-stack" id="media-gallery">
             <div class="detail-grid detail-grid--dashboard">
                 <article class="panel">
-                    <span class="card__meta">Center media</span>
-                    <h3>Upload gallery images</h3>
+                    <span class="card__meta" data-i18n="manager.gallery.meta">Center media</span>
+                    <h3 data-i18n="manager.gallery.title">Upload gallery images</h3>
                     <form id="center-image-upload-form" class="form" enctype="multipart/form-data">
                         <label class="form__group">
-                            <span class="form__label">Center</span>
+                            <span class="form__label" data-i18n="manager.form.center">Center</span>
                             <select id="center-image-center-select" class="form__control" name="centerId" required></select>
                         </label>
 
                         <div class="filter-grid">
                             <label class="form__group">
-                                <span class="form__label">Image file</span>
+                                <span class="form__label" data-i18n="manager.gallery.imageFile">Image file</span>
                                 <input class="form__control" type="file" name="image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" required>
-                                <span class="form__hint">Accepted formats: JPG, PNG, WEBP. Maximum size: 5MB.</span>
+                                <span class="form__hint" data-i18n="manager.gallery.imageHint">Accepted formats: JPG, PNG, WEBP. Maximum size: 5MB.</span>
                             </label>
                             <div class="form__group form__group--checkbox">
-                                <span class="form__label">Gallery options</span>
+                                <span class="form__label" data-i18n="manager.gallery.options">Gallery options</span>
                                 <label class="checkbox">
                                     <input type="checkbox" name="isPrimary">
-                                    <span>Use as primary center image</span>
+                                    <span data-i18n="manager.gallery.primaryOption">Use as primary center image</span>
                                 </label>
                             </div>
                         </div>
 
-                        <button class="button button--primary" type="submit">Upload image</button>
+                        <button class="button button--primary" type="submit" data-i18n="manager.gallery.upload">Upload image</button>
                         <div class="upload-progress" aria-live="polite">
                             <progress id="center-image-upload-progress" class="upload-progress__bar" max="100" value="0" hidden></progress>
                             <p id="center-image-upload-progress-meta" class="upload-progress__meta"></p>
@@ -289,21 +289,21 @@
                 <article class="panel">
                     <div class="section__heading section__heading--tight">
                         <div class="section__copy">
-                            <span class="card__meta">Gallery</span>
-                            <h3>Set primary images or remove outdated photos</h3>
+                            <span class="card__meta" data-i18n="manager.gallery.listMeta">Gallery</span>
+                            <h3 data-i18n="manager.gallery.listTitle">Set primary images or remove outdated photos</h3>
                         </div>
                     </div>
 
                     <div class="toolbar-row">
                         <label class="form__group toolbar-row__control">
-                            <span class="form__label">Center view</span>
+                            <span class="form__label" data-i18n="manager.form.centerView">Center view</span>
                             <select id="center-image-filter-center" class="form__control form__control--compact"></select>
                         </label>
-                        <button id="refresh-center-images-button" class="button button--secondary" type="button">Refresh gallery</button>
+                        <button id="refresh-center-images-button" class="button button--secondary" type="button" data-i18n="actions.refreshGallery">Refresh gallery</button>
                     </div>
 
                     <div id="manager-center-images" class="gallery-grid">
-                        <div class="empty-state">Loading center gallery...</div>
+                        <div class="empty-state" data-i18n="manager.gallery.loading">Loading center gallery...</div>
                     </div>
                 </article>
             </div>
@@ -316,6 +316,7 @@
     <script defer src="js/config.js"></script>
     <script defer src="js/auth.js"></script>
     <script defer src="js/api.js"></script>
+    <script defer src="js/i18n.js"></script>
     <script defer src="js/layout.js"></script>
     <script defer src="js/app.js"></script>
 </body>

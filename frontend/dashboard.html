@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0D2535">
-    <title>NoorLocator | User Dashboard</title>
+    <title data-i18n="meta.dashboard.title">NoorLocator | User Dashboard</title>
     <link rel="icon" type="image/png" href="assets/logo_bkg.png">
     <link rel="manifest" href="site.webmanifest">
     <link rel="stylesheet" href="css/style.css">
@@ -13,45 +13,45 @@
     <div data-site-header></div>
     <div class="auth-gate" data-auth-gate>
         <div class="auth-gate__card">
-            <span class="eyebrow">Checking session</span>
-            <h2>Verifying your NoorLocator access.</h2>
-            <p>Your dashboard will load as soon as your authenticated session is confirmed.</p>
+            <span class="eyebrow" data-i18n="dashboard.gate.eyebrow">Checking session</span>
+            <h2 data-i18n="dashboard.gate.title">Verifying your NoorLocator access.</h2>
+            <p data-i18n="dashboard.gate.description">Your dashboard will load as soon as your authenticated session is confirmed.</p>
         </div>
     </div>
 
     <main class="page-shell">
         <section class="page-hero page-hero--split">
             <div class="page-hero__content">
-                <span class="eyebrow">User workspace</span>
-                <h1>Contribute to NoorLocator through moderated workflows.</h1>
-                <p>Registered users can submit new center requests, suggest languages, send app feedback, and request center manager access without writing directly to public data.</p>
+                <span class="eyebrow" data-i18n="dashboard.hero.eyebrow">User workspace</span>
+                <h1 data-i18n="dashboard.hero.title">Contribute to NoorLocator through moderated workflows.</h1>
+                <p data-i18n="dashboard.hero.description">Registered users can submit new center requests, suggest languages, send app feedback, and request center manager access without writing directly to public data.</p>
                 <div class="hero__actions">
-                    <a class="button button--primary" href="#center-request">Submit a center</a>
-                    <a class="button button--secondary" href="#my-requests">View my requests</a>
+                    <a class="button button--primary" href="#center-request" data-i18n="dashboard.hero.submitCenter">Submit a center</a>
+                    <a class="button button--secondary" href="#my-requests" data-i18n="dashboard.hero.viewRequests">View my requests</a>
                 </div>
-                <p id="dashboard-page-message" class="message">Loading your contribution tools...</p>
+                <p id="dashboard-page-message" class="message" data-i18n="dashboard.page.loading">Loading your contribution tools...</p>
             </div>
             <aside class="hero__panel hero__panel--stack">
                 <div class="brand-card brand-card--compact">
                     <img class="site-logo site-logo--workspace" data-brand-logo src="assets/logo_bkg.png" alt="NoorLocator logo">
-                    <p class="brand-card__tagline">NoorLocator keeps community contributions clear, moderated, and easy to follow from one place.</p>
+                    <p class="brand-card__tagline" data-i18n="dashboard.brand.tagline">NoorLocator keeps community contributions clear, moderated, and easy to follow from one place.</p>
                 </div>
                 <article class="mini-stat">
-                    <span class="card__meta">Moderation-first</span>
-                    <strong>Pending by default</strong>
-                    <p>User contributions are submitted for review before they affect public NoorLocator data.</p>
+                    <span class="card__meta" data-i18n="dashboard.moderation.meta">Moderation-first</span>
+                    <strong data-i18n="dashboard.moderation.title">Pending by default</strong>
+                    <p data-i18n="dashboard.moderation.description">User contributions are submitted for review before they affect public NoorLocator data.</p>
                 </article>
             </aside>
         </section>
 
         <section class="section">
-            <nav class="dashboard-nav" aria-label="Dashboard navigation">
-                <a class="dashboard-nav__link" href="#dashboard-overview">Overview</a>
-                <a class="dashboard-nav__link" href="#center-request">Center request</a>
-                <a class="dashboard-nav__link" href="#my-requests">My requests</a>
-                <a class="dashboard-nav__link" href="#suggestion">Suggestion</a>
-                <a class="dashboard-nav__link" href="#language-suggestion">Language suggestion</a>
-                <a class="dashboard-nav__link" href="#manager-request">Manager request</a>
+            <nav class="dashboard-nav" aria-label="Dashboard navigation" data-i18n-aria-label="dashboard.nav.aria">
+                <a class="dashboard-nav__link" href="#dashboard-overview" data-i18n="dashboard.nav.overview">Overview</a>
+                <a class="dashboard-nav__link" href="#center-request" data-i18n="dashboard.nav.centerRequest">Center request</a>
+                <a class="dashboard-nav__link" href="#my-requests" data-i18n="dashboard.nav.myRequests">My requests</a>
+                <a class="dashboard-nav__link" href="#suggestion" data-i18n="dashboard.nav.suggestion">Suggestion</a>
+                <a class="dashboard-nav__link" href="#language-suggestion" data-i18n="dashboard.nav.languageSuggestion">Language suggestion</a>
+                <a class="dashboard-nav__link" href="#manager-request" data-i18n="dashboard.nav.managerRequest">Manager request</a>
             </nav>
         </section>
 
@@ -62,49 +62,49 @@
         <section class="section section-stack">
             <div class="detail-grid detail-grid--dashboard">
                 <article class="panel" id="center-request">
-                    <span class="card__meta">Submit center request</span>
-                    <h3>Add a center for admin review</h3>
+                    <span class="card__meta" data-i18n="dashboard.centerRequest.meta">Submit center request</span>
+                    <h3 data-i18n="dashboard.centerRequest.title">Add a center for admin review</h3>
                     <form id="center-request-form" class="form">
                         <div class="filter-grid">
                             <label class="form__group">
-                                <span class="form__label">Center name</span>
+                                <span class="form__label" data-i18n="dashboard.centerRequest.name">Center name</span>
                                 <input class="form__control" type="text" name="name" required>
                             </label>
                             <label class="form__group">
-                                <span class="form__label">Address</span>
+                                <span class="form__label" data-i18n="dashboard.centerRequest.address">Address</span>
                                 <input class="form__control" type="text" name="address" required>
                             </label>
                             <label class="form__group">
-                                <span class="form__label">City</span>
+                                <span class="form__label" data-i18n="dashboard.centerRequest.city">City</span>
                                 <input class="form__control" type="text" name="city" required>
                             </label>
                             <label class="form__group">
-                                <span class="form__label">Country</span>
+                                <span class="form__label" data-i18n="dashboard.centerRequest.country">Country</span>
                                 <input class="form__control" type="text" name="country" required>
                             </label>
                             <label class="form__group">
-                                <span class="form__label">Latitude</span>
+                                <span class="form__label" data-i18n="dashboard.centerRequest.latitude">Latitude</span>
                                 <input class="form__control" type="number" step="0.000001" name="latitude" required>
                             </label>
                             <label class="form__group">
-                                <span class="form__label">Longitude</span>
+                                <span class="form__label" data-i18n="dashboard.centerRequest.longitude">Longitude</span>
                                 <input class="form__control" type="number" step="0.000001" name="longitude" required>
                             </label>
                         </div>
                         <label class="form__group">
-                            <span class="form__label">Description</span>
-                            <textarea class="form__control" name="description" placeholder="Share what makes this center useful for the NoorLocator public directory."></textarea>
+                            <span class="form__label" data-i18n="dashboard.centerRequest.description">Description</span>
+                            <textarea class="form__control" name="description" data-i18n-placeholder="dashboard.centerRequest.descriptionPlaceholder" placeholder="Share what makes this center useful for the NoorLocator public directory."></textarea>
                         </label>
-                        <button class="button button--primary" type="submit">Submit center request</button>
+                        <button class="button button--primary" type="submit" data-i18n="dashboard.centerRequest.submit">Submit center request</button>
                         <p data-form-message="center-request-form" class="message"></p>
                     </form>
                 </article>
 
                 <article class="panel" id="my-requests">
-                    <span class="card__meta">My center requests</span>
-                    <h3>Track your submission statuses</h3>
+                    <span class="card__meta" data-i18n="dashboard.requests.meta">My center requests</span>
+                    <h3 data-i18n="dashboard.requests.title">Track your submission statuses</h3>
                     <div id="my-center-requests" class="stack-list">
-                        <div class="empty-state">Loading your center requests...</div>
+                        <div class="empty-state" data-i18n="dashboard.requests.loading">Loading your center requests...</div>
                     </div>
                 </article>
             </div>
@@ -113,39 +113,39 @@
         <section class="section section-stack">
             <div class="detail-grid detail-grid--dashboard">
                 <article class="panel" id="suggestion">
-                    <span class="card__meta">App feedback</span>
-                    <h3>Submit a suggestion</h3>
+                    <span class="card__meta" data-i18n="dashboard.suggestion.meta">App feedback</span>
+                    <h3 data-i18n="dashboard.suggestion.title">Submit a suggestion</h3>
                     <form id="suggestion-form" class="form">
                         <label class="form__group">
-                            <span class="form__label">Suggestion type</span>
+                            <span class="form__label" data-i18n="dashboard.suggestion.type">Suggestion type</span>
                             <select class="form__control" name="type" required>
-                                <option value="Feature">Feature</option>
-                                <option value="Bug">Bug</option>
-                                <option value="DataCorrection">Data correction</option>
+                                <option value="Feature" data-i18n="dashboard.suggestion.type.feature">Feature</option>
+                                <option value="Bug" data-i18n="dashboard.suggestion.type.bug">Bug</option>
+                                <option value="DataCorrection" data-i18n="dashboard.suggestion.type.dataCorrection">Data correction</option>
                             </select>
                         </label>
                         <label class="form__group">
-                            <span class="form__label">Message</span>
-                            <textarea class="form__control" name="message" required placeholder="Describe the improvement, bug, or correction you want reviewed."></textarea>
+                            <span class="form__label" data-i18n="dashboard.suggestion.message">Message</span>
+                            <textarea class="form__control" name="message" required data-i18n-placeholder="dashboard.suggestion.placeholder" placeholder="Describe the improvement, bug, or correction you want reviewed."></textarea>
                         </label>
-                        <button class="button button--primary" type="submit">Submit suggestion</button>
+                        <button class="button button--primary" type="submit" data-i18n="dashboard.suggestion.submit">Submit suggestion</button>
                         <p data-form-message="suggestion-form" class="message"></p>
                     </form>
                 </article>
 
                 <article class="panel" id="language-suggestion">
-                    <span class="card__meta">Center language suggestion</span>
-                    <h3>Suggest a supported language</h3>
+                    <span class="card__meta" data-i18n="dashboard.languageSuggestion.meta">Center language suggestion</span>
+                    <h3 data-i18n="dashboard.languageSuggestion.title">Suggest a supported language</h3>
                     <form id="language-suggestion-form" class="form">
                         <label class="form__group">
-                            <span class="form__label">Center</span>
+                            <span class="form__label" data-i18n="dashboard.languageSuggestion.center">Center</span>
                             <select class="form__control" name="centerId" data-center-select required></select>
                         </label>
                         <label class="form__group">
-                            <span class="form__label">Language</span>
+                            <span class="form__label" data-i18n="dashboard.languageSuggestion.language">Language</span>
                             <select class="form__control" name="languageId" id="language-select" required></select>
                         </label>
-                        <button class="button button--primary" type="submit">Submit language suggestion</button>
+                        <button class="button button--primary" type="submit" data-i18n="dashboard.languageSuggestion.submit">Submit language suggestion</button>
                         <p data-form-message="language-suggestion-form" class="message"></p>
                     </form>
                 </article>
@@ -154,14 +154,14 @@
 
         <section class="section section-stack">
             <article class="panel" id="manager-request">
-                <span class="card__meta">Manager access</span>
-                <h3>Request manager access for a center</h3>
+                <span class="card__meta" data-i18n="dashboard.managerRequest.meta">Manager access</span>
+                <h3 data-i18n="dashboard.managerRequest.title">Request manager access for a center</h3>
                 <form id="manager-request-form" class="form">
                     <label class="form__group">
-                        <span class="form__label">Center</span>
+                        <span class="form__label" data-i18n="dashboard.managerRequest.center">Center</span>
                         <select class="form__control" name="centerId" data-center-select required></select>
                     </label>
-                    <button class="button button--primary" type="submit">Request manager access</button>
+                    <button class="button button--primary" type="submit" data-i18n="dashboard.managerRequest.submit">Request manager access</button>
                     <p data-form-message="manager-request-form" class="message"></p>
                 </form>
             </article>
@@ -174,6 +174,7 @@
     <script defer src="js/config.js"></script>
     <script defer src="js/auth.js"></script>
     <script defer src="js/api.js"></script>
+    <script defer src="js/i18n.js"></script>
     <script defer src="js/layout.js"></script>
     <script defer src="js/app.js"></script>
 </body>

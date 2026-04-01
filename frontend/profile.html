@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0D2535">
-    <title>NoorLocator | My Profile</title>
+    <title data-i18n="meta.profile.title">NoorLocator | My Profile</title>
     <link rel="icon" type="image/png" href="assets/logo_bkg.png">
     <link rel="manifest" href="site.webmanifest">
     <link rel="stylesheet" href="css/style.css">
@@ -13,55 +13,55 @@
     <div data-site-header></div>
     <div class="auth-gate" data-auth-gate>
         <div class="auth-gate__card">
-            <span class="eyebrow">Checking session</span>
-            <h2>Loading your NoorLocator profile.</h2>
-            <p>Your account details stay protected until NoorLocator confirms the current authenticated session.</p>
+            <span class="eyebrow" data-i18n="profile.gate.eyebrow">Checking session</span>
+            <h2 data-i18n="profile.gate.title">Loading your NoorLocator profile.</h2>
+            <p data-i18n="profile.gate.description">Your account details stay protected until NoorLocator confirms the current authenticated session.</p>
         </div>
     </div>
 
     <main class="page-shell">
         <section class="page-hero page-hero--split">
             <div class="page-hero__content">
-                <span class="eyebrow">My profile</span>
-                <h1>Manage the personal account details tied to your NoorLocator session.</h1>
-                <p>Update your display name and email without changing your role, permissions, or active session state.</p>
+                <span class="eyebrow" data-i18n="profile.hero.eyebrow">My profile</span>
+                <h1 data-i18n="profile.hero.title">Manage the personal account details tied to your NoorLocator session.</h1>
+                <p data-i18n="profile.hero.description">Update your display name and email without changing your role, permissions, or active session state.</p>
                 <div class="hero__actions">
-                    <a id="profile-workspace-link" class="button button--primary" href="dashboard.html">Back to workspace</a>
-                    <a class="button button--secondary" href="#profile-form-section">Edit profile</a>
-                    <a class="button button--ghost" href="login.html?loggedOut=1" data-logout-action data-logout-redirect="login.html?loggedOut=1">Logout</a>
+                    <a id="profile-workspace-link" class="button button--primary" href="dashboard.html" data-i18n="profile.actions.backToWorkspace">Back to workspace</a>
+                    <a class="button button--secondary" href="#profile-form-section" data-i18n="profile.actions.editProfile">Edit profile</a>
+                    <a class="button button--ghost" href="login.html?loggedOut=1" data-logout-action data-logout-redirect="login.html?loggedOut=1" data-i18n="actions.logout">Logout</a>
                 </div>
-                <p id="profile-page-message" class="message">Loading your profile...</p>
+                <p id="profile-page-message" class="message" data-i18n="profile.page.loading">Loading your profile...</p>
             </div>
             <aside class="hero__panel hero__panel--stack">
                 <div class="brand-card brand-card--compact">
                     <img class="site-logo site-logo--workspace" data-brand-logo src="assets/logo_bkg.png" alt="NoorLocator logo">
-                    <p class="brand-card__tagline">Your personal account details stay connected to the same NoorLocator identity and session experience.</p>
+                    <p class="brand-card__tagline" data-i18n="profile.brand.tagline">Your personal account details stay connected to the same NoorLocator identity and session experience.</p>
                 </div>
                 <article class="mini-stat">
-                    <span class="card__meta">Current profile</span>
+                    <span class="card__meta" data-i18n="profile.current.meta">Current profile</span>
                     <strong id="profile-display-name">Loading...</strong>
-                    <p>This is the exact identity NoorLocator shows in navigation after your session is confirmed.</p>
+                    <p data-i18n="profile.current.description">This is the exact identity NoorLocator shows in navigation after your session is confirmed.</p>
                 </article>
                 <article class="mini-stat">
-                    <span class="card__meta">Email status</span>
+                    <span class="card__meta" data-i18n="profile.emailStatus.meta">Email status</span>
                     <strong id="profile-verification-status">Loading...</strong>
-                    <p id="profile-verification-note">NoorLocator is checking whether this email is verified.</p>
-                    <button id="profile-resend-verification" class="button button--ghost" type="button" hidden>Resend verification email</button>
+                    <p id="profile-verification-note" data-i18n="profile.emailStatus.loading">NoorLocator is checking whether this email is verified.</p>
+                    <button id="profile-resend-verification" class="button button--ghost" type="button" hidden data-i18n="actions.resendVerificationEmail">Resend verification email</button>
                 </article>
                 <article class="mini-stat">
-                    <span class="card__meta">Role</span>
+                    <span class="card__meta" data-i18n="profile.role.meta">Role</span>
                     <strong id="profile-role-badge">Loading...</strong>
-                    <p>Your role and security-sensitive account fields stay read-only here.</p>
+                    <p data-i18n="profile.role.description">Your role and security-sensitive account fields stay read-only here.</p>
                 </article>
                 <article class="mini-stat">
-                    <span class="card__meta">Account created</span>
+                    <span class="card__meta" data-i18n="profile.created.meta">Account created</span>
                     <strong id="profile-created-at">Loading...</strong>
-                    <p>Profile changes update your personal account details without breaking the current session.</p>
+                    <p data-i18n="profile.created.description">Profile changes update your personal account details without breaking the current session.</p>
                 </article>
                 <article class="mini-stat">
-                    <span class="card__meta">Last sign-in</span>
+                    <span class="card__meta" data-i18n="profile.lastLogin.meta">Last sign-in</span>
                     <strong id="profile-last-login">Loading...</strong>
-                    <p>NoorLocator uses this to help you keep track of your active account activity.</p>
+                    <p data-i18n="profile.lastLogin.description">NoorLocator uses this to help you keep track of your active account activity.</p>
                 </article>
             </aside>
         </section>
@@ -73,33 +73,33 @@
         <section class="section section-stack" id="profile-form-section">
             <div class="detail-grid detail-grid--dashboard">
                 <article class="panel">
-                    <span class="card__meta">Editable details</span>
-                    <h3>Update your profile</h3>
+                    <span class="card__meta" data-i18n="profile.editable.meta">Editable details</span>
+                    <h3 data-i18n="profile.editable.title">Update your profile</h3>
                     <form id="profile-form" class="form">
                         <label class="form__group">
-                            <span class="form__label">Display name</span>
+                            <span class="form__label" data-i18n="profile.form.displayName">Display name</span>
                             <input class="form__control" type="text" name="name" maxlength="150" required>
                         </label>
                         <label class="form__group">
-                            <span class="form__label">Email</span>
+                            <span class="form__label" data-i18n="auth.email.label">Email</span>
                             <input class="form__control" type="email" name="email" maxlength="256" required>
                         </label>
                         <div class="button-row">
-                            <button id="profile-submit-button" class="button button--primary" type="submit">Save profile</button>
+                            <button id="profile-submit-button" class="button button--primary" type="submit" data-i18n="actions.saveProfile">Save profile</button>
                         </div>
                         <p data-form-message="profile-form" class="message"></p>
                     </form>
                 </article>
 
                 <article class="panel">
-                    <span class="card__meta">Read-only account details</span>
-                    <h3>Protected fields</h3>
+                    <span class="card__meta" data-i18n="profile.readonly.meta">Read-only account details</span>
+                    <h3 data-i18n="profile.readonly.title">Protected fields</h3>
                     <div class="stack-list">
                         <article class="list-card">
                             <div class="list-card__head">
                                 <div>
-                                    <h4>Role</h4>
-                                    <p class="list-card__meta">Permissions stay unchanged through profile edits.</p>
+                                    <h4 data-i18n="profile.readonly.role.title">Role</h4>
+                                    <p class="list-card__meta" data-i18n="profile.readonly.role.description">Permissions stay unchanged through profile edits.</p>
                                 </div>
                                 <span id="profile-role-display" class="status-pill">Loading...</span>
                             </div>
@@ -107,8 +107,8 @@
                         <article class="list-card">
                             <div class="list-card__head">
                                 <div>
-                                    <h4>Assigned centers</h4>
-                                    <p class="list-card__meta">Shown for awareness only when your account has manager scope.</p>
+                                    <h4 data-i18n="profile.readonly.assignedCenters.title">Assigned centers</h4>
+                                    <p class="list-card__meta" data-i18n="profile.readonly.assignedCenters.description">Shown for awareness only when your account has manager scope.</p>
                                 </div>
                                 <span id="profile-center-count" class="status-pill status-pill--muted">Loading...</span>
                             </div>
@@ -116,10 +116,10 @@
                         <article class="list-card">
                             <div class="list-card__head">
                                 <div>
-                                    <h4>Password and security</h4>
-                                    <p class="list-card__meta">Password hashes and role changes are not editable from this page.</p>
+                                    <h4 data-i18n="profile.readonly.security.title">Password and security</h4>
+                                    <p class="list-card__meta" data-i18n="profile.readonly.security.description">Password hashes and role changes are not editable from this page.</p>
                                 </div>
-                                <span class="status-pill status-pill--muted">Protected</span>
+                                <span class="status-pill status-pill--muted" data-i18n="profile.readonly.security.badge">Protected</span>
                             </div>
                         </article>
                     </div>
@@ -127,33 +127,50 @@
             </div>
             <div class="detail-grid detail-grid--dashboard">
                 <article class="panel">
-                    <span class="card__meta">Notifications</span>
-                    <h3>Choose how NoorLocator reaches you</h3>
+                    <span class="card__meta" data-i18n="profile.notifications.meta">Notifications</span>
+                    <h3 data-i18n="profile.notifications.title">Choose how NoorLocator reaches you</h3>
                     <form id="notification-preferences-form" class="form">
                         <label class="checkbox-row">
                             <input type="checkbox" name="emailNotificationsEnabled">
-                            <span>Email notifications</span>
+                            <span data-i18n="profile.notifications.email">Email notifications</span>
                         </label>
                         <label class="checkbox-row">
                             <input type="checkbox" name="appNotificationsEnabled">
-                            <span>In-app notifications</span>
+                            <span data-i18n="profile.notifications.app">In-app notifications</span>
                         </label>
                         <label class="checkbox-row">
                             <input type="checkbox" name="majlisNotificationsEnabled">
-                            <span>Majlis updates</span>
+                            <span data-i18n="profile.notifications.majlis">Majlis updates</span>
                         </label>
                         <label class="checkbox-row">
                             <input type="checkbox" name="eventNotificationsEnabled">
-                            <span>Event announcements</span>
+                            <span data-i18n="profile.notifications.events">Event announcements</span>
                         </label>
                         <label class="checkbox-row">
                             <input type="checkbox" name="centerUpdatesEnabled">
-                            <span>Center activity updates</span>
+                            <span data-i18n="profile.notifications.centerUpdates">Center activity updates</span>
                         </label>
                         <div class="button-row">
-                            <button class="button button--primary" type="submit">Save notification settings</button>
+                            <button class="button button--primary" type="submit" data-i18n="actions.saveNotificationSettings">Save notification settings</button>
                         </div>
                         <p data-form-message="notification-preferences-form" class="message"></p>
+                    </form>
+                </article>
+                <article class="panel">
+                    <span class="card__meta" data-i18n="profile.language.meta">Language preference</span>
+                    <h3 data-i18n="profile.language.title">Choose your app language</h3>
+                    <p data-i18n="profile.language.description">This preference is used for the interface, notifications, and translated email templates when available.</p>
+                    <form id="preferred-language-form" class="form">
+                        <label class="form__group">
+                            <span class="form__label" data-i18n="profile.language.label">Preferred language</span>
+                            <select id="preferred-language-select" class="form__control" name="preferredLanguageCode">
+                                <option value="en">English</option>
+                            </select>
+                        </label>
+                        <div class="button-row">
+                            <button class="button button--primary" type="submit" data-i18n="actions.saveLanguagePreference">Save language preference</button>
+                        </div>
+                        <p data-form-message="preferred-language-form" class="message"></p>
                     </form>
                 </article>
             </div>
@@ -166,6 +183,7 @@
     <script defer src="js/config.js"></script>
     <script defer src="js/auth.js"></script>
     <script defer src="js/api.js"></script>
+    <script defer src="js/i18n.js"></script>
     <script defer src="js/layout.js"></script>
     <script defer src="js/app.js"></script>
 </body>

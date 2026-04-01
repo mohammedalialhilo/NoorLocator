@@ -43,6 +43,7 @@ public static class DependencyInjection
         services.AddScoped<IValidator<UpdateEventAnnouncementDto>, UpdateEventAnnouncementValidator>();
         services.AddScoped<IValidator<UploadCenterImageDto>, UploadCenterImageValidator>();
         services.AddScoped<IValidator<UpdateProfileDto>, UpdateProfileValidator>();
+        services.AddScoped<IValidator<UpdatePreferredLanguageDto>, UpdatePreferredLanguageValidator>();
         services.AddScoped<IValidator<UpdateNotificationPreferencesDto>, UpdateNotificationPreferencesValidator>();
         services.AddScoped<IValidator<CreateCenterLanguageSuggestionDto>, CreateCenterLanguageSuggestionValidator>();
         services.AddScoped<IValidator<ManagerRequestDto>, ManagerRequestValidator>();

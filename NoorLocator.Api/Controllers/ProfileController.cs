@@ -19,6 +19,7 @@ namespace NoorLocator.Api.Controllers;
 public class ProfileController(
     IProfileService profileService,
     IValidator<UpdateProfileDto> updateProfileValidator,
+    IValidator<UpdatePreferredLanguageDto> updatePreferredLanguageValidator,
     IValidator<UpdateNotificationPreferencesDto> updateNotificationPreferencesValidator) : ControllerBase
 {
     /// <summary>
@@ -44,6 +45,22 @@ public class ProfileController(
         }
 
         var result = await profileService.UpdateMyProfileAsync(User.GetRequiredUserId(), request, cancellationToken);
+        return this.ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Updates the authenticated user's preferred UI language.
+    /// </summary>
+    [HttpPut("me/preferred-language")]
+    public async Task<ActionResult<ApiResponse<CurrentUserDto>>> UpdatePreferredLanguage([FromBody] UpdatePreferredLanguageDto request, CancellationToken cancellationToken)
+    {
+        var validation = updatePreferredLanguageValidator.Validate(request);
+        if (!validation.IsValid)
+        {
+            return this.ToActionResult(OperationResult<CurrentUserDto>.Failure(validation.Errors.First(), 400));
+        }
+
+        var result = await profileService.UpdatePreferredLanguageAsync(User.GetRequiredUserId(), request, cancellationToken);
         return this.ToActionResult(result);
     }
 

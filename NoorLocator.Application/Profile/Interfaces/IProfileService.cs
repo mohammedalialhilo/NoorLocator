@@ -11,6 +11,8 @@ public interface IProfileService
 
     Task<OperationResult<CurrentUserDto>> UpdateMyProfileAsync(int userId, UpdateProfileDto request, CancellationToken cancellationToken = default);
 
+    Task<OperationResult<CurrentUserDto>> UpdatePreferredLanguageAsync(int userId, UpdatePreferredLanguageDto request, CancellationToken cancellationToken = default);
+
     Task<OperationResult<NotificationPreferenceDto>> GetNotificationPreferencesAsync(int userId, CancellationToken cancellationToken = default);
 
     Task<OperationResult<NotificationPreferenceDto>> UpdateNotificationPreferencesAsync(int userId, UpdateNotificationPreferencesDto request, CancellationToken cancellationToken = default);

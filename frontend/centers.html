@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0D2535">
-    <title>NoorLocator | Center Directory</title>
+    <title data-i18n="meta.centers.title">NoorLocator | Center Directory</title>
     <link rel="icon" type="image/png" href="assets/logo_bkg.png">
     <link rel="manifest" href="site.webmanifest">
     <link rel="stylesheet" href="css/style.css">
@@ -15,20 +15,20 @@
     <main class="page-shell">
         <section class="page-hero page-hero--split">
             <div class="page-hero__content">
-                <span class="eyebrow">Center discovery</span>
-                <h1>Search the NoorLocator center directory.</h1>
-                <p>Browse all approved centers, request nearby results from your browser location, or filter by city, country, and language code.</p>
+                <span class="eyebrow" data-i18n="centers.hero.eyebrow">Center discovery</span>
+                <h1 data-i18n="centers.hero.title">Search the NoorLocator center directory.</h1>
+                <p data-i18n="centers.hero.description">Browse all approved centers, request nearby results from your browser location, or filter by city, country, and supported language.</p>
                 <div class="hero__actions">
-                    <button id="locate-centers" class="button button--primary" type="button" data-locate-centers>Use my location</button>
-                    <a class="button button--ghost" href="index.html">Back home</a>
+                    <button id="locate-centers" class="button button--primary" type="button" data-locate-centers data-i18n="actions.useMyLocation">Use my location</button>
+                    <a class="button button--ghost" href="index.html" data-i18n="actions.backHome">Back home</a>
                 </div>
-                <p id="centers-page-message" class="message">Loading centers...</p>
+                <p id="centers-page-message" class="message" data-i18n="centers.page.loading">Loading centers...</p>
             </div>
             <aside class="hero__panel hero__panel--stack">
                 <article class="mini-stat">
-                    <span class="card__meta">Location status</span>
-                    <strong id="location-status">Checking</strong>
-                    <p id="current-location">Turn on location to see nearby centers and estimated distances.</p>
+                    <span class="card__meta" data-i18n="centers.location.meta">Location status</span>
+                    <strong id="location-status" data-i18n="status.checking">Checking</strong>
+                    <p id="current-location" data-i18n="centers.location.description">Turn on location to see nearby centers and estimated distances.</p>
                 </article>
             </aside>
         </section>
@@ -36,33 +36,35 @@
         <section class="section" id="search">
             <div class="section__heading">
                 <div class="section__copy">
-                    <span class="eyebrow">Search and filter</span>
-                    <h2>Find centers by place, language, or keywords.</h2>
-                    <p>If you prefer not to share your location, you can still discover centers by searching for a city or country.</p>
+                    <span class="eyebrow" data-i18n="centers.search.eyebrow">Search and filter</span>
+                    <h2 data-i18n="centers.search.title">Find centers by place, language, or keywords.</h2>
+                    <p data-i18n="centers.search.description">If you prefer not to share your location, you can still discover centers by searching for a city or country.</p>
                 </div>
             </div>
             <form id="center-search-form" class="panel filter-form">
                 <div class="filter-grid">
                     <label class="form__group">
-                        <span class="form__label">Keyword</span>
-                        <input class="form__control" type="text" name="query" placeholder="Center name, address, or description">
+                        <span class="form__label" data-i18n="centers.filters.keyword.label">Keyword</span>
+                        <input class="form__control" type="text" name="query" data-i18n-placeholder="centers.filters.keyword.placeholder" placeholder="Center name, address, or description">
                     </label>
                     <label class="form__group">
-                        <span class="form__label">City</span>
-                        <input class="form__control" type="text" name="city" placeholder="Copenhagen">
+                        <span class="form__label" data-i18n="centers.filters.city.label">City</span>
+                        <input class="form__control" type="text" name="city" data-i18n-placeholder="centers.filters.city.placeholder" placeholder="Copenhagen">
                     </label>
                     <label class="form__group">
-                        <span class="form__label">Country</span>
-                        <input class="form__control" type="text" name="country" placeholder="Denmark">
+                        <span class="form__label" data-i18n="centers.filters.country.label">Country</span>
+                        <input class="form__control" type="text" name="country" data-i18n-placeholder="centers.filters.country.placeholder" placeholder="Denmark">
                     </label>
                     <label class="form__group">
-                        <span class="form__label">Language code</span>
-                        <input class="form__control" type="text" name="languageCode" placeholder="ar, en, sv, fa, ur">
+                        <span class="form__label" data-i18n="centers.filters.language.label">Supported language</span>
+                        <select id="center-language-filter" class="form__control" name="languageCode">
+                            <option value="" data-i18n="centers.filters.language.placeholder">Any language</option>
+                        </select>
                     </label>
                 </div>
                 <div class="hero__actions">
-                    <button class="button button--primary" type="submit">Search centers</button>
-                    <button id="clear-center-filters" class="button button--secondary" type="button">Show all centers</button>
+                    <button class="button button--primary" type="submit" data-i18n="actions.searchCenters">Search centers</button>
+                    <button id="clear-center-filters" class="button button--secondary" type="button" data-i18n="actions.showAllCenters">Show all centers</button>
                 </div>
                 <p data-form-message="center-search-form" class="message"></p>
             </form>
@@ -71,9 +73,9 @@
         <section class="section">
             <div class="section__heading">
                 <div class="section__copy">
-                    <span class="eyebrow">Nearby</span>
-                    <h2>Closest centers to your current location.</h2>
-                    <p>Allow location sharing to see nearby centers here.</p>
+                    <span class="eyebrow" data-i18n="centers.nearby.eyebrow">Nearby</span>
+                    <h2 data-i18n="centers.nearby.title">Closest centers to your current location.</h2>
+                    <p data-i18n="centers.nearby.description">Allow location sharing to see nearby centers here.</p>
                 </div>
             </div>
             <div id="nearby-centers" class="card-grid"></div>
@@ -82,9 +84,9 @@
         <section class="section">
             <div class="section__heading">
                 <div class="section__copy">
-                    <span class="eyebrow">Directory</span>
-                    <h2>All published centers.</h2>
-                    <p id="centers-results-summary">Browse centers in the NoorLocator directory.</p>
+                    <span class="eyebrow" data-i18n="centers.directory.eyebrow">Directory</span>
+                    <h2 data-i18n="centers.directory.title">All published centers.</h2>
+                    <p id="centers-results-summary" data-i18n="centers.directory.summary">Browse centers in the NoorLocator directory.</p>
                 </div>
             </div>
             <div id="centers-list" class="card-grid"></div>
@@ -97,6 +99,7 @@
     <script defer src="js/config.js"></script>
     <script defer src="js/auth.js"></script>
     <script defer src="js/api.js"></script>
+    <script defer src="js/i18n.js"></script>
     <script defer src="js/layout.js"></script>
     <script defer src="js/app.js"></script>
 </body>

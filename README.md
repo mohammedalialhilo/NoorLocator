@@ -208,7 +208,7 @@ For production first-run bootstrap:
 
 The demo content below is development-oriented seed data. Production defaults keep demo seeding off unless you intentionally enable it for a non-public environment.
 
-- Languages: Arabic, Swedish, English, Farsi, Urdu
+- Languages: Arabic, Danish, German, English, Spanish, Farsi, Portuguese, Swedish, and Urdu
 - Published demo centers across Copenhagen, Stockholm, Helsinki, Oslo, and Aarhus
 - Demo majalis
 - Approved manager assignments
@@ -270,6 +270,58 @@ The demo content below is development-oriented seed data. Production defaults ke
   - center update notifications
 - The profile page is the single place where users manage logout, verification status, and notification preferences.
 
+## Localization And RTL
+
+### Supported UI Languages
+
+- `en` English
+- `ar` Arabic
+- `fa` Farsi
+- `da` Danish
+- `de` German
+- `es` Spanish
+- `sv` Swedish
+- `pt` Portuguese
+
+### Frontend Localization Architecture
+
+- Static UI translations live in `frontend/locales/` as one JSON resource file per language.
+- `frontend/js/i18n.js` is the shared runtime that loads the selected locale, merges it with the English fallback, and exposes `t(...)`, `translateMessage(...)`, and selector helpers to the rest of the frontend.
+- HTML templates use `data-i18n*` attributes for declarative translation, while `frontend/js/app.js` and `frontend/js/layout.js` call `t(...)` for dynamic UI states.
+- The selected language is persisted in `localStorage` under the shared NoorLocator language key so it survives reloads for signed-out users.
+
+### Language Switcher And Preferred Language
+
+- The shared navbar renders the language switcher on both public and authenticated pages.
+- Changing the language updates the page shell immediately and persists the selection across reloads.
+- When a user is signed in, `PUT /api/profile/me/preferred-language` stores the preferred UI language on the user record.
+- On later visits, NoorLocator resolves the language in this order:
+  - signed-in user preferred language
+  - saved local browser selection
+  - supported browser language
+  - English fallback
+
+### RTL Strategy
+
+- Arabic and Farsi are treated as RTL languages by the localization runtime.
+- When either language is active, NoorLocator updates the root `html` element with `lang="<code>"` and `dir="rtl"`.
+- Shared CSS uses logical properties and RTL-aware selectors so the navbar, hamburger menu, cards, filters, forms, and notifications remain usable without duplicating layouts.
+
+### Center Supported Languages
+
+- The backend returns approved supported languages in both `GET /api/centers` and `GET /api/centers/{id}` responses.
+- The centers directory renders those languages as responsive chips on each center card.
+- The center details page also renders a dedicated supported-languages section.
+- Center filtering remains language-aware through `GET /api/centers/search?languageCode=<code>`.
+
+### Adding A New Language Later
+
+1. Add the new language record to the seed/reference data.
+2. Add the language metadata to `frontend/js/i18n.js`.
+3. Create `frontend/locales/<code>.json` using `frontend/locales/en.json` as the source shape.
+4. Verify whether the new language should be treated as RTL and extend the RTL list if needed.
+5. Re-run build, tests, and live browser verification before release.
+
 ## API Overview
 
 Authentication:
@@ -287,6 +339,7 @@ Profile:
 
 - `GET /api/profile/me`
 - `PUT /api/profile/me`
+- `PUT /api/profile/me/preferred-language`
 - `GET /api/profile/me/notification-preferences`
 - `PUT /api/profile/me/notification-preferences`
 
@@ -397,6 +450,7 @@ Important test areas:
 - self-service profile read/update, invalid-input rejection, duplicate-email protection, role protection, and reverification on email changes
 - expired-token rejection and refresh-token-backed session revocation
 - public discovery endpoints
+- localization-aware profile preference persistence
 - center visit tracking, follow/subscription deduplication, notification preference persistence, and notification read-state updates
 - in-app and email notifications for majalis and event announcements
 - admin authorization
@@ -417,12 +471,16 @@ powershell -ExecutionPolicy Bypass -File .\scripts\verify-e2e.ps1 -StartApp -Con
 The script verifies:
 
 - public pages and identity content
+- locale switching, persisted language selection, and RTL shell behavior
 - login and logout behavior
 - register, resend-verification, verify-email, forgot-password, and reset-password behavior
 - profile read/update behavior for user, manager, and admin accounts
+- preferred language persistence for authenticated users
 - protected route invalidation after logout
 - manager and admin token invalidation after logout
 - center discovery endpoints
+- supported-language chips on center cards and center details pages
+- language-aware center filtering
 - visit tracking, center follow/subscription behavior, notification-bell updates, and mark-read flows
 - user submissions
 - manager majalis workflows

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0D2535">
-    <title>NoorLocator | Admin Moderation</title>
+    <title data-i18n="meta.admin.title">NoorLocator | Admin Moderation</title>
     <link rel="icon" type="image/png" href="assets/logo_bkg.png">
     <link rel="manifest" href="site.webmanifest">
     <link rel="stylesheet" href="css/style.css">
@@ -13,53 +13,53 @@
     <div data-site-header></div>
     <div class="auth-gate" data-auth-gate>
         <div class="auth-gate__card">
-            <span class="eyebrow">Checking session</span>
-            <h2>Confirming your admin authorization.</h2>
-            <p>The moderation workspace stays hidden until NoorLocator verifies the session and role for this page.</p>
+            <span class="eyebrow" data-i18n="admin.gate.eyebrow">Checking session</span>
+            <h2 data-i18n="admin.gate.title">Confirming your admin authorization.</h2>
+            <p data-i18n="admin.gate.description">The moderation workspace stays hidden until NoorLocator verifies the session and role for this page.</p>
         </div>
     </div>
 
     <main class="page-shell">
         <section class="page-hero page-hero--split">
             <div class="page-hero__content">
-                <span class="eyebrow">Admin moderation</span>
-                <h1>Review, approve, reject, and manage the full NoorLocator workflow.</h1>
-                <p>Review moderation queues, manage centers, and keep platform activity organized from one workspace.</p>
+                <span class="eyebrow" data-i18n="admin.hero.eyebrow">Admin moderation</span>
+                <h1 data-i18n="admin.hero.title">Review, approve, reject, and manage the full NoorLocator workflow.</h1>
+                <p data-i18n="admin.hero.description">Review moderation queues, manage centers, and keep platform activity organized from one workspace.</p>
                 <div class="hero__actions">
-                    <a class="button button--primary" href="#admin-overview">Open dashboard</a>
-                    <a class="button button--secondary" href="#center-requests">Review queues</a>
+                    <a class="button button--primary" href="#admin-overview" data-i18n="admin.hero.openDashboard">Open dashboard</a>
+                    <a class="button button--secondary" href="#center-requests" data-i18n="admin.hero.reviewQueues">Review queues</a>
                 </div>
-                <p id="admin-page-message" class="message">Loading the admin workspace...</p>
+                <p id="admin-page-message" class="message" data-i18n="admin.page.loading">Loading the admin workspace...</p>
             </div>
             <aside class="hero__panel hero__panel--stack">
                 <div class="brand-card brand-card--compact">
                     <img class="site-logo site-logo--workspace" data-brand-logo src="assets/logo_bkg.png" alt="NoorLocator logo">
-                    <p class="brand-card__tagline">Moderation, audit visibility, and publishing now share the same NoorLocator brand experience everywhere.</p>
+                    <p class="brand-card__tagline" data-i18n="admin.brand.tagline">Moderation, audit visibility, and publishing now share the same NoorLocator brand experience everywhere.</p>
                 </div>
                 <article class="mini-stat">
-                    <span class="card__meta">Pending moderation</span>
+                    <span class="card__meta" data-i18n="admin.stats.pending">Pending moderation</span>
                     <strong id="admin-pending-count">0</strong>
-                    <p>Pending center requests, manager requests, language suggestions, and app suggestions are summarized here.</p>
+                    <p data-i18n="admin.stats.pendingDescription">Pending center requests, manager requests, language suggestions, and app suggestions are summarized here.</p>
                 </article>
                 <article class="mini-stat">
-                    <span class="card__meta">Audit visibility</span>
+                    <span class="card__meta" data-i18n="admin.stats.audit">Audit visibility</span>
                     <strong id="admin-audit-count">0</strong>
-                    <p>Every approval, rejection, center edit, and deletion is surfaced in the audit log section.</p>
+                    <p data-i18n="admin.stats.auditDescription">Every approval, rejection, center edit, and deletion is surfaced in the audit log section.</p>
                 </article>
             </aside>
         </section>
 
         <section class="section">
-            <nav class="dashboard-nav" aria-label="Admin navigation">
-                <a class="dashboard-nav__link" href="#admin-overview">Overview</a>
-                <a class="dashboard-nav__link" href="#center-requests">Center requests</a>
-                <a class="dashboard-nav__link" href="#manager-requests">Manager requests</a>
-                <a class="dashboard-nav__link" href="#language-suggestions">Language suggestions</a>
-                <a class="dashboard-nav__link" href="#app-suggestions">App suggestions</a>
-                <a class="dashboard-nav__link" href="#center-management">Centers</a>
-                <a class="dashboard-nav__link" href="#image-moderation">Images</a>
-                <a class="dashboard-nav__link" href="#user-management">Users</a>
-                <a class="dashboard-nav__link" href="#audit-logs">Audit logs</a>
+            <nav class="dashboard-nav" aria-label="Admin navigation" data-i18n-aria-label="admin.nav.aria">
+                <a class="dashboard-nav__link" href="#admin-overview" data-i18n="admin.nav.overview">Overview</a>
+                <a class="dashboard-nav__link" href="#center-requests" data-i18n="admin.nav.centerRequests">Center requests</a>
+                <a class="dashboard-nav__link" href="#manager-requests" data-i18n="admin.nav.managerRequests">Manager requests</a>
+                <a class="dashboard-nav__link" href="#language-suggestions" data-i18n="admin.nav.languageSuggestions">Language suggestions</a>
+                <a class="dashboard-nav__link" href="#app-suggestions" data-i18n="admin.nav.appSuggestions">App suggestions</a>
+                <a class="dashboard-nav__link" href="#center-management" data-i18n="admin.nav.centers">Centers</a>
+                <a class="dashboard-nav__link" href="#image-moderation" data-i18n="admin.nav.images">Images</a>
+                <a class="dashboard-nav__link" href="#user-management" data-i18n="admin.nav.users">Users</a>
+                <a class="dashboard-nav__link" href="#audit-logs" data-i18n="admin.nav.auditLogs">Audit logs</a>
             </nav>
         </section>
 
@@ -70,18 +70,18 @@
         <section class="section section-stack">
             <div class="detail-grid detail-grid--dashboard">
                 <article class="panel" id="center-requests">
-                    <span class="card__meta">Center requests</span>
-                    <h3>Approve or reject submitted centers</h3>
+                    <span class="card__meta" data-i18n="admin.centerRequests.meta">Center requests</span>
+                    <h3 data-i18n="admin.centerRequests.title">Approve or reject submitted centers</h3>
                     <div id="admin-center-requests" class="stack-list">
-                        <div class="empty-state">Loading center requests...</div>
+                        <div class="empty-state" data-i18n="admin.centerRequests.loading">Loading center requests...</div>
                     </div>
                 </article>
 
                 <article class="panel" id="manager-requests">
-                    <span class="card__meta">Manager requests</span>
-                    <h3>Review access requests</h3>
+                    <span class="card__meta" data-i18n="admin.managerRequests.meta">Manager requests</span>
+                    <h3 data-i18n="admin.managerRequests.title">Review access requests</h3>
                     <div id="admin-manager-requests" class="stack-list">
-                        <div class="empty-state">Loading manager requests...</div>
+                        <div class="empty-state" data-i18n="admin.managerRequests.loading">Loading manager requests...</div>
                     </div>
                 </article>
             </div>
@@ -90,18 +90,18 @@
         <section class="section section-stack">
             <div class="detail-grid detail-grid--dashboard">
                 <article class="panel" id="language-suggestions">
-                    <span class="card__meta">Language suggestions</span>
-                    <h3>Review center language proposals</h3>
+                    <span class="card__meta" data-i18n="admin.languageSuggestions.meta">Language suggestions</span>
+                    <h3 data-i18n="admin.languageSuggestions.title">Review center language proposals</h3>
                     <div id="admin-language-suggestions" class="stack-list">
-                        <div class="empty-state">Loading language suggestions...</div>
+                        <div class="empty-state" data-i18n="admin.languageSuggestions.loading">Loading language suggestions...</div>
                     </div>
                 </article>
 
                 <article class="panel" id="app-suggestions">
-                    <span class="card__meta">App suggestions</span>
-                    <h3>Mark user feedback as reviewed</h3>
+                    <span class="card__meta" data-i18n="admin.appSuggestions.meta">App suggestions</span>
+                    <h3 data-i18n="admin.appSuggestions.title">Mark user feedback as reviewed</h3>
                     <div id="admin-suggestions" class="stack-list">
-                        <div class="empty-state">Loading app suggestions...</div>
+                        <div class="empty-state" data-i18n="admin.appSuggestions.loading">Loading app suggestions...</div>
                     </div>
                 </article>
             </div>
@@ -110,53 +110,53 @@
         <section class="section section-stack" id="center-management">
             <div class="detail-grid detail-grid--dashboard">
                 <article class="panel">
-                    <span class="card__meta">Center editor</span>
-                    <h3 id="admin-center-form-heading">Edit a published center</h3>
+                    <span class="card__meta" data-i18n="admin.centerEditor.meta">Center editor</span>
+                    <h3 id="admin-center-form-heading" data-i18n="admin.centerEditor.title">Edit a published center</h3>
                     <form id="admin-center-form" class="form">
                         <input type="hidden" name="centerId">
                         <div class="filter-grid">
                             <label class="form__group">
-                                <span class="form__label">Name</span>
+                                <span class="form__label" data-i18n="admin.centerEditor.name">Name</span>
                                 <input class="form__control" type="text" name="name" maxlength="200" required>
                             </label>
                             <label class="form__group">
-                                <span class="form__label">Address</span>
+                                <span class="form__label" data-i18n="admin.centerEditor.address">Address</span>
                                 <input class="form__control" type="text" name="address" maxlength="250" required>
                             </label>
                             <label class="form__group">
-                                <span class="form__label">City</span>
+                                <span class="form__label" data-i18n="admin.centerEditor.city">City</span>
                                 <input class="form__control" type="text" name="city" maxlength="100" required>
                             </label>
                             <label class="form__group">
-                                <span class="form__label">Country</span>
+                                <span class="form__label" data-i18n="admin.centerEditor.country">Country</span>
                                 <input class="form__control" type="text" name="country" maxlength="100" required>
                             </label>
                             <label class="form__group">
-                                <span class="form__label">Latitude</span>
+                                <span class="form__label" data-i18n="admin.centerEditor.latitude">Latitude</span>
                                 <input class="form__control" type="number" step="0.000001" name="latitude" required>
                             </label>
                             <label class="form__group">
-                                <span class="form__label">Longitude</span>
+                                <span class="form__label" data-i18n="admin.centerEditor.longitude">Longitude</span>
                                 <input class="form__control" type="number" step="0.000001" name="longitude" required>
                             </label>
                         </div>
                         <label class="form__group">
-                            <span class="form__label">Description</span>
+                            <span class="form__label" data-i18n="admin.centerEditor.description">Description</span>
                             <textarea class="form__control" name="description"></textarea>
                         </label>
                         <div class="button-row">
-                            <button id="admin-center-submit-button" class="button button--primary" type="submit">Save center</button>
-                            <button id="admin-center-cancel-button" class="button button--ghost" type="button" hidden>Cancel edit</button>
+                            <button id="admin-center-submit-button" class="button button--primary" type="submit" data-i18n="admin.centerEditor.submit">Save center</button>
+                            <button id="admin-center-cancel-button" class="button button--ghost" type="button" hidden data-i18n="actions.cancelEdit">Cancel edit</button>
                         </div>
                         <p data-form-message="admin-center-form" class="message"></p>
                     </form>
                 </article>
 
                 <article class="panel">
-                    <span class="card__meta">Published centers</span>
-                    <h3>Edit or delete public centers</h3>
+                    <span class="card__meta" data-i18n="admin.centers.meta">Published centers</span>
+                    <h3 data-i18n="admin.centers.title">Edit or delete public centers</h3>
                     <div id="admin-centers" class="stack-list">
-                        <div class="empty-state">Loading centers...</div>
+                        <div class="empty-state" data-i18n="admin.centers.loading">Loading centers...</div>
                     </div>
                 </article>
             </div>
@@ -165,23 +165,23 @@
         <section class="section section-stack" id="image-moderation">
             <div class="detail-grid detail-grid--dashboard">
                 <article class="panel">
-                    <span class="card__meta">Image moderation</span>
-                    <h3>Review and moderate center galleries</h3>
+                    <span class="card__meta" data-i18n="admin.images.meta">Image moderation</span>
+                    <h3 data-i18n="admin.images.title">Review and moderate center galleries</h3>
                     <div class="toolbar-row">
                         <label class="form__group toolbar-row__control">
-                            <span class="form__label">Center gallery</span>
+                            <span class="form__label" data-i18n="admin.images.centerGallery">Center gallery</span>
                             <select id="admin-center-image-filter-center" class="form__control form__control--compact"></select>
                         </label>
-                        <button id="refresh-admin-center-images-button" class="button button--secondary" type="button">Refresh gallery</button>
+                        <button id="refresh-admin-center-images-button" class="button button--secondary" type="button" data-i18n="actions.refreshGallery">Refresh gallery</button>
                     </div>
-                    <p id="admin-center-images-message" class="message">Choose a center to review its gallery and moderate images if needed.</p>
+                    <p id="admin-center-images-message" class="message" data-i18n="admin.images.message">Choose a center to review its gallery and moderate images if needed.</p>
                 </article>
 
                 <article class="panel">
-                    <span class="card__meta">Gallery items</span>
-                    <h3>Set primary images or remove inappropriate uploads</h3>
+                    <span class="card__meta" data-i18n="admin.gallery.meta">Gallery items</span>
+                    <h3 data-i18n="admin.gallery.title">Set primary images or remove inappropriate uploads</h3>
                     <div id="admin-center-images" class="gallery-grid">
-                        <div class="empty-state">Loading center gallery...</div>
+                        <div class="empty-state" data-i18n="admin.gallery.loading">Loading center gallery...</div>
                     </div>
                 </article>
             </div>
@@ -190,26 +190,26 @@
         <section class="section" id="user-management">
             <div class="section__heading">
                 <div class="section__copy">
-                    <span class="card__meta">Users</span>
-                    <h2>View platform users and roles</h2>
-                    <p>User role changes come from approval workflows, while this table gives admins a current overview.</p>
+                    <span class="card__meta" data-i18n="admin.users.meta">Users</span>
+                    <h2 data-i18n="admin.users.title">View platform users and roles</h2>
+                    <p data-i18n="admin.users.description">User role changes come from approval workflows, while this table gives admins a current overview.</p>
                 </div>
             </div>
             <div id="admin-users-table" class="table-shell">
-                <div class="empty-state">Loading users...</div>
+                <div class="empty-state" data-i18n="admin.users.loading">Loading users...</div>
             </div>
         </section>
 
         <section class="section" id="audit-logs">
             <div class="section__heading">
                 <div class="section__copy">
-                    <span class="card__meta">Audit logs</span>
-                    <h2>Trace moderation and management actions</h2>
-                    <p>Review approvals, rejections, center updates, and other recent activity across NoorLocator.</p>
+                    <span class="card__meta" data-i18n="admin.audit.meta">Audit logs</span>
+                    <h2 data-i18n="admin.audit.title">Trace moderation and management actions</h2>
+                    <p data-i18n="admin.audit.description">Review approvals, rejections, center updates, and other recent activity across NoorLocator.</p>
                 </div>
             </div>
             <div id="admin-audit-logs-table" class="table-shell">
-                <div class="empty-state">Loading audit logs...</div>
+                <div class="empty-state" data-i18n="admin.audit.loading">Loading audit logs...</div>
             </div>
         </section>
     </main>
@@ -220,6 +220,7 @@
     <script defer src="js/config.js"></script>
     <script defer src="js/auth.js"></script>
     <script defer src="js/api.js"></script>
+    <script defer src="js/i18n.js"></script>
     <script defer src="js/layout.js"></script>
     <script defer src="js/app.js"></script>
 </body>

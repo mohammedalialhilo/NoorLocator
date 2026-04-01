@@ -26,7 +26,17 @@ public class CenterService(NoorLocatorDbContext dbContext) : ICenterService
                 City = center.City,
                 Country = center.Country,
                 Latitude = center.Latitude,
-                Longitude = center.Longitude
+                Longitude = center.Longitude,
+                Languages = center.CenterLanguages
+                    .Where(centerLanguage => centerLanguage.Language != null)
+                    .Select(centerLanguage => new LanguageDto
+                    {
+                        Id = centerLanguage.Language!.Id,
+                        Name = centerLanguage.Language.Name,
+                        Code = centerLanguage.Language.Code
+                    })
+                    .OrderBy(language => language.Name)
+                    .ToArray()
             })
             .ToArrayAsync(cancellationToken);
 
@@ -164,7 +174,17 @@ public class CenterService(NoorLocatorDbContext dbContext) : ICenterService
                 City = center.City,
                 Country = center.Country,
                 Latitude = center.Latitude,
-                Longitude = center.Longitude
+                Longitude = center.Longitude,
+                Languages = center.CenterLanguages
+                    .Where(centerLanguage => centerLanguage.Language != null)
+                    .Select(centerLanguage => new LanguageDto
+                    {
+                        Id = centerLanguage.Language!.Id,
+                        Name = centerLanguage.Language.Name,
+                        Code = centerLanguage.Language.Code
+                    })
+                    .OrderBy(language => language.Name)
+                    .ToArray()
             })
             .ToArrayAsync(cancellationToken);
 
@@ -221,7 +241,17 @@ public class CenterService(NoorLocatorDbContext dbContext) : ICenterService
                 City = center.City,
                 Country = center.Country,
                 Latitude = center.Latitude,
-                Longitude = center.Longitude
+                Longitude = center.Longitude,
+                Languages = center.CenterLanguages
+                    .Where(centerLanguage => centerLanguage.Language != null)
+                    .Select(centerLanguage => new LanguageDto
+                    {
+                        Id = centerLanguage.Language!.Id,
+                        Name = centerLanguage.Language.Name,
+                        Code = centerLanguage.Language.Code
+                    })
+                    .OrderBy(language => language.Name)
+                    .ToArray()
             })
             .ToArrayAsync(cancellationToken);
 

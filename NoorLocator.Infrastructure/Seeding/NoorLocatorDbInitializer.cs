@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using NoorLocator.Application.Common.Configuration;
+using NoorLocator.Application.Common.Localization;
 using NoorLocator.Domain.Entities;
 using NoorLocator.Domain.Enums;
 using NoorLocator.Infrastructure.Persistence;
@@ -66,9 +67,13 @@ public class NoorLocatorDbInitializer(
         var definitions = new[]
         {
             new Language { Name = "Arabic", Code = "ar" },
-            new Language { Name = "Swedish", Code = "sv" },
-            new Language { Name = "English", Code = "en" },
+            new Language { Name = "Danish", Code = "da" },
+            new Language { Name = "German", Code = "de" },
+            new Language { Name = "Spanish", Code = "es" },
             new Language { Name = "Farsi", Code = "fa" },
+            new Language { Name = "English", Code = "en" },
+            new Language { Name = "Portuguese", Code = "pt" },
+            new Language { Name = "Swedish", Code = "sv" },
             new Language { Name = "Urdu", Code = "ur" }
         };
 
@@ -163,7 +168,7 @@ public class NoorLocatorDbInitializer(
                 55.672100m,
                 12.530300m,
                 "A flagship NoorLocator demo center in Copenhagen with multilingual public discovery data.",
-                ["ar", "en", "ur"]),
+                ["ar", "da", "de", "en"]),
             new CenterSeed(
                 "Ahlulbayt Cultural Center",
                 "Sodermalm Demo 14",
@@ -172,7 +177,7 @@ public class NoorLocatorDbInitializer(
                 59.313500m,
                 18.070800m,
                 "A Stockholm center seeded for multilingual majalis discovery and manager workflows.",
-                ["sv", "en", "ar"]),
+                ["ar", "en", "fa", "sv"]),
             new CenterSeed(
                 "Noor Community House",
                 "Mannerheimintie 22",
@@ -181,7 +186,7 @@ public class NoorLocatorDbInitializer(
                 60.171900m,
                 24.937500m,
                 "A Helsinki center used for search, location, and center-language demos.",
-                ["fa", "ur", "en"]),
+                ["en", "es", "fa", "pt"]),
             new CenterSeed(
                 "Lady Zainab Majlis Hall",
                 "Torggata 42",
@@ -190,7 +195,7 @@ public class NoorLocatorDbInitializer(
                 59.913900m,
                 10.752200m,
                 "An Oslo gathering space seeded to make the public map and directory feel more complete.",
-                ["ar", "en"]),
+                ["ar", "de", "en", "pt"]),
             new CenterSeed(
                 "Aarhus Ahlulbayt Center",
                 "Frederiks Alle 88",
@@ -199,7 +204,7 @@ public class NoorLocatorDbInitializer(
                 56.149600m,
                 10.203900m,
                 "An Aarhus demo center that rounds out the Nordic public discovery experience.",
-                ["ar", "en"])
+                ["ar", "da", "en", "es"])
         };
 
         var centers = new Dictionary<string, Center>(StringComparer.OrdinalIgnoreCase);
@@ -247,6 +252,7 @@ public class NoorLocatorDbInitializer(
             Name = name,
             Email = email,
             PasswordHash = passwordHashingService.HashPassword(password),
+            PreferredLanguageCode = SupportedLanguageCatalog.FallbackLanguageCode,
             Role = role,
             CreatedAt = DateTime.UtcNow,
             UpdatedAtUtc = DateTime.UtcNow,

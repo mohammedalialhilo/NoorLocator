@@ -8,6 +8,8 @@ public class CurrentUserDto
 
     public string Email { get; set; } = string.Empty;
 
+    public string PreferredLanguageCode { get; set; } = "en";
+
     public bool IsEmailVerified { get; set; }
 
     public string Role { get; set; } = string.Empty;

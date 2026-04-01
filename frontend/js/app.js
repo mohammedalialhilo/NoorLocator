@@ -3,12 +3,14 @@ const CENTER_IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
 const CENTER_IMAGE_ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 
 document.addEventListener("DOMContentLoaded", async () => {
+    await window.NoorLocatorI18n.init();
     const authReady = await window.NoorLocatorAuth.bootstrapPageAuth();
     if (!authReady && document.body?.dataset.authRequired === "true") {
         return;
     }
 
     window.NoorLocatorLayout.init();
+    window.NoorLocatorI18n.applyTranslations(document);
     window.NoorLocatorAuth.bindLogoutControls(document);
     notifyAuthStatus();
     syncNotificationBell();
@@ -63,6 +65,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 });
 
+function t(key, fallback, params = {}) {
+    return window.NoorLocatorI18n?.t?.(key, params, fallback) || fallback;
+}
+
+function translateUiText(message, fallbackMessage = "") {
+    return window.NoorLocatorI18n?.translateMessage?.(message, fallbackMessage) || fallbackMessage || message;
+}
+
 function notifyAuthStatus() {
     const url = new URL(window.location.href);
     let message = "";
@@ -100,7 +110,7 @@ function setMessage(element, message, type = "") {
         return;
     }
 
-    element.textContent = message;
+    element.textContent = translateUiText(message);
     element.className = `message${type ? ` message--${type}` : ""}`;
 }
 
@@ -110,7 +120,7 @@ function setContainerMessage(container, message, modifier = "") {
     }
 
     const className = modifier ? `empty-state empty-state--${modifier}` : "empty-state";
-    container.innerHTML = `<div class="${className}">${escapeHtml(message)}</div>`;
+    container.innerHTML = `<div class="${className}">${escapeHtml(translateUiText(message))}</div>`;
 }
 
 function setCardLoadingState(container, count = 3) {
@@ -151,20 +161,25 @@ function formatDistance(distanceKm) {
         return "";
     }
 
-    return `${distanceKm.toFixed(1)} km away`;
+    const formattedDistance = new Intl.NumberFormat(window.NoorLocatorI18n?.getLocaleCode?.() || undefined, {
+        maximumFractionDigits: 1,
+        minimumFractionDigits: 1
+    }).format(distanceKm);
+
+    return t("common.distanceKmAway", "{distance} km away", { distance: formattedDistance });
 }
 
 function formatDateTime(dateValue) {
     if (!dateValue) {
-        return "Date to be announced";
+        return t("common.dateToBeAnnounced", "Date to be announced");
     }
 
     const date = new Date(dateValue);
     if (Number.isNaN(date.getTime())) {
-        return "Date to be announced";
+        return t("common.dateToBeAnnounced", "Date to be announced");
     }
 
-    return new Intl.DateTimeFormat(undefined, {
+    return new Intl.DateTimeFormat(window.NoorLocatorI18n?.getLocaleCode?.() || undefined, {
         dateStyle: "medium",
         timeStyle: "short"
     }).format(date);
@@ -286,7 +301,7 @@ function normalizeErrorMessage(error, fallbackMessage) {
 function sanitizeUiMessage(message, fallbackMessage = "Something went wrong. Please try again.") {
     const text = String(message || "").trim();
     if (!text) {
-        return fallbackMessage;
+        return translateUiText(fallbackMessage);
     }
 
     const technicalPatterns = [
@@ -303,8 +318,8 @@ function sanitizeUiMessage(message, fallbackMessage = "Something went wrong. Ple
     ];
 
     return technicalPatterns.some(pattern => pattern.test(text))
-        ? fallbackMessage
-        : text;
+        ? translateUiText(fallbackMessage)
+        : translateUiText(text);
 }
 
 function ensureToastRoot() {
@@ -327,15 +342,18 @@ function showToast(message, type = "success") {
         return;
     }
 
+    const translatedMessage = translateUiText(message);
     const toastRoot = ensureToastRoot();
     const toast = document.createElement("div");
     toast.className = `toast toast--${type}`;
     toast.innerHTML = `
         <div class="toast__content">
-            <strong class="toast__title">${type === "error" ? "Action needed" : "NoorLocator"}</strong>
-            <span>${escapeHtml(message)}</span>
+            <strong class="toast__title">${type === "error"
+                ? escapeHtml(t("toast.actionNeeded", "Action needed"))
+                : "NoorLocator"}</strong>
+            <span>${escapeHtml(translatedMessage)}</span>
         </div>
-        <button class="toast__close" type="button" aria-label="Dismiss notification">&times;</button>
+        <button class="toast__close" type="button" aria-label="${escapeHtml(t("toast.dismiss", "Dismiss notification"))}">&times;</button>
     `;
     toastRoot.appendChild(toast);
 
@@ -354,18 +372,47 @@ function showToast(message, type = "success") {
     }, 3600);
 }
 
+function translateStatusValue(status) {
+    const value = String(status || "Pending");
+    const normalized = value.trim().toLowerCase();
+
+    return normalized === "approved"
+        ? t("status.approved", "Approved")
+        : normalized === "rejected"
+            ? t("status.rejected", "Rejected")
+            : normalized === "reviewed"
+                ? t("status.reviewed", "Reviewed")
+                : normalized === "draft"
+                    ? t("status.draft", "Draft")
+                    : normalized === "published"
+                        ? t("status.published", "Published")
+                        : normalized === "archived"
+                            ? t("status.archived", "Archived")
+                            : normalized === "read"
+                                ? t("status.read", "Read")
+                                : normalized === "new"
+                                    ? t("status.new", "New")
+                                    : normalized === "verified"
+                                        ? t("status.verified", "Verified")
+                                        : normalized === "unverified"
+                                            ? t("status.unverified", "Unverified")
+                                            : t("status.pending", "Pending");
+}
+
 function renderStatusBadge(status) {
     const value = String(status || "Pending");
     const normalized = value.toLowerCase();
     const modifier = ["approved", "rejected", "reviewed", "draft", "published", "archived"].includes(normalized)
         ? normalized
         : "pending";
-    return `<span class="status-badge status-badge--${modifier}">${escapeHtml(value)}</span>`;
+    return `<span class="status-badge status-badge--${modifier}">${escapeHtml(translateStatusValue(value))}</span>`;
 }
 
 function populateSelectOptions(selectElements, items, options) {
     const selects = Array.isArray(selectElements)
         ? selectElements.filter(Boolean)
+        : selectElements instanceof Element
+            ? [selectElements]
         : Array.from(selectElements || []).filter(Boolean);
 
     if (!selects.length) {
@@ -400,7 +447,9 @@ function setSubmitButtonState(form, isBusy, busyLabel) {
     }
 
     submitButton.disabled = isBusy;
-    submitButton.textContent = isBusy ? busyLabel : submitButton.dataset.defaultLabel;
+    submitButton.textContent = isBusy
+        ? translateUiText(busyLabel)
+        : translateUiText(submitButton.dataset.defaultLabel);
 }
 
 function updateNotificationBellCount(count) {
@@ -449,11 +498,14 @@ function renderCenterCards(container, centers, emptyMessage, options = {}) {
                 ${typeof center.distanceKm === "number" ? `<span class="status-pill status-pill--success">${escapeHtml(formatDistance(center.distanceKm))}</span>` : ""}
             </div>
             <${titleLevel}>${escapeHtml(center.name)}</${titleLevel}>
-            <p class="card__excerpt">${escapeHtml(truncateText(center.description || "Public center details are available on the profile page.", 150))}</p>
+            <p class="card__excerpt">${escapeHtml(truncateText(center.description || t("centers.card.defaultDescription", "Public center details are available on the profile page."), 150))}</p>
             <p>${escapeHtml(center.address)}</p>
+            ${(center.languages || []).length
+                ? `<div class="chip-list">${(center.languages || []).map(language => `<span class="chip chip--muted">${escapeHtml(window.NoorLocatorI18n.getLanguageLabel(language.code, { locale: window.NoorLocatorI18n.getLocaleCode() }))}</span>`).join("")}</div>`
+                : ""}
             <div class="button-row">
-                <a class="button button--secondary" href="${buildCenterDetailsHref(center.id)}">View details</a>
-                <a class="button button--ghost" href="${buildMapLink(center)}" target="_blank" rel="noreferrer noopener">Open map</a>
+                <a class="button button--secondary" href="${buildCenterDetailsHref(center.id)}">${escapeHtml(t("actions.viewDetails", "View details"))}</a>
+                <a class="button button--ghost" href="${buildMapLink(center)}" target="_blank" rel="noreferrer noopener">${escapeHtml(t("actions.openMap", "Open map"))}</a>
             </div>
         </article>
     `).join("");
@@ -465,12 +517,12 @@ function renderLanguageChips(container, languages) {
     }
 
     if (!languages.length) {
-        container.innerHTML = `<span class="empty-state empty-state--soft">No supported languages are published for this center yet.</span>`;
+        container.innerHTML = `<span class="empty-state empty-state--soft">${escapeHtml(t("centers.languages.none", "No supported languages are published for this center yet."))}</span>`;
         return;
     }
 
     container.innerHTML = languages
-        .map(language => `<span class="chip">${escapeHtml(`${language.name} (${language.code})`)}</span>`)
+        .map(language => `<span class="chip">${escapeHtml(window.NoorLocatorI18n.getLanguageLabel(language.code, { locale: window.NoorLocatorI18n.getLocaleCode() }))}</span>`)
         .join("");
 }
 
@@ -480,7 +532,7 @@ function renderMajalis(container, majalis) {
     }
 
     if (!majalis.length) {
-        container.innerHTML = `<div class="empty-state empty-state--soft">No upcoming majalis are currently published for this center.</div>`;
+        container.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("center.majalis.none", "No upcoming majalis are currently published for this center."))}</div>`;
         return;
     }
 
@@ -491,10 +543,10 @@ function renderMajalis(container, majalis) {
                 <h4>${escapeHtml(majlis.title)}</h4>
                 <span class="status-pill">${escapeHtml(formatDateTime(majlis.date))}</span>
             </div>
-            <p>${escapeHtml(majlis.description || "Majlis details will appear here when available.")}</p>
+            <p>${escapeHtml(majlis.description || t("center.majalis.defaultDescription", "Majlis details will appear here when available."))}</p>
             <div class="utility-row utility-row--wrap">
-                <span class="card__meta">${escapeHtml(majlis.time || "Time to be confirmed")}</span>
-                ${(majlis.languages || []).map(language => `<span class="chip chip--muted">${escapeHtml(language.name)}</span>`).join("")}
+                <span class="card__meta">${escapeHtml(majlis.time || t("common.timeToBeConfirmed", "Time to be confirmed"))}</span>
+                ${(majlis.languages || []).map(language => `<span class="chip chip--muted">${escapeHtml(window.NoorLocatorI18n.getLanguageLabel(language.code, { locale: window.NoorLocatorI18n.getLocaleCode() }))}</span>`).join("")}
             </div>
         </article>
     `).join("");
@@ -549,8 +601,8 @@ function renderCenterGallery(container, images, options = {}) {
     if (!galleryImages.length) {
         const emptyMessage = options.emptyMessage
             || (!manageable && images.length
-                ? "The primary center image is shown above. No additional gallery images are available yet."
-                : "No public center photos have been uploaded yet.");
+                ? t("center.gallery.primaryShown", "The primary center image is shown above. No additional gallery images are available yet.")
+                : t("center.gallery.none", "No public center photos have been uploaded yet."));
         setContainerMessage(container, emptyMessage, "soft");
         return;
     }
@@ -560,14 +612,14 @@ function renderCenterGallery(container, images, options = {}) {
             <img class="gallery-card__image" src="${escapeHtml(image.imageUrl)}" alt="${escapeHtml(options.imageAlt || "Center gallery image")}" loading="lazy">
             <div class="gallery-card__head">
                 <div>
-                    ${image.isPrimary ? `<span class="status-badge status-badge--published">Primary</span>` : `<span class="card__meta">Gallery image</span>`}
-                    <p class="gallery-card__meta">Uploaded ${escapeHtml(formatDateTime(image.createdAt))}</p>
+                    ${image.isPrimary ? `<span class="status-badge status-badge--published">${escapeHtml(t("center.gallery.primary", "Primary"))}</span>` : `<span class="card__meta">${escapeHtml(t("center.gallery.image", "Gallery image"))}</span>`}
+                    <p class="gallery-card__meta">${escapeHtml(t("common.uploadedOn", "Uploaded {date}", { date: formatDateTime(image.createdAt) }))}</p>
                 </div>
             </div>
             ${manageable ? `
                 <div class="gallery-card__actions">
-                    ${image.isPrimary ? "" : `<button class="button button--secondary" type="button" data-set-primary-image-id="${escapeHtml(image.id)}">Set primary</button>`}
-                    <button class="button button--danger" type="button" data-delete-center-image-id="${escapeHtml(image.id)}">Delete</button>
+                    ${image.isPrimary ? "" : `<button class="button button--secondary" type="button" data-set-primary-image-id="${escapeHtml(image.id)}">${escapeHtml(t("actions.setPrimary", "Set primary"))}</button>`}
+                    <button class="button button--danger" type="button" data-delete-center-image-id="${escapeHtml(image.id)}">${escapeHtml(t("actions.delete", "Delete"))}</button>
                 </div>
             ` : ""}
         </article>
@@ -580,7 +632,7 @@ function renderCenterAnnouncements(container, announcements, options = {}) {
     }
 
     if (!announcements.length) {
-        const emptyMessage = options.emptyMessage || "No public announcements are available for this center right now.";
+        const emptyMessage = options.emptyMessage || t("center.announcements.none", "No public announcements are available for this center right now.");
         setContainerMessage(container, emptyMessage, "soft");
         return;
     }
@@ -597,15 +649,15 @@ function renderCenterAnnouncements(container, announcements, options = {}) {
                 </div>
                 ${manageable ? renderStatusBadge(announcement.status) : `<span class="status-pill">${escapeHtml(formatDateTime(announcement.createdAt))}</span>`}
             </div>
-            <p>${escapeHtml(announcement.description || "No additional announcement details have been provided.")}</p>
+            <p>${escapeHtml(announcement.description || t("center.announcements.defaultDescription", "No additional announcement details have been provided."))}</p>
             <div class="utility-row utility-row--wrap">
-                <span class="card__meta">Published ${escapeHtml(formatDateTime(announcement.createdAt))}</span>
-                ${manageable ? `<span class="card__meta">Status: ${escapeHtml(String(announcement.status))}</span>` : ""}
+                <span class="card__meta">${escapeHtml(t("common.publishedOn", "Published {date}", { date: formatDateTime(announcement.createdAt) }))}</span>
+                ${manageable ? `<span class="card__meta">${escapeHtml(t("common.statusLabel", "Status: {status}", { status: translateStatusValue(String(announcement.status)) }))}</span>` : ""}
             </div>
             ${manageable ? `
                 <div class="button-row">
-                    <button class="button button--secondary" type="button" data-edit-announcement-id="${escapeHtml(announcement.id)}">Edit</button>
-                    <button class="button button--danger" type="button" data-delete-announcement-id="${escapeHtml(announcement.id)}" data-announcement-title="${escapeHtml(announcement.title)}">Delete</button>
+                    <button class="button button--secondary" type="button" data-edit-announcement-id="${escapeHtml(announcement.id)}">${escapeHtml(t("actions.edit", "Edit"))}</button>
+                    <button class="button button--danger" type="button" data-delete-announcement-id="${escapeHtml(announcement.id)}" data-announcement-title="${escapeHtml(announcement.title)}">${escapeHtml(t("actions.delete", "Delete"))}</button>
                 </div>
             ` : ""}
         </article>
@@ -620,7 +672,7 @@ function renderCenterRequestList(container, requests) {
     if (!requests.length) {
         setContainerMessage(
             container,
-            "You have not submitted a center request yet. Use the form to send a new center into the moderation queue.",
+            t("dashboard.requests.none", "You have not submitted a center request yet. Use the form to send a new center into the moderation queue."),
             "soft");
         return;
     }
@@ -635,9 +687,9 @@ function renderCenterRequestList(container, requests) {
                 ${renderStatusBadge(request.status)}
             </div>
             <p>${escapeHtml(request.address)}</p>
-            <p>${escapeHtml(truncateText(request.description || "No description was submitted for this request.", 180))}</p>
+            <p>${escapeHtml(truncateText(request.description || t("dashboard.requests.defaultDescription", "No description was submitted for this request."), 180))}</p>
             <div class="utility-row utility-row--wrap">
-                <span class="card__meta">Submitted ${escapeHtml(formatDateTime(request.createdAt))}</span>
+                <span class="card__meta">${escapeHtml(t("common.submittedOn", "Submitted {date}", { date: formatDateTime(request.createdAt) }))}</span>
                 <span class="card__meta">${escapeHtml(`${Number(request.latitude).toFixed(4)}, ${Number(request.longitude).toFixed(4)}`)}</span>
             </div>
         </article>
@@ -646,7 +698,7 @@ function renderCenterRequestList(container, requests) {
 
 function requestBrowserLocation() {
     if (!("geolocation" in navigator)) {
-        return Promise.reject(new Error("Geolocation is not supported in this browser. Use the city and country filters instead."));
+        return Promise.reject(new Error(t("centers.location.unsupported", "Geolocation is not supported in this browser. Use the city and country filters instead.")));
     }
 
     return new Promise((resolve, reject) => {
@@ -654,7 +706,7 @@ function requestBrowserLocation() {
             position => {
                 const location = parseLocation(position.coords.latitude, position.coords.longitude);
                 if (!location) {
-                    reject(new Error("Your browser returned an invalid location."));
+                    reject(new Error(t("centers.location.invalid", "Your browser returned an invalid location.")));
                     return;
                 }
 
@@ -663,13 +715,13 @@ function requestBrowserLocation() {
             error => {
                 switch (error.code) {
                     case error.PERMISSION_DENIED:
-                        reject(new Error("Location access was denied. Use city and country search instead."));
+                        reject(new Error(t("centers.location.denied", "Location access was denied. Use city and country search instead.")));
                         break;
                     case error.TIMEOUT:
-                        reject(new Error("Location lookup timed out. Please try again or use city and country search."));
+                        reject(new Error(t("centers.location.timeout", "Location lookup timed out. Please try again or use city and country search.")));
                         break;
                     default:
-                        reject(new Error("Unable to determine your location right now."));
+                        reject(new Error(t("centers.location.unavailable", "Unable to determine your location right now.")));
                         break;
                 }
             },
@@ -741,15 +793,6 @@ async function initHomePage() {
     const featuredCenters = document.getElementById("featured-centers");
     const homeStatus = document.getElementById("home-status");
     const centerCount = document.getElementById("home-center-count");
-    const heroTitle = document.getElementById("home-hero-title");
-    const heroDescription = document.getElementById("home-hero-description");
-    const heroHighlight = document.getElementById("home-hero-highlight");
-    const missionTitle = document.getElementById("home-mission-title");
-    const missionDescription = document.getElementById("home-mission-description");
-    const missionHighlight = document.getElementById("home-mission-highlight");
-    const featuresTitle = document.getElementById("home-features-title");
-    const featuresDescription = document.getElementById("home-features-description");
-    const featureHighlights = document.getElementById("home-feature-highlights");
     const submitCenterLink = document.getElementById("home-submit-center-link");
     const location = getDiscoveryLocation();
 
@@ -760,52 +803,14 @@ async function initHomePage() {
     }
 
     setCardLoadingState(featuredCenters, 3);
-    setCardLoadingState(featureHighlights, 3);
     setMessage(homeStatus, "Connecting to the live NoorLocator directory...");
 
     try {
-        const [contentResponse, centersResponse] = await Promise.all([
-            window.NoorLocatorApi.getAboutContent(),
+        const centersResponse = await (
             location
                 ? window.NoorLocatorApi.getNearestCenters(location)
-                : window.NoorLocatorApi.getCenters()
-        ]);
-        const content = contentResponse.data;
+                : window.NoorLocatorApi.getCenters());
         const centers = centersResponse.data || [];
-
-        if (heroTitle) {
-            heroTitle.textContent = content.homeHero.title;
-        }
-
-        if (heroDescription) {
-            heroDescription.textContent = content.homeHero.description;
-        }
-
-        if (heroHighlight) {
-            heroHighlight.textContent = content.homeHero.highlight;
-        }
-
-        if (missionTitle) {
-            missionTitle.textContent = content.homeMission.title;
-        }
-
-        if (missionDescription) {
-            missionDescription.textContent = content.homeMission.description;
-        }
-
-        if (missionHighlight) {
-            missionHighlight.textContent = content.homeMission.highlight;
-        }
-
-        if (featuresTitle) {
-            featuresTitle.textContent = content.homeFeatures.title;
-        }
-
-        if (featuresDescription) {
-            featuresDescription.textContent = content.homeFeatures.description;
-        }
-
-        renderFeatureHighlights(featureHighlights, content.homeFeatures.items || []);
 
         if (centerCount) {
             centerCount.textContent = String(centers.length);
@@ -829,7 +834,6 @@ async function initHomePage() {
         }
 
         setContainerMessage(featuredCenters, "The public center preview could not be loaded right now.", "error");
-        setContainerMessage(featureHighlights, "The mission highlights could not be loaded right now.", "error");
         setMessage(homeStatus, error.message || "Unable to load the public center preview.", "error");
     }
 }
@@ -837,27 +841,6 @@ async function initHomePage() {
 async function initAboutPage() {
     const pageMessage = document.getElementById("about-page-message");
     const submitCenterLink = document.getElementById("about-submit-center-link");
-    const heroTitle = document.getElementById("about-hero-title");
-    const heroDescription = document.getElementById("about-hero-description");
-    const heroHighlight = document.getElementById("about-hero-highlight");
-    const visionTitle = document.getElementById("about-vision-title");
-    const visionDescription = document.getElementById("about-vision-description");
-    const visionHighlight = document.getElementById("about-vision-highlight");
-    const problemTitle = document.getElementById("about-problem-title");
-    const problemDescription = document.getElementById("about-problem-description");
-    const problemItems = document.getElementById("about-problem-items");
-    const missionTitle = document.getElementById("about-mission-title");
-    const missionDescription = document.getElementById("about-mission-description");
-    const missionItems = document.getElementById("about-mission-items");
-    const principlesTitle = document.getElementById("about-principles-title");
-    const principlesDescription = document.getElementById("about-principles-description");
-    const principles = document.getElementById("about-principles");
-    const identityTitle = document.getElementById("about-identity-title");
-    const identityDescription = document.getElementById("about-identity-description");
-    const identityHighlight = document.getElementById("about-identity-highlight");
-    const closingTitle = document.getElementById("about-closing-title");
-    const closingDescription = document.getElementById("about-closing-description");
-    const closingHighlight = document.getElementById("about-closing-highlight");
 
     if (submitCenterLink) {
         submitCenterLink.href = window.NoorLocatorAuth.isAuthenticated()
@@ -865,100 +848,14 @@ async function initAboutPage() {
             : "register.html";
     }
 
-    try {
-        const response = await window.NoorLocatorApi.getAboutContent();
-        const content = response.data;
-
-        document.title = "About NoorLocator";
-
-        if (heroDescription) {
-            heroDescription.textContent = content.vision.description;
-        }
-
-        if (heroHighlight) {
-            heroHighlight.textContent = content.siteTagline;
-        }
-
-        if (visionTitle) {
-            visionTitle.textContent = content.vision.title;
-        }
-
-        if (visionDescription) {
-            visionDescription.textContent = content.vision.description;
-        }
-
-        if (visionHighlight) {
-            visionHighlight.textContent = content.vision.highlight;
-        }
-
-        if (problemTitle) {
-            problemTitle.textContent = content.problemStatement.title;
-        }
-
-        if (problemDescription) {
-            problemDescription.textContent = content.problemStatement.description;
-        }
-
-        renderManifestoItems(problemItems, content.problemStatement.items || []);
-
-        if (missionTitle) {
-            missionTitle.textContent = content.mission.title;
-        }
-
-        if (missionDescription) {
-            missionDescription.textContent = content.mission.description;
-        }
-
-        renderManifestoItems(missionItems, content.mission.items || []);
-
-        if (principlesTitle) {
-            principlesTitle.textContent = content.corePrinciples.title;
-        }
-
-        if (principlesDescription) {
-            principlesDescription.textContent = content.corePrinciples.description;
-        }
-
-        renderPrinciples(principles, content.corePrinciples.items || []);
-
-        if (identityTitle) {
-            identityTitle.textContent = content.whoWeAre.title;
-        }
-
-        if (identityDescription) {
-            identityDescription.textContent = content.whoWeAre.description;
-        }
-
-        if (identityHighlight) {
-            identityHighlight.textContent = content.whoWeAre.highlight;
-        }
-
-        if (closingTitle) {
-            closingTitle.textContent = content.closing.title;
-        }
-
-        if (closingDescription) {
-            closingDescription.textContent = content.closing.description;
-        }
-
-        if (closingHighlight) {
-            closingHighlight.textContent = content.closing.highlight;
-        }
-
-        setMessage(pageMessage, "About NoorLocator is ready.", "success");
-    } catch (error) {
-        const message = normalizeErrorMessage(error, "The About page could not be loaded right now.");
-        setMessage(pageMessage, message, "error");
-        renderManifestoItems(problemItems, []);
-        renderManifestoItems(missionItems, []);
-        renderPrinciples(principles, []);
-    }
+    setMessage(pageMessage, "About NoorLocator is ready.", "success");
 }
 
 async function initCentersPage() {
     const centersContainer = document.getElementById("centers-list");
     const nearbyContainer = document.getElementById("nearby-centers");
     const searchForm = document.getElementById("center-search-form");
+    const languageSelect = document.getElementById("center-language-filter");
     const searchMessage = document.querySelector('[data-form-message="center-search-form"]');
     const pageMessage = document.getElementById("centers-page-message");
     const resultsSummary = document.getElementById("centers-results-summary");
@@ -972,6 +869,31 @@ async function initCentersPage() {
 
     if (!centersContainer || !nearbyContainer || !searchForm) {
         return;
+    }
+
+    async function loadLanguageFilter() {
+        if (!languageSelect) {
+            return;
+        }
+
+        try {
+            const response = await window.NoorLocatorApi.getLanguages();
+            const languages = (response.data || [])
+                .filter(language => window.NoorLocatorI18n.getSupportedLanguages().some(item => item.code === language.code))
+                .sort((left, right) => window.NoorLocatorI18n.getLanguageLabel(left.code).localeCompare(window.NoorLocatorI18n.getLanguageLabel(right.code), window.NoorLocatorI18n.getLocaleCode()));
+
+            populateSelectOptions(languageSelect, languages, {
+                placeholder: t("centers.filters.language.placeholder", "Any language"),
+                getValue: language => language.code,
+                getLabel: language => window.NoorLocatorI18n.getLanguageLabel(language.code)
+            });
+        } catch {
+            populateSelectOptions(languageSelect, [], {
+                placeholder: t("centers.filters.language.placeholder", "Any language"),
+                getValue: language => language.code,
+                getLabel: language => language.code
+            });
+        }
     }
 
     async function loadDirectory(filters = null) {
@@ -990,8 +912,8 @@ async function initCentersPage() {
 
         if (resultsSummary) {
             resultsSummary.textContent = filters && hasSearchFilters(filters)
-                ? `${centers.length} center${centers.length === 1 ? "" : "s"} found for your search.`
-                : `${centers.length} center${centers.length === 1 ? "" : "s"} available right now.`;
+                ? t("centers.results.found", "{count} centers found for your search.", { count: centers.length })
+                : t("centers.results.available", "{count} centers available right now.", { count: centers.length });
         }
     }
 
@@ -1014,12 +936,12 @@ async function initCentersPage() {
 
     function updateLocationPanel(message, detail, type = "") {
         if (locationStatus) {
-            locationStatus.textContent = message;
+            locationStatus.textContent = translateUiText(message);
             locationStatus.className = type ? `text-emphasis text-emphasis--${type}` : "text-emphasis";
         }
 
         if (currentLocation) {
-            currentLocation.textContent = detail;
+            currentLocation.textContent = translateUiText(detail);
         }
     }
 
@@ -1093,6 +1015,7 @@ async function initCentersPage() {
 
     setCardLoadingState(centersContainer, 4);
     setCardLoadingState(nearbyContainer, 3);
+    await loadLanguageFilter();
 
     if (state.location) {
         updateLocationPanel(
@@ -1146,11 +1069,11 @@ async function initCenterDetailsPage() {
 
     if (!Number.isInteger(id) || id <= 0) {
         if (title) {
-            title.textContent = "Center not found";
+            title.textContent = t("center.notFound.title", "Center not found");
         }
 
         if (description) {
-            description.textContent = "The requested center identifier is invalid.";
+            description.textContent = t("center.notFound.description", "The requested center identifier is invalid.");
         }
 
         setMessage(detailMessage, "Open the center directory and choose a valid center.", "error");
@@ -1166,31 +1089,31 @@ async function initCenterDetailsPage() {
     }
 
     if (title) {
-        title.textContent = "Loading center details...";
+        title.textContent = t("center.title.loading", "Loading center details...");
     }
 
     if (meta) {
-        meta.innerHTML = `<span class="status-pill">Loading profile data</span>`;
+        meta.innerHTML = `<span class="status-pill">${escapeHtml(t("center.meta.loading", "Loading profile data"))}</span>`;
     }
 
     if (description) {
-        description.textContent = "Loading this center's details.";
+        description.textContent = t("center.description.loadingShort", "Loading this center's details.");
     }
 
     if (languages) {
-        languages.innerHTML = `<span class="empty-state">Loading supported languages...</span>`;
+        languages.innerHTML = `<span class="empty-state">${escapeHtml(t("center.languages.loading", "Loading supported languages..."))}</span>`;
     }
 
     if (majalis) {
-        majalis.innerHTML = `<div class="empty-state">Loading upcoming majalis...</div>`;
+        majalis.innerHTML = `<div class="empty-state">${escapeHtml(t("center.majalis.loading", "Loading upcoming majalis..."))}</div>`;
     }
 
     if (gallery) {
-        gallery.innerHTML = `<div class="empty-state">Loading center gallery...</div>`;
+        gallery.innerHTML = `<div class="empty-state">${escapeHtml(t("center.gallery.loading", "Loading center gallery..."))}</div>`;
     }
 
     if (announcements) {
-        announcements.innerHTML = `<div class="empty-state">Loading center announcements...</div>`;
+        announcements.innerHTML = `<div class="empty-state">${escapeHtml(t("center.announcements.loading", "Loading center announcements..."))}</div>`;
     }
 
     if (infoGrid) {
@@ -1208,7 +1131,7 @@ async function initCenterDetailsPage() {
         }
 
         if (!window.NoorLocatorAuth.isAuthenticated()) {
-            subscribeButton.textContent = "Sign in to follow updates";
+            subscribeButton.textContent = t("center.subscribe.signIn", "Sign in to follow updates");
             subscribeButton.disabled = false;
             subscribeButton.onclick = () => {
                 window.location.href = `login.html?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
@@ -1218,7 +1141,7 @@ async function initCenterDetailsPage() {
         }
 
         if (!window.NoorLocatorAuth.isEmailVerified()) {
-            subscribeButton.textContent = "Verify email to follow";
+            subscribeButton.textContent = t("center.subscribe.verify", "Verify email to follow");
             subscribeButton.disabled = false;
             subscribeButton.onclick = () => {
                 window.location.href = window.NoorLocatorAuth.getVerificationRoute();
@@ -1237,7 +1160,9 @@ async function initCenterDetailsPage() {
         }
 
         const renderState = () => {
-            subscribeButton.textContent = isSubscribed ? "Following this center" : "Follow center updates";
+            subscribeButton.textContent = isSubscribed
+                ? t("center.subscribe.following", "Following this center")
+                : t("actions.followCenter", "Follow center updates");
             subscribeButton.className = isSubscribed ? "button button--secondary" : "button button--primary";
             setMessage(
                 subscribeMessage,
@@ -1295,14 +1220,14 @@ async function initCenterDetailsPage() {
             ? (announcementsResult.value.data || [])
             : [];
 
-        document.title = `${center.name} | NoorLocator`;
+        document.title = `${center.name} | ${t("app.name", "NoorLocator")}`;
         title.textContent = center.name;
         meta.innerHTML = `
             <span class="status-pill">${escapeHtml(`${center.city}, ${center.country}`)}</span>
             <span class="status-pill status-pill--muted">${escapeHtml(center.address)}</span>
             ${typeof center.distanceKm === "number" ? `<span class="status-pill status-pill--success">${escapeHtml(formatDistance(center.distanceKm))}</span>` : ""}
         `;
-        description.textContent = center.description || "This center has not published a public description yet.";
+        description.textContent = center.description || t("center.description.none", "This center has not published a public description yet.");
         renderLanguageChips(languages, centerLanguages);
         renderMajalis(majalis, centerMajalis);
         renderCenterGallery(gallery, centerImages, {
@@ -1314,19 +1239,21 @@ async function initCenterDetailsPage() {
         if (infoGrid) {
             infoGrid.innerHTML = `
                 <article class="info-card">
-                    <span class="card__meta">Address</span>
+                    <span class="card__meta">${escapeHtml(t("center.info.address", "Address"))}</span>
                     <strong>${escapeHtml(center.address)}</strong>
                     <p>${escapeHtml(`${center.city}, ${center.country}`)}</p>
                 </article>
                 <article class="info-card">
-                    <span class="card__meta">Distance</span>
-                    <strong>${escapeHtml(typeof center.distanceKm === "number" ? formatDistance(center.distanceKm) : "Unavailable")}</strong>
-                    <p>${typeof center.distanceKm === "number" ? "Estimated from your current location." : "Enable location to see an estimated distance."}</p>
+                    <span class="card__meta">${escapeHtml(t("center.info.distance", "Distance"))}</span>
+                    <strong>${escapeHtml(typeof center.distanceKm === "number" ? formatDistance(center.distanceKm) : t("common.unavailable", "Unavailable"))}</strong>
+                    <p>${escapeHtml(typeof center.distanceKm === "number"
+                        ? t("center.info.distanceAvailable", "Estimated from your current location.")
+                        : t("center.info.distanceUnavailable", "Enable location to see an estimated distance."))}</p>
                 </article>
                 <article class="info-card">
-                    <span class="card__meta">Coordinates</span>
+                    <span class="card__meta">${escapeHtml(t("center.info.coordinates", "Coordinates"))}</span>
                     <strong>${escapeHtml(center.latitude.toFixed(4))}, ${escapeHtml(center.longitude.toFixed(4))}</strong>
-                    <p>Use the map button to open turn-by-turn directions.</p>
+                    <p>${escapeHtml(t("center.info.coordinatesHelp", "Use the map button to open turn-by-turn directions."))}</p>
                 </article>
             `;
         }
@@ -1642,12 +1569,12 @@ function initNotificationsPage() {
                                 <h4>${escapeHtml(notification.title)}</h4>
                                 <p class="list-card__meta">${escapeHtml(formatDateTime(notification.createdAt))}</p>
                             </div>
-                            <span class="status-pill${notification.isRead ? " status-pill--muted" : " status-pill--success"}">${notification.isRead ? "Read" : "New"}</span>
+                            <span class="status-pill${notification.isRead ? " status-pill--muted" : " status-pill--success"}">${escapeHtml(notification.isRead ? t("status.read", "Read") : t("status.new", "New"))}</span>
                         </div>
                         <p>${escapeHtml(notification.message)}</p>
                         <div class="button-row">
-                            ${notification.linkUrl ? `<a class="button button--ghost" href="${escapeHtml(notification.linkUrl)}">Open</a>` : ""}
-                            ${notification.isRead ? "" : `<button class="button button--secondary" type="button" data-notification-read="${notification.id}">Mark as read</button>`}
+                            ${notification.linkUrl ? `<a class="button button--ghost" href="${escapeHtml(notification.linkUrl)}">${escapeHtml(t("actions.open", "Open"))}</a>` : ""}
+                            ${notification.isRead ? "" : `<button class="button button--secondary" type="button" data-notification-read="${notification.id}">${escapeHtml(t("actions.markAsRead", "Mark as read"))}</button>`}
                         </div>
                     </article>
                 `).join("");
@@ -1723,6 +1650,9 @@ function initProfilePage() {
     const resendVerificationButton = document.getElementById("profile-resend-verification");
     const preferencesForm = document.getElementById("notification-preferences-form");
     const preferencesMessage = document.querySelector('[data-form-message="notification-preferences-form"]');
+    const preferredLanguageForm = document.getElementById("preferred-language-form");
+    const preferredLanguageSelect = document.getElementById("preferred-language-select");
+    const preferredLanguageMessage = document.querySelector('[data-form-message="preferred-language-form"]');
     const state = {
         profile: window.NoorLocatorAuth.getSessionUser(),
         preferences: null
@@ -1739,27 +1669,27 @@ function initProfilePage() {
         if (!profile?.isEmailVerified) {
             return {
                 href: window.NoorLocatorAuth.getVerificationRoute(profile),
-                label: "Verify your email"
+                label: t("nav.verifyEmail", "Verify your email")
             };
         }
 
         if (profile?.role === "Admin") {
             return {
                 href: "admin.html",
-                label: "Back to admin workspace"
+                label: t("profile.actions.backToAdmin", "Back to admin workspace")
             };
         }
 
         if (profile?.role === "Manager") {
             return {
                 href: "manager.html",
-                label: "Back to manager workspace"
+                label: t("profile.actions.backToManager", "Back to manager workspace")
             };
         }
 
         return {
             href: "dashboard.html",
-            label: "Back to dashboard"
+            label: t("profile.actions.backToDashboard", "Back to dashboard")
         };
     }
 
@@ -1771,23 +1701,23 @@ function initProfilePage() {
         nameInput.value = profile.name || "";
         emailInput.value = profile.email || "";
         displayName.textContent = window.NoorLocatorAuth.formatUserDisplayName(profile);
-        roleBadge.textContent = window.NoorLocatorAuth.normalizeUserRole(profile.role);
-        roleDisplay.textContent = window.NoorLocatorAuth.normalizeUserRole(profile.role);
-        createdAt.textContent = profile.createdAt ? formatDateTime(profile.createdAt) : "Unknown";
+        roleBadge.textContent = window.NoorLocatorAuth.getLocalizedRoleLabel(profile.role);
+        roleDisplay.textContent = window.NoorLocatorAuth.getLocalizedRoleLabel(profile.role);
+        createdAt.textContent = profile.createdAt ? formatDateTime(profile.createdAt) : t("common.unknown", "Unknown");
 
         const assignedCenterCount = (profile.assignedCenterIds || []).length;
-        centerCount.textContent = `${assignedCenterCount} center${assignedCenterCount === 1 ? "" : "s"}`;
+        centerCount.textContent = t("profile.assignedCenters.count", "{count} centers", { count: assignedCenterCount });
         if (lastLoginAt) {
-            lastLoginAt.textContent = profile.lastLoginAtUtc ? formatDateTime(profile.lastLoginAtUtc) : "No completed sign-in yet";
+            lastLoginAt.textContent = profile.lastLoginAtUtc ? formatDateTime(profile.lastLoginAtUtc) : t("profile.lastLogin.none", "No completed sign-in yet");
         }
         if (verificationStatus) {
-            verificationStatus.textContent = profile.isEmailVerified ? "Verified" : "Unverified";
+            verificationStatus.textContent = profile.isEmailVerified ? t("status.verified", "Verified") : t("status.unverified", "Unverified");
             verificationStatus.className = profile.isEmailVerified ? "status-pill status-pill--success" : "status-pill";
         }
         if (verificationNote) {
             verificationNote.textContent = profile.isEmailVerified
-                ? "Your email address is verified and can receive account and center updates."
-                : "Verify this email address to unlock full NoorLocator access and email notifications.";
+                ? t("profile.emailStatus.verifiedNote", "Your email address is verified and can receive account and center updates.")
+                : t("profile.emailStatus.unverifiedNote", "Verify this email address to unlock full NoorLocator access and email notifications.");
         }
         if (resendVerificationButton) {
             resendVerificationButton.hidden = Boolean(profile.isEmailVerified);
@@ -1796,6 +1726,10 @@ function initProfilePage() {
         const workspaceTarget = getWorkspaceTarget(profile);
         workspaceLink.href = workspaceTarget.href;
         workspaceLink.textContent = workspaceTarget.label;
+
+        if (preferredLanguageSelect instanceof HTMLSelectElement) {
+            preferredLanguageSelect.value = profile.preferredLanguageCode || window.NoorLocatorI18n.getLocaleCode();
+        }
     }
 
     function renderPreferences(preferences) {
@@ -1837,32 +1771,46 @@ function initProfilePage() {
 
         populateCards("profile-cards", [
             {
-                title: "Current profile identity",
-                body: `${displayLabel} is the profile identity NoorLocator shows in navigation. Profile edits update personal details only and do not change permissions.`
+                title: t("profile.cards.identity.title", "Current profile identity"),
+                body: t(
+                    "profile.cards.identity.body",
+                    "{name} is the profile identity NoorLocator shows in navigation. Profile edits update personal details only and do not change permissions.",
+                    { name: displayLabel })
             },
             {
-                title: "Email on file",
+                title: t("profile.cards.email.title", "Email on file"),
                 body: profile.email
-                    ? `${profile.email} is the account email NoorLocator currently uses for sign-in and account contact.`
-                    : "No account email is available right now."
+                    ? t(
+                        "profile.cards.email.body",
+                        "{email} is the account email NoorLocator currently uses for sign-in and account contact.",
+                        { email: profile.email })
+                    : t("profile.cards.email.empty", "No account email is available right now.")
             },
             {
-                title: "Verification status",
+                title: t("profile.cards.verification.title", "Verification status"),
                 body: profile.isEmailVerified
-                    ? "This email address is verified and trusted for protected features and email delivery."
-                    : "This email address still needs verification before NoorLocator unlocks trusted features."
+                    ? t("profile.cards.verification.verified", "This email address is verified and trusted for protected features and email delivery.")
+                    : t("profile.cards.verification.unverified", "This email address still needs verification before NoorLocator unlocks trusted features.")
             },
             {
-                title: "Assigned centers",
+                title: t("profile.cards.centers.title", "Assigned centers"),
                 body: assignedCenterCount
-                    ? `${assignedCenterCount} approved center assignment${assignedCenterCount === 1 ? "" : "s"} are linked to this account.`
-                    : "No approved center assignments are currently linked to this account."
+                    ? t("profile.cards.centers.body", "{count} approved center assignments are linked to this account.", { count: assignedCenterCount })
+                    : t("profile.cards.centers.empty", "No approved center assignments are currently linked to this account.")
             }
         ]);
     }
 
     async function loadProfile(successMessage = "Your profile is ready to edit.") {
         try {
+            if (preferredLanguageSelect instanceof HTMLSelectElement) {
+                populateSelectOptions(preferredLanguageSelect, window.NoorLocatorI18n.getSupportedLanguages(), {
+                    placeholder: t("profile.language.placeholder", "Choose language"),
+                    getValue: language => language.code,
+                    getLabel: language => language.nativeName
+                });
+            }
+
             const requests = [
                 window.NoorLocatorAuth.syncCurrentUser(),
                 window.NoorLocatorApi.getMyProfile()
@@ -1959,6 +1907,37 @@ function initProfilePage() {
             setMessage(preferencesMessage, normalizeErrorMessage(error, "Notification settings could not be updated right now."), "error");
         } finally {
             setSubmitButtonState(preferencesForm, false, "Saving preferences...");
+        }
+    });
+
+    preferredLanguageForm?.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (!(preferredLanguageSelect instanceof HTMLSelectElement)) {
+            return;
+        }
+
+        setSubmitButtonState(preferredLanguageForm, true, "Saving language preference...");
+        setMessage(preferredLanguageMessage, "Saving your language preference...");
+
+        try {
+            const response = await window.NoorLocatorApi.updateMyPreferredLanguage({
+                preferredLanguageCode: preferredLanguageSelect.value
+            });
+
+            state.profile = response.data || state.profile;
+            if (state.profile) {
+                window.NoorLocatorAuth.updateSessionUser(state.profile);
+            }
+
+            setMessage(preferredLanguageMessage, response.message || "Preferred language updated successfully.", "success");
+            await window.NoorLocatorI18n.setLanguage(preferredLanguageSelect.value, {
+                reload: true,
+                savePreference: false
+            });
+        } catch (error) {
+            setMessage(preferredLanguageMessage, normalizeErrorMessage(error, "Preferred language could not be updated right now."), "error");
+        } finally {
+            setSubmitButtonState(preferredLanguageForm, false, "Saving language preference...");
         }
     });
 
@@ -2065,26 +2044,38 @@ function initDashboardPage() {
         const displayLabel = window.NoorLocatorAuth.formatUserDisplayName(currentUser);
         populateCards("dashboard-cards", [
             {
-                title: "Signed in",
-                body: `${displayLabel} is the current NoorLocator account for this workspace. Every submission enters moderation before it reaches the public directory.`
+                title: t("dashboard.cards.account.title", "Signed in"),
+                body: t(
+                    "dashboard.cards.account.body",
+                    "{name} is the current NoorLocator account for this workspace. Every submission enters moderation before it reaches the public directory.",
+                    { name: displayLabel })
             },
             {
-                title: "My center requests",
+                title: t("dashboard.cards.requests.title", "My center requests"),
                 body: state.requests.length
-                    ? `You have ${state.requests.length} center request${state.requests.length === 1 ? "" : "s"} on file, with statuses such as Pending, Approved, and Rejected.`
-                    : "You have not submitted a center request yet."
+                    ? t(
+                        "dashboard.cards.requests.body",
+                        "You have {count} center requests on file, with statuses such as Pending, Approved, and Rejected.",
+                        { count: state.requests.length })
+                    : t("dashboard.cards.requests.empty", "You have not submitted a center request yet.")
             },
             {
-                title: "Published centers",
+                title: t("dashboard.cards.centers.title", "Published centers"),
                 body: state.centers.length
-                    ? `${state.centers.length} published center${state.centers.length === 1 ? "" : "s"} are available for manager requests and language suggestions.`
-                    : "Published centers could not be loaded right now."
+                    ? t(
+                        "dashboard.cards.centers.body",
+                        "{count} published centers are available for manager requests and language suggestions.",
+                        { count: state.centers.length })
+                    : t("dashboard.cards.centers.empty", "Published centers could not be loaded right now.")
             },
             {
-                title: "Predefined languages",
+                title: t("dashboard.cards.languages.title", "Predefined languages"),
                 body: state.languages.length
-                    ? `${state.languages.length} predefined language option${state.languages.length === 1 ? "" : "s"} are ready to use in your forms.`
-                    : "Language lookup data is currently unavailable."
+                    ? t(
+                        "dashboard.cards.languages.body",
+                        "{count} predefined language options are ready to use in your forms.",
+                        { count: state.languages.length })
+                    : t("dashboard.cards.languages.empty", "Language lookup data is currently unavailable.")
             }
         ]);
     }
@@ -2100,15 +2091,19 @@ function initDashboardPage() {
 
     function refreshSelects() {
         populateSelectOptions(centerSelects, state.centers, {
-            placeholder: state.centers.length ? "Select a center" : "No published centers available",
+            placeholder: state.centers.length
+                ? t("common.selectCenter", "Select a center")
+                : t("dashboard.selects.noCenters", "No published centers available"),
             getValue: center => String(center.id),
             getLabel: center => `${center.name} (${center.city}, ${center.country})`
         });
 
         populateSelectOptions([languageSelect], state.languages, {
-            placeholder: state.languages.length ? "Select a language" : "No languages available",
+            placeholder: state.languages.length
+                ? t("common.selectLanguage", "Select a language")
+                : t("common.noLanguagesAvailable", "No languages available"),
             getValue: language => String(language.id),
-            getLabel: language => `${language.name} (${language.code})`
+            getLabel: language => `${window.NoorLocatorI18n.getLanguageLabel(language.code)} (${language.code})`
         });
     }
 
@@ -2178,8 +2173,8 @@ function initDashboardPage() {
             description: values.description
         }),
         {
-            busyMessage: "Submitting center request...",
-            fallbackSuccessMessage: "Center request submitted for review.",
+            busyMessage: t("dashboard.messages.submittingCenterRequest", "Submitting center request..."),
+            fallbackSuccessMessage: t("dashboard.messages.centerRequestSubmitted", "Center request submitted for review."),
             onSuccess: async () => {
                 await refreshMyRequests();
             }
@@ -2193,8 +2188,8 @@ function initDashboardPage() {
             message: values.message
         }),
         {
-            busyMessage: "Submitting suggestion...",
-            fallbackSuccessMessage: "Suggestion submitted for review."
+            busyMessage: t("dashboard.messages.submittingSuggestion", "Submitting suggestion..."),
+            fallbackSuccessMessage: t("dashboard.messages.suggestionSubmitted", "Suggestion submitted for review.")
         });
 
     bindContributionForm(
@@ -2205,8 +2200,8 @@ function initDashboardPage() {
             languageId: Number(values.languageId)
         }),
         {
-            busyMessage: "Submitting language suggestion...",
-            fallbackSuccessMessage: "Language suggestion submitted for review."
+            busyMessage: t("dashboard.messages.submittingLanguageSuggestion", "Submitting language suggestion..."),
+            fallbackSuccessMessage: t("dashboard.messages.languageSuggestionSubmitted", "Language suggestion submitted for review.")
         });
 
     bindContributionForm(
@@ -2216,8 +2211,8 @@ function initDashboardPage() {
             centerId: Number(values.centerId)
         }),
         {
-            busyMessage: "Submitting manager request...",
-            fallbackSuccessMessage: "Manager request submitted for review."
+            busyMessage: t("dashboard.messages.submittingManagerRequest", "Submitting manager request..."),
+            fallbackSuccessMessage: t("dashboard.messages.managerRequestSubmitted", "Manager request submitted for review.")
         });
 
     Promise.allSettled([
@@ -2266,7 +2261,7 @@ function initDashboardPage() {
 
         setMessage(
             pageMessage,
-            "Your contribution tools are ready. New submissions are stored as pending until a moderator reviews them.",
+            t("dashboard.page.ready", "Your contribution tools are ready. New submissions are stored as pending until a moderator reviews them."),
             "success");
     }).catch(error => {
         const message = normalizeErrorMessage(error, "The dashboard could not be loaded right now.");
@@ -2374,7 +2369,7 @@ function renderManagedCenters(container, centers) {
     }
 
     if (!centers.length) {
-        setContainerMessage(container, "No approved centers are currently assigned to this manager account.", "soft");
+        setContainerMessage(container, t("manager.centers.empty", "No approved centers are currently assigned to this manager account."), "soft");
         return;
     }
 
@@ -2382,10 +2377,10 @@ function renderManagedCenters(container, centers) {
         <article class="card">
             <div class="card__header">
                 <span class="card__meta">${escapeHtml(`${center.city}, ${center.country}`)}</span>
-                <span class="status-pill status-pill--success">Assigned</span>
+                <span class="status-pill status-pill--success">${escapeHtml(t("status.assigned", "Assigned"))}</span>
             </div>
             <h3>${escapeHtml(center.name)}</h3>
-            <p class="card__excerpt">${escapeHtml(truncateText(center.description || "This center is ready for majlis publishing through the manager workspace.", 150))}</p>
+            <p class="card__excerpt">${escapeHtml(truncateText(center.description || t("manager.centers.defaultDescription", "This center is ready for majlis publishing through the manager workspace."), 150))}</p>
             <p>${escapeHtml(center.address)}</p>
         </article>
     `).join("");
@@ -2397,7 +2392,7 @@ function renderMajlisLanguageOptions(container, languages, selectedIds = []) {
     }
 
     if (!languages.length) {
-        container.innerHTML = `<div class="empty-state empty-state--soft">No predefined languages are available.</div>`;
+        container.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("manager.form.languagesEmpty", "No predefined languages are available."))}</div>`;
         return;
     }
 
@@ -2406,7 +2401,7 @@ function renderMajlisLanguageOptions(container, languages, selectedIds = []) {
         <label class="checkbox-card">
             <input type="checkbox" name="languageIds" value="${escapeHtml(language.id)}"${selected.has(Number(language.id)) ? " checked" : ""}>
             <span>
-                <strong>${escapeHtml(language.name)}</strong>
+                <strong>${escapeHtml(window.NoorLocatorI18n.getLanguageLabel(language.code))}</strong>
                 <span>${escapeHtml(language.code)}</span>
             </span>
         </label>
@@ -2429,13 +2424,13 @@ function renderManagerMajalis(container, majalis) {
     }
 
     if (!majalis.length) {
-        setContainerMessage(container, "No majalis are published for the selected center yet.", "soft");
+        setContainerMessage(container, t("manager.majlisList.empty", "No majalis are published for the selected center yet."), "soft");
         return;
     }
 
     container.innerHTML = majalis.map(majlis => `
         <article class="list-card">
-            ${majlis.imageUrl ? `<img class="majlis-card__image" src="${escapeHtml(majlis.imageUrl)}" alt="${escapeHtml(`${majlis.title} image`)}" loading="lazy">` : ""}
+            ${majlis.imageUrl ? `<img class="majlis-card__image" src="${escapeHtml(majlis.imageUrl)}" alt="${escapeHtml(t("manager.majlisList.imageAlt", "{title} image", { title: majlis.title }))}" loading="lazy">` : ""}
             <div class="list-card__head">
                 <div>
                     <h4>${escapeHtml(majlis.title)}</h4>
@@ -2443,14 +2438,14 @@ function renderManagerMajalis(container, majalis) {
                 </div>
                 <span class="status-pill">${escapeHtml(formatDateTime(majlis.date))}</span>
             </div>
-            <p>${escapeHtml(truncateText(majlis.description || "No public description is available for this majlis yet.", 190))}</p>
+            <p>${escapeHtml(truncateText(majlis.description || t("manager.majlisList.defaultDescription", "No public description is available for this majlis yet."), 190))}</p>
             <div class="utility-row utility-row--wrap">
-                <span class="card__meta">Time: ${escapeHtml(majlis.time || "To be announced")}</span>
-                ${(majlis.languages || []).map(language => `<span class="chip chip--muted">${escapeHtml(language.name)}</span>`).join("")}
+                <span class="card__meta">${escapeHtml(t("manager.majlisList.time", "Time: {time}", { time: majlis.time || t("common.timeToBeConfirmed", "To be announced") }))}</span>
+                ${(majlis.languages || []).map(language => `<span class="chip chip--muted">${escapeHtml(window.NoorLocatorI18n.getLanguageLabel(language.code))}</span>`).join("")}
             </div>
             <div class="button-row">
-                <button class="button button--secondary" type="button" data-edit-majlis-id="${escapeHtml(majlis.id)}">Edit</button>
-                <button class="button button--danger" type="button" data-delete-majlis-id="${escapeHtml(majlis.id)}" data-majlis-title="${escapeHtml(majlis.title)}">Delete</button>
+                <button class="button button--secondary" type="button" data-edit-majlis-id="${escapeHtml(majlis.id)}">${escapeHtml(t("actions.edit", "Edit"))}</button>
+                <button class="button button--danger" type="button" data-delete-majlis-id="${escapeHtml(majlis.id)}" data-majlis-title="${escapeHtml(majlis.title)}">${escapeHtml(t("actions.delete", "Delete"))}</button>
             </div>
         </article>
     `).join("");
@@ -2459,23 +2454,23 @@ function renderManagerMajalis(container, majalis) {
 function renderManagerAnnouncements(container, announcements) {
     renderCenterAnnouncements(container, announcements, {
         manageable: true,
-        emptyMessage: "No announcements exist for the selected center yet."
+        emptyMessage: t("manager.announcementList.empty", "No announcements exist for the selected center yet.")
     });
 }
 
 function renderManagerCenterImages(container, images) {
     renderCenterGallery(container, images, {
         manageable: true,
-        emptyMessage: "No gallery images have been uploaded for the selected center yet.",
-        imageAlt: "Managed center gallery image"
+        emptyMessage: t("manager.gallery.empty", "No gallery images have been uploaded for the selected center yet."),
+        imageAlt: t("manager.gallery.imageAlt", "Managed center gallery image")
     });
 }
 
 function renderAdminCenterImages(container, images) {
     renderCenterGallery(container, images, {
         manageable: true,
-        emptyMessage: "No gallery images are currently stored for the selected center.",
-        imageAlt: "Admin moderated center gallery image"
+        emptyMessage: t("admin.gallery.empty", "No gallery images are currently stored for the selected center."),
+        imageAlt: t("admin.gallery.imageAlt", "Admin moderated center gallery image")
     });
 }
 
@@ -2600,11 +2595,11 @@ function initManagerPage() {
     }
 
     setCardLoadingState(cardsContainer, 3);
-    setContainerMessage(centersContainer, "Loading your assigned centers...", "soft");
-    setContainerMessage(majlisListContainer, "Loading majalis...", "soft");
-    setContainerMessage(announcementsContainer, "Loading announcements...", "soft");
-    setContainerMessage(centerImagesContainer, "Loading center gallery...", "soft");
-    setMessage(pageMessage, "Loading your manager workspace...");
+    setContainerMessage(centersContainer, t("manager.centers.loading", "Loading your assigned centers..."), "soft");
+    setContainerMessage(majlisListContainer, t("manager.majlisList.loading", "Loading majalis..."), "soft");
+    setContainerMessage(announcementsContainer, t("manager.announcementList.loading", "Loading announcements..."), "soft");
+    setContainerMessage(centerImagesContainer, t("manager.gallery.loading", "Loading center gallery..."), "soft");
+    setMessage(pageMessage, t("manager.page.loading", "Loading your manager workspace..."));
 
     function updateCounts() {
         centerCount.textContent = String(state.centers.length);
@@ -2618,32 +2613,35 @@ function initManagerPage() {
         const displayLabel = window.NoorLocatorAuth.formatUserDisplayName(currentUser);
         populateCards("manager-cards", [
             {
-                title: "Manager session",
-                body: `${displayLabel} is the current NoorLocator account for this workspace. Majalis, announcements, and gallery changes are accepted only for approved center assignments.`
+                title: t("manager.cards.session.title", "Manager session"),
+                body: t(
+                    "manager.cards.session.body",
+                    "{name} is the current NoorLocator account for this workspace. Majalis, announcements, and gallery changes are accepted only for approved center assignments.",
+                    { name: displayLabel })
             },
             {
-                title: "Assigned centers",
+                title: t("manager.cards.centers.title", "Assigned centers"),
                 body: state.centers.length
-                    ? `${state.centers.length} center${state.centers.length === 1 ? "" : "s"} are available in this workspace.`
-                    : "No assigned centers are available for this account."
+                    ? t("manager.cards.centers.body", "{count} centers are available in this workspace.", { count: state.centers.length })
+                    : t("manager.cards.centers.empty", "No assigned centers are available for this account.")
             },
             {
-                title: "Majalis in view",
+                title: t("manager.cards.majalis.title", "Majalis in view"),
                 body: state.majalis.length
-                    ? `${state.majalis.length} majlis record${state.majalis.length === 1 ? "" : "s"} are loaded for the selected center.`
-                    : "No majalis are currently loaded for the selected center."
+                    ? t("manager.cards.majalis.body", "{count} majlis records are loaded for the selected center.", { count: state.majalis.length })
+                    : t("manager.cards.majalis.empty", "No majalis are currently loaded for the selected center.")
             },
             {
-                title: "Direct announcements",
+                title: t("manager.cards.announcements.title", "Direct announcements"),
                 body: state.announcements.length
-                    ? `${state.announcements.length} announcement${state.announcements.length === 1 ? "" : "s"} are loaded for the selected center.`
-                    : "No announcements are currently loaded for the selected center."
+                    ? t("manager.cards.announcements.body", "{count} announcements are loaded for the selected center.", { count: state.announcements.length })
+                    : t("manager.cards.announcements.empty", "No announcements are currently loaded for the selected center.")
             },
             {
-                title: "Center gallery",
+                title: t("manager.cards.gallery.title", "Center gallery"),
                 body: state.centerImages.length
-                    ? `${state.centerImages.length} image${state.centerImages.length === 1 ? "" : "s"} are available for the selected center.`
-                    : "No gallery images are currently loaded for the selected center."
+                    ? t("manager.cards.gallery.body", "{count} images are available for the selected center.", { count: state.centerImages.length })
+                    : t("manager.cards.gallery.empty", "No gallery images are currently loaded for the selected center.")
             }
         ]);
     }
@@ -2688,9 +2686,9 @@ function initManagerPage() {
         state.editingMajlisId = null;
         form.reset();
         form.elements.namedItem("majlisId").value = "";
-        formHeading.textContent = "Create a new majlis";
-        submitButton.textContent = "Create majlis";
-        submitButton.dataset.defaultLabel = "Create majlis";
+        formHeading.textContent = t("manager.majlisEditor.title", "Create a new majlis");
+        submitButton.textContent = t("manager.majlisEditor.submit", "Create majlis");
+        submitButton.dataset.defaultLabel = t("manager.majlisEditor.submit", "Create majlis");
         cancelButton.hidden = true;
 
         const fallbackCenterId = preferredCenterId || state.selectedCenterId || state.centers[0]?.id || null;
@@ -2704,16 +2702,16 @@ function initManagerPage() {
             removeImageField.checked = false;
         }
 
-        setMessage(formMessage, "Create a majlis for one of your assigned centers. You can optionally add a poster image.");
+        setMessage(formMessage, t("manager.messages.majlisReady", "Create a majlis for one of your assigned centers. You can optionally add a poster image."));
     }
 
     function resetAnnouncementForm(preferredCenterId = null) {
         state.editingAnnouncementId = null;
         announcementForm.reset();
         announcementForm.elements.namedItem("announcementId").value = "";
-        announcementFormHeading.textContent = "Create a center announcement";
-        announcementSubmitButton.textContent = "Publish announcement";
-        announcementSubmitButton.dataset.defaultLabel = "Publish announcement";
+        announcementFormHeading.textContent = t("manager.announcements.title", "Create a center announcement");
+        announcementSubmitButton.textContent = t("manager.announcements.submit", "Publish announcement");
+        announcementSubmitButton.dataset.defaultLabel = t("manager.announcements.submit", "Publish announcement");
         announcementCancelButton.hidden = true;
 
         const fallbackCenterId = preferredCenterId || state.selectedCenterId || state.centers[0]?.id || null;
@@ -2721,7 +2719,7 @@ function initManagerPage() {
             announcementFormCenterSelect.value = String(fallbackCenterId);
         }
 
-        setMessage(announcementFormMessage, "Announcements publish directly for your assigned centers.");
+        setMessage(announcementFormMessage, t("manager.messages.announcementReady", "Announcements publish directly for your assigned centers."));
     }
 
     function resetImageUploadForm(preferredCenterId = null) {
@@ -2733,7 +2731,7 @@ function initManagerPage() {
             imageFormCenterSelect.value = String(fallbackCenterId);
         }
 
-        setMessage(imageUploadFormMessage, "Upload JPG, PNG, or WEBP files up to 5MB.");
+        setMessage(imageUploadFormMessage, t("manager.messages.imageReady", "Upload JPG, PNG, or WEBP files up to 5MB."));
     }
 
     function populateCenterControls() {
@@ -2748,7 +2746,9 @@ function initManagerPage() {
             ],
             state.centers,
             {
-            placeholder: state.centers.length ? "Select a center" : "No centers available",
+            placeholder: state.centers.length
+                ? t("common.selectCenter", "Select a center")
+                : t("common.noCentersAvailable", "No centers available"),
             getValue: center => String(center.id),
             getLabel: center => `${center.name} (${center.city}, ${center.country})`
             });
@@ -2768,7 +2768,7 @@ function initManagerPage() {
                     return;
                 }
 
-                setMessage(formMessage, "Loading majlis details...");
+                setMessage(formMessage, t("manager.messages.loadingMajlis", "Loading majlis details..."));
 
                 try {
                     const response = await window.NoorLocatorApi.getMajlis(majlisId);
@@ -2787,16 +2787,16 @@ function initManagerPage() {
                     form.elements.namedItem("removeImage").checked = false;
                     formCenterSelect.value = String(majlis.centerId);
                     syncCenterSelection(majlis.centerId);
-                    formHeading.textContent = "Edit majlis";
-                    submitButton.textContent = "Save changes";
-                    submitButton.dataset.defaultLabel = "Save changes";
+                    formHeading.textContent = t("manager.majlisEditor.editTitle", "Edit majlis");
+                    submitButton.textContent = t("actions.saveChanges", "Save changes");
+                    submitButton.dataset.defaultLabel = t("actions.saveChanges", "Save changes");
                     cancelButton.hidden = false;
                     renderMajlisLanguageOptions(languageOptions, state.languages, (majlis.languages || []).map(language => language.id));
                     setMessage(
                         formMessage,
                         majlis.imageUrl
-                            ? `Editing "${majlis.title}". Leave the image empty to keep the current one, or check remove to clear it.`
-                            : `Editing "${majlis.title}". You can add an optional image before saving.`,
+                            ? t("manager.messages.editingMajlisWithImage", "Editing \"{title}\". Leave the image empty to keep the current one, or check remove to clear it.", { title: majlis.title })
+                            : t("manager.messages.editingMajlis", "Editing \"{title}\". You can add an optional image before saving.", { title: majlis.title }),
                         "success");
                     document.getElementById("majlis-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
                 } catch (error) {
@@ -2816,7 +2816,7 @@ function initManagerPage() {
                     return;
                 }
 
-                if (!window.confirm(`Delete "${title}" from NoorLocator?`)) {
+                if (!window.confirm(t("manager.confirm.deleteMajlis", "Delete \"{title}\" from NoorLocator?", { title }))) {
                     return;
                 }
 
@@ -2846,7 +2846,7 @@ function initManagerPage() {
                     return;
                 }
 
-                setMessage(announcementFormMessage, "Loading announcement details...");
+                setMessage(announcementFormMessage, t("manager.messages.loadingAnnouncement", "Loading announcement details..."));
 
                 try {
                     const response = await window.NoorLocatorApi.getEventAnnouncement(announcementId);
@@ -2864,15 +2864,15 @@ function initManagerPage() {
                     announcementForm.elements.namedItem("removeImage").checked = false;
                     announcementFormCenterSelect.value = String(announcement.centerId);
                     syncCenterSelection(announcement.centerId);
-                    announcementFormHeading.textContent = "Edit center announcement";
-                    announcementSubmitButton.textContent = "Save announcement";
-                    announcementSubmitButton.dataset.defaultLabel = "Save announcement";
+                    announcementFormHeading.textContent = t("manager.announcements.editTitle", "Edit center announcement");
+                    announcementSubmitButton.textContent = t("manager.announcements.save", "Save announcement");
+                    announcementSubmitButton.dataset.defaultLabel = t("manager.announcements.save", "Save announcement");
                     announcementCancelButton.hidden = false;
                     setMessage(
                         announcementFormMessage,
                         announcement.imageUrl
-                            ? `Editing "${announcement.title}". Leave the image empty to keep the current one.`
-                            : `Editing "${announcement.title}".`,
+                            ? t("manager.messages.editingAnnouncementWithImage", "Editing \"{title}\". Leave the image empty to keep the current one.", { title: announcement.title })
+                            : t("manager.messages.editingAnnouncement", "Editing \"{title}\".", { title: announcement.title }),
                         "success");
                     document.getElementById("announcement-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
                 } catch (error) {
@@ -2892,7 +2892,7 @@ function initManagerPage() {
                     return;
                 }
 
-                if (!window.confirm(`Delete "${title}" from NoorLocator?`)) {
+                if (!window.confirm(t("manager.confirm.deleteAnnouncement", "Delete \"{title}\" from NoorLocator?", { title }))) {
                     return;
                 }
 
@@ -2933,7 +2933,7 @@ function initManagerPage() {
                 }
             },
             onDelete: async imageId => {
-                if (!window.confirm("Delete this center image from the gallery?")) {
+                if (!window.confirm(t("manager.confirm.deleteImage", "Delete this center image from the gallery?"))) {
                     return;
                 }
 
@@ -2956,11 +2956,11 @@ function initManagerPage() {
     async function loadMajalisForSelectedCenter() {
         if (!state.selectedCenterId) {
             state.majalis = [];
-            setContainerMessage(majlisListContainer, "Select one of your assigned centers to manage majalis.", "soft");
+            setContainerMessage(majlisListContainer, t("manager.majlisList.selectCenter", "Select one of your assigned centers to manage majalis."), "soft");
             return;
         }
 
-        setContainerMessage(majlisListContainer, "Loading majalis for the selected center...", "soft");
+        setContainerMessage(majlisListContainer, t("manager.majlisList.loadingSelected", "Loading majalis for the selected center..."), "soft");
 
         try {
             const response = await window.NoorLocatorApi.getMajalis(state.selectedCenterId);
@@ -2979,11 +2979,11 @@ function initManagerPage() {
     async function loadAnnouncementsForSelectedCenter() {
         if (!state.selectedCenterId) {
             state.announcements = [];
-            setContainerMessage(announcementsContainer, "Select one of your assigned centers to manage announcements.", "soft");
+            setContainerMessage(announcementsContainer, t("manager.announcementList.selectCenter", "Select one of your assigned centers to manage announcements."), "soft");
             return;
         }
 
-        setContainerMessage(announcementsContainer, "Loading announcements for the selected center...", "soft");
+        setContainerMessage(announcementsContainer, t("manager.announcementList.loadingSelected", "Loading announcements for the selected center..."), "soft");
 
         try {
             const response = await window.NoorLocatorApi.getEventAnnouncements(state.selectedCenterId);
@@ -3001,11 +3001,11 @@ function initManagerPage() {
     async function loadCenterImagesForSelectedCenter() {
         if (!state.selectedCenterId) {
             state.centerImages = [];
-            setContainerMessage(centerImagesContainer, "Select one of your assigned centers to manage the gallery.", "soft");
+            setContainerMessage(centerImagesContainer, t("manager.gallery.selectCenter", "Select one of your assigned centers to manage the gallery."), "soft");
             return;
         }
 
-        setContainerMessage(centerImagesContainer, "Loading center gallery...", "soft");
+        setContainerMessage(centerImagesContainer, t("manager.gallery.loading", "Loading center gallery..."), "soft");
 
         try {
             const response = await window.NoorLocatorApi.getCenterImages(state.selectedCenterId);
@@ -3020,7 +3020,7 @@ function initManagerPage() {
         }
     }
 
-    async function refreshSelectedCenterWorkspace(successMessage = "Manager workspace is ready.") {
+    async function refreshSelectedCenterWorkspace(successMessage = t("manager.page.ready", "Manager workspace is ready.")) {
         try {
             await Promise.all([
                 loadMajalisForSelectedCenter(),
@@ -3038,8 +3038,8 @@ function initManagerPage() {
 
     form.addEventListener("submit", async event => {
         event.preventDefault();
-        setSubmitButtonState(form, true, state.editingMajlisId ? "Saving changes..." : "Creating majlis...");
-        setMessage(formMessage, state.editingMajlisId ? "Saving majlis changes..." : "Creating majlis...");
+        setSubmitButtonState(form, true, state.editingMajlisId ? t("actions.saveChanges", "Saving changes...") : t("manager.majlisEditor.submitBusy", "Creating majlis..."));
+        setMessage(formMessage, state.editingMajlisId ? t("manager.messages.savingMajlis", "Saving majlis changes...") : t("manager.majlisEditor.submitBusy", "Creating majlis..."));
 
         const selectedFile = majlisImageInput instanceof HTMLInputElement
             ? majlisImageInput.files?.[0]
@@ -3047,7 +3047,7 @@ function initManagerPage() {
         const imageValidationError = getMajlisImageValidationError(selectedFile);
         if (imageValidationError) {
             setMessage(formMessage, imageValidationError, "error");
-            setSubmitButtonState(form, false, state.editingMajlisId ? "Saving changes..." : "Creating majlis...");
+            setSubmitButtonState(form, false, state.editingMajlisId ? t("actions.saveChanges", "Saving changes...") : t("manager.majlisEditor.submitBusy", "Creating majlis..."));
             return;
         }
 
@@ -3079,7 +3079,7 @@ function initManagerPage() {
             setMessage(formMessage, message, "error");
             showToast(message, "error");
         } finally {
-            setSubmitButtonState(form, false, state.editingMajlisId ? "Saving changes..." : "Creating majlis...");
+            setSubmitButtonState(form, false, state.editingMajlisId ? t("actions.saveChanges", "Saving changes...") : t("manager.majlisEditor.submitBusy", "Creating majlis..."));
         }
     });
 
@@ -3091,8 +3091,8 @@ function initManagerPage() {
                 setMessage(
                     formMessage,
                     state.editingMajlisId
-                        ? "Leave the image empty to keep the current one, or choose a new file to replace it."
-                        : "Create a majlis for one of your assigned centers. You can optionally add a poster image.");
+                        ? t("manager.messages.majlisImageKeepCurrent", "Leave the image empty to keep the current one, or choose a new file to replace it.")
+                        : t("manager.messages.majlisReady", "Create a majlis for one of your assigned centers. You can optionally add a poster image."));
                 return;
             }
 
@@ -3103,7 +3103,7 @@ function initManagerPage() {
                 return;
             }
 
-            setMessage(formMessage, `${file.name} is ready to upload with this majlis (${formatFileSize(file.size)}).`);
+            setMessage(formMessage, t("manager.messages.majlisImageSelected", "{name} is ready to upload with this majlis ({size}).", { name: file.name, size: formatFileSize(file.size) }));
         });
     }
 
@@ -3117,10 +3117,10 @@ function initManagerPage() {
         setSubmitButtonState(
             announcementForm,
             true,
-            state.editingAnnouncementId ? "Saving announcement..." : "Publishing announcement...");
+            state.editingAnnouncementId ? t("manager.announcements.saveBusy", "Saving announcement...") : t("manager.announcements.submitBusy", "Publishing announcement..."));
         setMessage(
             announcementFormMessage,
-            state.editingAnnouncementId ? "Saving announcement changes..." : "Publishing announcement...");
+            state.editingAnnouncementId ? t("manager.messages.savingAnnouncement", "Saving announcement changes...") : t("manager.announcements.submitBusy", "Publishing announcement..."));
 
         const formData = new FormData(announcementForm);
         const centerId = Number(formData.get("centerId"));
@@ -3143,7 +3143,7 @@ function initManagerPage() {
             setSubmitButtonState(
                 announcementForm,
                 false,
-                state.editingAnnouncementId ? "Saving announcement..." : "Publishing announcement...");
+                state.editingAnnouncementId ? t("manager.announcements.saveBusy", "Saving announcement...") : t("manager.announcements.submitBusy", "Publishing announcement..."));
         }
     });
 
@@ -3157,7 +3157,7 @@ function initManagerPage() {
             resetUploadProgress(imageUploadProgress, imageUploadProgressMeta);
 
             if (!file) {
-                setMessage(imageUploadFormMessage, "Upload JPG, PNG, or WEBP files up to 5MB.");
+                setMessage(imageUploadFormMessage, t("manager.messages.imageReady", "Upload JPG, PNG, or WEBP files up to 5MB."));
                 return;
             }
 
@@ -3170,7 +3170,7 @@ function initManagerPage() {
 
             setMessage(
                 imageUploadFormMessage,
-                `${file.name} is ready to upload (${formatFileSize(file.size)}).`);
+                t("manager.messages.imageSelected", "{name} is ready to upload ({size}).", { name: file.name, size: formatFileSize(file.size) }));
         });
     }
 
@@ -3186,9 +3186,9 @@ function initManagerPage() {
             return;
         }
 
-        setSubmitButtonState(imageUploadForm, true, "Uploading image...");
-        setMessage(imageUploadFormMessage, "Uploading center image...");
-        setUploadProgress(imageUploadProgress, imageUploadProgressMeta, 0, "Starting upload...");
+        setSubmitButtonState(imageUploadForm, true, t("manager.gallery.uploadBusy", "Uploading image..."));
+        setMessage(imageUploadFormMessage, t("manager.gallery.uploading", "Uploading center image..."));
+        setUploadProgress(imageUploadProgress, imageUploadProgressMeta, 0, t("manager.gallery.uploadStarting", "Starting upload..."));
 
         const formData = new FormData(imageUploadForm);
         const centerId = Number(formData.get("centerId"));
@@ -3197,11 +3197,11 @@ function initManagerPage() {
             const response = await window.NoorLocatorApi.uploadCenterImage(formData, {
                 onProgress: percent => {
                     if (typeof percent === "number") {
-                        setUploadProgress(imageUploadProgress, imageUploadProgressMeta, percent, `Uploading image... ${percent}%`);
+                        setUploadProgress(imageUploadProgress, imageUploadProgressMeta, percent, t("manager.gallery.uploadProgress", "Uploading image... {percent}%", { percent }));
                         return;
                     }
 
-                    setUploadProgress(imageUploadProgress, imageUploadProgressMeta, null, "Uploading image...");
+                    setUploadProgress(imageUploadProgress, imageUploadProgressMeta, null, t("manager.gallery.uploading", "Uploading center image..."));
                 }
             });
             syncCenterSelection(centerId);
@@ -3215,14 +3215,14 @@ function initManagerPage() {
             setMessage(imageUploadFormMessage, message, "error");
             showToast(message, "error");
         } finally {
-            setSubmitButtonState(imageUploadForm, false, "Uploading image...");
+            setSubmitButtonState(imageUploadForm, false, t("manager.gallery.uploadBusy", "Uploading image..."));
         }
     });
 
     const handleCenterFilterChange = async event => {
         const selectedCenterId = Number(event.target.value);
         syncCenterSelection(Number.isInteger(selectedCenterId) && selectedCenterId > 0 ? selectedCenterId : null);
-        await refreshSelectedCenterWorkspace("Manager content refreshed for the selected center.");
+        await refreshSelectedCenterWorkspace(t("manager.messages.centerRefreshed", "Manager content refreshed for the selected center."));
     };
 
     filterCenterSelect.addEventListener("change", handleCenterFilterChange);
@@ -3230,15 +3230,15 @@ function initManagerPage() {
     imageFilterCenterSelect.addEventListener("change", handleCenterFilterChange);
 
     refreshButton.addEventListener("click", async () => {
-        await refreshSelectedCenterWorkspace("Majalis refreshed for the selected center.");
+        await refreshSelectedCenterWorkspace(t("manager.messages.majalisRefreshed", "Majalis refreshed for the selected center."));
     });
 
     refreshAnnouncementsButton.addEventListener("click", async () => {
-        await refreshSelectedCenterWorkspace("Announcements refreshed for the selected center.");
+        await refreshSelectedCenterWorkspace(t("manager.messages.announcementsRefreshed", "Announcements refreshed for the selected center."));
     });
 
     refreshCenterImagesButton.addEventListener("click", async () => {
-        await refreshSelectedCenterWorkspace("Center gallery refreshed for the selected center.");
+        await refreshSelectedCenterWorkspace(t("manager.messages.galleryRefreshed", "Center gallery refreshed for the selected center."));
     });
 
     Promise.allSettled([
@@ -3271,10 +3271,10 @@ function initManagerPage() {
         refreshOverviewCards();
 
         if (!state.centers.length) {
-            setMessage(pageMessage, "No assigned centers were found for this account.", "error");
-            setContainerMessage(majlisListContainer, "No majalis can be managed until a center assignment exists.", "soft");
-            setContainerMessage(announcementsContainer, "No announcements can be managed until a center assignment exists.", "soft");
-            setContainerMessage(centerImagesContainer, "No center images can be managed until a center assignment exists.", "soft");
+            setMessage(pageMessage, t("manager.page.noCenters", "No assigned centers were found for this account."), "error");
+            setContainerMessage(majlisListContainer, t("manager.majlisList.noCenters", "No majalis can be managed until a center assignment exists."), "soft");
+            setContainerMessage(announcementsContainer, t("manager.announcementList.noCenters", "No announcements can be managed until a center assignment exists."), "soft");
+            setContainerMessage(centerImagesContainer, t("manager.gallery.noCenters", "No center images can be managed until a center assignment exists."), "soft");
             return;
         }
 
@@ -3299,7 +3299,7 @@ function renderAdminCenterRequests(container, requests) {
     }
 
     if (!requests.length) {
-        setContainerMessage(container, "No center requests are waiting in the moderation queue.", "soft");
+        setContainerMessage(container, t("admin.centerRequests.empty", "No center requests are waiting in the moderation queue."), "soft");
         return;
     }
 
@@ -3313,15 +3313,15 @@ function renderAdminCenterRequests(container, requests) {
                 ${renderStatusBadge(request.status)}
             </div>
             <p>${escapeHtml(request.address)}</p>
-            <p>${escapeHtml(truncateText(request.description || "No description was submitted for this center request.", 180))}</p>
+            <p>${escapeHtml(truncateText(request.description || t("admin.centerRequests.defaultDescription", "No description was submitted for this center request."), 180))}</p>
             <div class="utility-row utility-row--wrap">
-                <span class="card__meta">By ${escapeHtml(request.requestedByUserName || request.requestedByUserEmail)}</span>
+                <span class="card__meta">${escapeHtml(t("admin.centerRequests.by", "By {name}", { name: request.requestedByUserName || request.requestedByUserEmail }))}</span>
                 <span class="card__meta">${escapeHtml(request.requestedByUserEmail)}</span>
-                <span class="card__meta">Submitted ${escapeHtml(formatDateTime(request.createdAt))}</span>
+                <span class="card__meta">${escapeHtml(t("common.submittedOn", "Submitted {date}", { date: formatDateTime(request.createdAt) }))}</span>
             </div>
             <div class="button-row">
-                <button class="button button--primary" type="button" data-admin-center-request-approve="${escapeHtml(request.id)}"${String(request.status) !== "Pending" ? " disabled" : ""}>Approve</button>
-                <button class="button button--danger" type="button" data-admin-center-request-reject="${escapeHtml(request.id)}"${String(request.status) !== "Pending" ? " disabled" : ""}>Reject</button>
+                <button class="button button--primary" type="button" data-admin-center-request-approve="${escapeHtml(request.id)}"${String(request.status) !== "Pending" ? " disabled" : ""}>${escapeHtml(t("actions.approve", "Approve"))}</button>
+                <button class="button button--danger" type="button" data-admin-center-request-reject="${escapeHtml(request.id)}"${String(request.status) !== "Pending" ? " disabled" : ""}>${escapeHtml(t("actions.reject", "Reject"))}</button>
             </div>
         </article>
     `).join("");
@@ -3333,7 +3333,7 @@ function renderAdminManagerRequests(container, requests) {
     }
 
     if (!requests.length) {
-        setContainerMessage(container, "No manager requests are waiting in the moderation queue.", "soft");
+        setContainerMessage(container, t("admin.managerRequests.empty", "No manager requests are waiting in the moderation queue."), "soft");
         return;
     }
 
@@ -3346,13 +3346,13 @@ function renderAdminManagerRequests(container, requests) {
                 </div>
                 ${renderStatusBadge(request.status)}
             </div>
-            <p>${escapeHtml(`Requested center: ${request.centerName} (${request.centerCity}, ${request.centerCountry})`)}</p>
+            <p>${escapeHtml(t("admin.managerRequests.requestedCenter", "Requested center: {center}", { center: `${request.centerName} (${request.centerCity}, ${request.centerCountry})` }))}</p>
             <div class="utility-row utility-row--wrap">
-                <span class="card__meta">Submitted ${escapeHtml(formatDateTime(request.createdAt))}</span>
+                <span class="card__meta">${escapeHtml(t("common.submittedOn", "Submitted {date}", { date: formatDateTime(request.createdAt) }))}</span>
             </div>
             <div class="button-row">
-                <button class="button button--primary" type="button" data-admin-manager-request-approve="${escapeHtml(request.id)}"${String(request.status) !== "Pending" ? " disabled" : ""}>Approve</button>
-                <button class="button button--danger" type="button" data-admin-manager-request-reject="${escapeHtml(request.id)}"${String(request.status) !== "Pending" ? " disabled" : ""}>Reject</button>
+                <button class="button button--primary" type="button" data-admin-manager-request-approve="${escapeHtml(request.id)}"${String(request.status) !== "Pending" ? " disabled" : ""}>${escapeHtml(t("actions.approve", "Approve"))}</button>
+                <button class="button button--danger" type="button" data-admin-manager-request-reject="${escapeHtml(request.id)}"${String(request.status) !== "Pending" ? " disabled" : ""}>${escapeHtml(t("actions.reject", "Reject"))}</button>
             </div>
         </article>
     `).join("");
@@ -3364,7 +3364,7 @@ function renderAdminLanguageSuggestions(container, suggestions) {
     }
 
     if (!suggestions.length) {
-        setContainerMessage(container, "No center language suggestions are waiting for review.", "soft");
+        setContainerMessage(container, t("admin.languageSuggestions.empty", "No center language suggestions are waiting for review."), "soft");
         return;
     }
 
@@ -3373,17 +3373,17 @@ function renderAdminLanguageSuggestions(container, suggestions) {
             <div class="list-card__head">
                 <div>
                     <h4>${escapeHtml(suggestion.centerName)}</h4>
-                    <p class="list-card__meta">${escapeHtml(`${suggestion.languageName} (${suggestion.languageCode})`)}</p>
+                    <p class="list-card__meta">${escapeHtml(`${window.NoorLocatorI18n.getLanguageLabel(suggestion.languageCode)} (${suggestion.languageCode})`)}</p>
                 </div>
                 ${renderStatusBadge(suggestion.status)}
             </div>
-            <p>${escapeHtml(`Suggested by ${suggestion.suggestedByUserName || suggestion.suggestedByUserEmail}`)}</p>
+            <p>${escapeHtml(t("admin.languageSuggestions.by", "Suggested by {name}", { name: suggestion.suggestedByUserName || suggestion.suggestedByUserEmail }))}</p>
             <div class="utility-row utility-row--wrap">
                 <span class="card__meta">${escapeHtml(suggestion.suggestedByUserEmail)}</span>
             </div>
             <div class="button-row">
-                <button class="button button--primary" type="button" data-admin-language-suggestion-approve="${escapeHtml(suggestion.id)}"${String(suggestion.status) !== "Pending" ? " disabled" : ""}>Approve</button>
-                <button class="button button--danger" type="button" data-admin-language-suggestion-reject="${escapeHtml(suggestion.id)}"${String(suggestion.status) !== "Pending" ? " disabled" : ""}>Reject</button>
+                <button class="button button--primary" type="button" data-admin-language-suggestion-approve="${escapeHtml(suggestion.id)}"${String(suggestion.status) !== "Pending" ? " disabled" : ""}>${escapeHtml(t("actions.approve", "Approve"))}</button>
+                <button class="button button--danger" type="button" data-admin-language-suggestion-reject="${escapeHtml(suggestion.id)}"${String(suggestion.status) !== "Pending" ? " disabled" : ""}>${escapeHtml(t("actions.reject", "Reject"))}</button>
             </div>
         </article>
     `).join("");
@@ -3395,7 +3395,7 @@ function renderAdminSuggestions(container, suggestions) {
     }
 
     if (!suggestions.length) {
-        setContainerMessage(container, "No app suggestions are waiting for review.", "soft");
+        setContainerMessage(container, t("admin.appSuggestions.empty", "No app suggestions are waiting for review."), "soft");
         return;
     }
 
@@ -3410,11 +3410,11 @@ function renderAdminSuggestions(container, suggestions) {
             </div>
             <p>${escapeHtml(truncateText(suggestion.message, 220))}</p>
             <div class="utility-row utility-row--wrap">
-                <span class="card__meta">${escapeHtml(String(suggestion.type))}</span>
-                <span class="card__meta">Submitted ${escapeHtml(formatDateTime(suggestion.createdAt))}</span>
+                <span class="card__meta">${escapeHtml(t(`dashboard.suggestion.type.${String(suggestion.type).charAt(0).toLowerCase()}${String(suggestion.type).slice(1)}`, String(suggestion.type)))}</span>
+                <span class="card__meta">${escapeHtml(t("common.submittedOn", "Submitted {date}", { date: formatDateTime(suggestion.createdAt) }))}</span>
             </div>
             <div class="button-row">
-                <button class="button button--secondary" type="button" data-admin-suggestion-review="${escapeHtml(suggestion.id)}"${String(suggestion.status) !== "Pending" ? " disabled" : ""}>Mark reviewed</button>
+                <button class="button button--secondary" type="button" data-admin-suggestion-review="${escapeHtml(suggestion.id)}"${String(suggestion.status) !== "Pending" ? " disabled" : ""}>${escapeHtml(t("actions.markReviewed", "Mark reviewed"))}</button>
             </div>
         </article>
     `).join("");
@@ -3426,7 +3426,7 @@ function renderAdminCenters(container, centers) {
     }
 
     if (!centers.length) {
-        setContainerMessage(container, "No published centers are available to manage.", "soft");
+        setContainerMessage(container, t("admin.centers.empty", "No published centers are available to manage."), "soft");
         return;
     }
 
@@ -3437,17 +3437,17 @@ function renderAdminCenters(container, centers) {
                     <h4>${escapeHtml(center.name)}</h4>
                     <p class="list-card__meta">${escapeHtml(`${center.city}, ${center.country}`)}</p>
                 </div>
-                <span class="status-pill status-pill--muted">${escapeHtml(`${center.managerCount} manager${center.managerCount === 1 ? "" : "s"}`)}</span>
+                <span class="status-pill status-pill--muted">${escapeHtml(t("admin.centers.managerCount", "{count} managers", { count: center.managerCount }))}</span>
             </div>
             <p>${escapeHtml(center.address)}</p>
-            <p>${escapeHtml(truncateText(center.description || "No public description is available for this center.", 180))}</p>
+            <p>${escapeHtml(truncateText(center.description || t("admin.centers.defaultDescription", "No public description is available for this center."), 180))}</p>
             <div class="utility-row utility-row--wrap">
-                <span class="card__meta">${escapeHtml(`${center.majlisCount} majlis${center.majlisCount === 1 ? "" : "es"}`)}</span>
-                <span class="card__meta">${escapeHtml(`${center.languageCount} language${center.languageCount === 1 ? "" : "s"}`)}</span>
+                <span class="card__meta">${escapeHtml(t("admin.centers.majlisCount", "{count} majalis", { count: center.majlisCount }))}</span>
+                <span class="card__meta">${escapeHtml(t("admin.centers.languageCount", "{count} languages", { count: center.languageCount }))}</span>
             </div>
             <div class="button-row">
-                <button class="button button--secondary" type="button" data-admin-center-edit="${escapeHtml(center.id)}">Edit</button>
-                <button class="button button--danger" type="button" data-admin-center-delete="${escapeHtml(center.id)}" data-admin-center-name="${escapeHtml(center.name)}">Delete</button>
+                <button class="button button--secondary" type="button" data-admin-center-edit="${escapeHtml(center.id)}">${escapeHtml(t("actions.edit", "Edit"))}</button>
+                <button class="button button--danger" type="button" data-admin-center-delete="${escapeHtml(center.id)}" data-admin-center-name="${escapeHtml(center.name)}">${escapeHtml(t("actions.delete", "Delete"))}</button>
             </div>
         </article>
     `).join("");
@@ -3459,7 +3459,7 @@ function renderAdminUsersTable(container, users) {
     }
 
     if (!users.length) {
-        container.innerHTML = `<div class="empty-state empty-state--soft">No users are available.</div>`;
+        container.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("admin.users.empty", "No users are available."))}</div>`;
         return;
     }
 
@@ -3468,21 +3468,21 @@ function renderAdminUsersTable(container, users) {
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Assigned Centers</th>
-                        <th>Created</th>
+                        <th>${escapeHtml(t("admin.users.table.name", "Name"))}</th>
+                        <th>${escapeHtml(t("admin.users.table.email", "Email"))}</th>
+                        <th>${escapeHtml(t("admin.users.table.role", "Role"))}</th>
+                        <th>${escapeHtml(t("admin.users.table.assignedCenters", "Assigned centers"))}</th>
+                        <th>${escapeHtml(t("admin.users.table.created", "Created"))}</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${users.map(user => `
                         <tr>
-                            <td data-label="Name">${escapeHtml(user.name)}</td>
-                            <td data-label="Email">${escapeHtml(user.email)}</td>
-                            <td data-label="Role">${escapeHtml(String(user.role))}</td>
-                            <td data-label="Assigned Centers">${escapeHtml(String(user.assignedCenterCount))}</td>
-                            <td data-label="Created">${escapeHtml(formatDateTime(user.createdAt))}</td>
+                            <td data-label="${escapeHtml(t("admin.users.table.name", "Name"))}">${escapeHtml(user.name)}</td>
+                            <td data-label="${escapeHtml(t("admin.users.table.email", "Email"))}">${escapeHtml(user.email)}</td>
+                            <td data-label="${escapeHtml(t("admin.users.table.role", "Role"))}">${escapeHtml(window.NoorLocatorAuth.getLocalizedRoleLabel(user.role))}</td>
+                            <td data-label="${escapeHtml(t("admin.users.table.assignedCenters", "Assigned centers"))}">${escapeHtml(String(user.assignedCenterCount))}</td>
+                            <td data-label="${escapeHtml(t("admin.users.table.created", "Created"))}">${escapeHtml(formatDateTime(user.createdAt))}</td>
                         </tr>
                     `).join("")}
                 </tbody>
@@ -3497,7 +3497,7 @@ function renderAdminAuditLogsTable(container, auditLogs) {
     }
 
     if (!auditLogs.length) {
-        container.innerHTML = `<div class="empty-state empty-state--soft">No audit log entries are available.</div>`;
+        container.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("admin.audit.empty", "No audit log entries are available."))}</div>`;
         return;
     }
 
@@ -3506,23 +3506,23 @@ function renderAdminAuditLogsTable(container, auditLogs) {
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>When</th>
-                        <th>Action</th>
-                        <th>Entity</th>
-                        <th>User</th>
-                        <th>IP</th>
-                        <th>Metadata</th>
+                        <th>${escapeHtml(t("admin.audit.table.when", "When"))}</th>
+                        <th>${escapeHtml(t("admin.audit.table.action", "Action"))}</th>
+                        <th>${escapeHtml(t("admin.audit.table.entity", "Entity"))}</th>
+                        <th>${escapeHtml(t("admin.audit.table.user", "User"))}</th>
+                        <th>${escapeHtml(t("admin.audit.table.ip", "IP"))}</th>
+                        <th>${escapeHtml(t("admin.audit.table.metadata", "Metadata"))}</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${auditLogs.map(log => `
                         <tr>
-                            <td data-label="When">${escapeHtml(formatDateTime(log.createdAt))}</td>
-                            <td data-label="Action">${escapeHtml(log.action)}</td>
-                            <td data-label="Entity">${escapeHtml(log.entityName)}${log.entityId ? ` <span class="data-table__mono">#${escapeHtml(log.entityId)}</span>` : ""}</td>
-                            <td data-label="User">${escapeHtml(log.userName || log.userEmail || "System")}</td>
-                            <td data-label="IP" class="data-table__mono">${escapeHtml(log.ipAddress || "-")}</td>
-                            <td data-label="Metadata" class="data-table__mono">${escapeHtml(truncateText(log.metadata || "-", 140))}</td>
+                            <td data-label="${escapeHtml(t("admin.audit.table.when", "When"))}">${escapeHtml(formatDateTime(log.createdAt))}</td>
+                            <td data-label="${escapeHtml(t("admin.audit.table.action", "Action"))}">${escapeHtml(log.action)}</td>
+                            <td data-label="${escapeHtml(t("admin.audit.table.entity", "Entity"))}">${escapeHtml(log.entityName)}${log.entityId ? ` <span class="data-table__mono">#${escapeHtml(log.entityId)}</span>` : ""}</td>
+                            <td data-label="${escapeHtml(t("admin.audit.table.user", "User"))}">${escapeHtml(log.userName || log.userEmail || t("admin.audit.system", "System"))}</td>
+                            <td data-label="${escapeHtml(t("admin.audit.table.ip", "IP"))}" class="data-table__mono">${escapeHtml(log.ipAddress || "-")}</td>
+                            <td data-label="${escapeHtml(t("admin.audit.table.metadata", "Metadata"))}" class="data-table__mono">${escapeHtml(truncateText(log.metadata || "-", 140))}</td>
                         </tr>
                     `).join("")}
                 </tbody>
@@ -3590,20 +3590,43 @@ function initAdminPage() {
         const displayLabel = window.NoorLocatorAuth.formatUserDisplayName(currentUser);
         populateCards("admin-cards", [
             {
-                title: "Moderation queue",
-                body: `${displayLabel} currently has ${(state.dashboard?.pendingCenterRequests || 0) + (state.dashboard?.pendingManagerRequests || 0) + (state.dashboard?.pendingCenterLanguageSuggestions || 0) + (state.dashboard?.pendingSuggestions || 0)} pending items to review.`
+                title: t("admin.cards.queue.title", "Moderation queue"),
+                body: t(
+                    "admin.cards.queue.body",
+                    "{name} currently has {count} pending items to review.",
+                    {
+                        name: displayLabel,
+                        count: (state.dashboard?.pendingCenterRequests || 0) + (state.dashboard?.pendingManagerRequests || 0) + (state.dashboard?.pendingCenterLanguageSuggestions || 0) + (state.dashboard?.pendingSuggestions || 0)
+                    })
             },
             {
-                title: "Platform scale",
-                body: `${state.dashboard?.totalUsers || 0} users, ${state.dashboard?.totalCenters || 0} centers, and ${state.dashboard?.totalMajalis || 0} majalis are currently stored in NoorLocator.`
+                title: t("admin.cards.scale.title", "Platform scale"),
+                body: t(
+                    "admin.cards.scale.body",
+                    "{users} users, {centers} centers, and {majalis} majalis are currently stored in NoorLocator.",
+                    {
+                        users: state.dashboard?.totalUsers || 0,
+                        centers: state.dashboard?.totalCenters || 0,
+                        majalis: state.dashboard?.totalMajalis || 0
+                    })
             },
             {
-                title: "Center moderation",
-                body: `${state.dashboard?.pendingCenterRequests || 0} center requests, ${state.dashboard?.pendingManagerRequests || 0} manager requests, and ${state.dashboard?.pendingCenterLanguageSuggestions || 0} language suggestions are awaiting action.`
+                title: t("admin.cards.centers.title", "Center moderation"),
+                body: t(
+                    "admin.cards.centers.body",
+                    "{centerRequests} center requests, {managerRequests} manager requests, and {languageSuggestions} language suggestions are awaiting action.",
+                    {
+                        centerRequests: state.dashboard?.pendingCenterRequests || 0,
+                        managerRequests: state.dashboard?.pendingManagerRequests || 0,
+                        languageSuggestions: state.dashboard?.pendingCenterLanguageSuggestions || 0
+                    })
             },
             {
-                title: "Audit coverage",
-                body: `${state.dashboard?.totalAuditLogs || 0} audit log entries are available for admin traceability and change review.`
+                title: t("admin.cards.audit.title", "Audit coverage"),
+                body: t(
+                    "admin.cards.audit.body",
+                    "{count} audit log entries are available for admin traceability and change review.",
+                    { count: state.dashboard?.totalAuditLogs || 0 })
             }
         ]);
     }
@@ -3631,7 +3654,9 @@ function initAdminPage() {
             [adminCenterImageFilterCenter],
             state.centers,
             {
-                placeholder: state.centers.length ? "Select a center" : "No centers available",
+                placeholder: state.centers.length
+                    ? t("common.selectCenter", "Select a center")
+                    : t("common.noCentersAvailable", "No centers available"),
                 getValue: center => String(center.id),
                 getLabel: center => `${center.name} (${center.city}, ${center.country})`
             });
@@ -3649,20 +3674,20 @@ function initAdminPage() {
 
         if (!state.selectedImageCenterId) {
             state.centerImages = [];
-            setMessage(adminCenterImagesMessage, "Choose a center to review its gallery and moderate images if needed.");
-            setContainerMessage(adminCenterImagesContainer, "No center images can be reviewed until a center is selected.", "soft");
+            setMessage(adminCenterImagesMessage, t("admin.images.message", "Choose a center to review its gallery and moderate images if needed."));
+            setContainerMessage(adminCenterImagesContainer, t("admin.gallery.selectCenter", "No center images can be reviewed until a center is selected."), "soft");
             return;
         }
 
-        setMessage(adminCenterImagesMessage, "Loading the selected center gallery...");
-        setContainerMessage(adminCenterImagesContainer, "Loading center gallery...", "soft");
+        setMessage(adminCenterImagesMessage, t("admin.images.loadingSelected", "Loading the selected center gallery..."));
+        setContainerMessage(adminCenterImagesContainer, t("admin.gallery.loading", "Loading center gallery..."), "soft");
 
         try {
             const response = await window.NoorLocatorApi.getCenterImages(state.selectedImageCenterId);
             state.centerImages = response.data || [];
             renderAdminCenterImages(adminCenterImagesContainer, state.centerImages);
             bindAdminImageActions();
-            setMessage(adminCenterImagesMessage, "Admin gallery moderation tools are ready.", "success");
+            setMessage(adminCenterImagesMessage, t("admin.images.ready", "Admin gallery moderation tools are ready."), "success");
         } catch (error) {
             const message = normalizeErrorMessage(error, "Center images could not be loaded for moderation.");
             state.centerImages = [];
@@ -3687,7 +3712,7 @@ function initAdminPage() {
                 }
             },
             onDelete: async imageId => {
-                if (!window.confirm("Delete this center image from the public gallery?")) {
+                if (!window.confirm(t("admin.confirm.deleteImage", "Delete this center image from the public gallery?"))) {
                     return;
                 }
 
@@ -3710,12 +3735,12 @@ function initAdminPage() {
         state.editingCenterId = null;
         centerForm.reset();
         centerForm.elements.namedItem("centerId").value = "";
-        centerFormHeading.textContent = "Edit a published center";
-        centerSubmitButton.textContent = "Save center";
-        centerSubmitButton.dataset.defaultLabel = "Save center";
+        centerFormHeading.textContent = t("admin.centerEditor.title", "Edit a published center");
+        centerSubmitButton.textContent = t("admin.centerEditor.submit", "Save center");
+        centerSubmitButton.dataset.defaultLabel = t("admin.centerEditor.submit", "Save center");
         centerSubmitButton.disabled = true;
         centerCancelButton.hidden = true;
-        setMessage(centerFormMessage, "Choose a center from the list to edit.");
+        setMessage(centerFormMessage, t("admin.centerEditor.choose", "Choose a center from the list to edit."));
     }
 
     function populateCenterForm(center) {
@@ -3728,12 +3753,12 @@ function initAdminPage() {
         centerForm.elements.namedItem("latitude").value = String(center.latitude);
         centerForm.elements.namedItem("longitude").value = String(center.longitude);
         centerForm.elements.namedItem("description").value = center.description || "";
-        centerFormHeading.textContent = `Editing ${center.name}`;
-        centerSubmitButton.textContent = "Save changes";
-        centerSubmitButton.dataset.defaultLabel = "Save changes";
+        centerFormHeading.textContent = t("admin.centerEditor.editingTitle", "Editing {name}", { name: center.name });
+        centerSubmitButton.textContent = t("actions.saveChanges", "Save changes");
+        centerSubmitButton.dataset.defaultLabel = t("actions.saveChanges", "Save changes");
         centerSubmitButton.disabled = false;
         centerCancelButton.hidden = false;
-        setMessage(centerFormMessage, `Editing "${center.name}".`, "success");
+        setMessage(centerFormMessage, t("admin.centerEditor.editingMessage", "Editing \"{name}\".", { name: center.name }), "success");
         syncAdminImageCenterSelection(center.id);
         loadAdminCenterImages().catch(() => {
             setMessage(adminCenterImagesMessage, "Center images could not be loaded for moderation.", "error");
@@ -3767,15 +3792,15 @@ function initAdminPage() {
     async function loadAdminWorkspace(showLoading = false) {
         if (showLoading) {
             setCardLoadingState(cardsContainer, 4);
-            setContainerMessage(centerRequestsContainer, "Loading center requests...", "soft");
-            setContainerMessage(managerRequestsContainer, "Loading manager requests...", "soft");
-            setContainerMessage(languageSuggestionsContainer, "Loading language suggestions...", "soft");
-            setContainerMessage(suggestionsContainer, "Loading app suggestions...", "soft");
-            setContainerMessage(centersContainer, "Loading centers...", "soft");
-            setMessage(adminCenterImagesMessage, "Loading center gallery moderation tools...");
-            setContainerMessage(adminCenterImagesContainer, "Loading center gallery...", "soft");
-            usersTableContainer.innerHTML = `<div class="empty-state empty-state--soft">Loading users...</div>`;
-            auditLogsTableContainer.innerHTML = `<div class="empty-state empty-state--soft">Loading audit logs...</div>`;
+            setContainerMessage(centerRequestsContainer, t("admin.centerRequests.loading", "Loading center requests..."), "soft");
+            setContainerMessage(managerRequestsContainer, t("admin.managerRequests.loading", "Loading manager requests..."), "soft");
+            setContainerMessage(languageSuggestionsContainer, t("admin.languageSuggestions.loading", "Loading language suggestions..."), "soft");
+            setContainerMessage(suggestionsContainer, t("admin.appSuggestions.loading", "Loading app suggestions..."), "soft");
+            setContainerMessage(centersContainer, t("admin.centers.loading", "Loading centers..."), "soft");
+            setMessage(adminCenterImagesMessage, t("admin.images.loading", "Loading center gallery moderation tools..."));
+            setContainerMessage(adminCenterImagesContainer, t("admin.gallery.loading", "Loading center gallery..."), "soft");
+            usersTableContainer.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("admin.users.loading", "Loading users..."))}</div>`;
+            auditLogsTableContainer.innerHTML = `<div class="empty-state empty-state--soft">${escapeHtml(t("admin.audit.loading", "Loading audit logs..."))}</div>`;
         }
 
         const [
@@ -3812,7 +3837,7 @@ function initAdminPage() {
 
         renderAllSections();
         await loadAdminCenterImages();
-        setMessage(pageMessage, "Admin workspace is ready.", "success");
+        setMessage(pageMessage, t("admin.page.ready", "Admin workspace is ready."), "success");
     }
 
     async function runAdminAction(confirmMessage, action) {
@@ -3837,7 +3862,7 @@ function initAdminPage() {
             button.addEventListener("click", async () => {
                 const id = Number(button.getAttribute("data-admin-center-request-approve"));
                 await runAdminAction(
-                    "Approve this center request and publish it as a live center?",
+                    t("admin.confirm.approveCenterRequest", "Approve this center request and publish it as a live center?"),
                     () => window.NoorLocatorApi.approveAdminCenterRequest(id));
             });
         });
@@ -3846,7 +3871,7 @@ function initAdminPage() {
             button.addEventListener("click", async () => {
                 const id = Number(button.getAttribute("data-admin-center-request-reject"));
                 await runAdminAction(
-                    "Reject this center request?",
+                    t("admin.confirm.rejectCenterRequest", "Reject this center request?"),
                     () => window.NoorLocatorApi.rejectAdminCenterRequest(id));
             });
         });
@@ -3855,7 +3880,7 @@ function initAdminPage() {
             button.addEventListener("click", async () => {
                 const id = Number(button.getAttribute("data-admin-manager-request-approve"));
                 await runAdminAction(
-                    "Approve this manager request and grant center access?",
+                    t("admin.confirm.approveManagerRequest", "Approve this manager request and grant center access?"),
                     () => window.NoorLocatorApi.approveAdminManagerRequest(id));
             });
         });
@@ -3864,7 +3889,7 @@ function initAdminPage() {
             button.addEventListener("click", async () => {
                 const id = Number(button.getAttribute("data-admin-manager-request-reject"));
                 await runAdminAction(
-                    "Reject this manager request?",
+                    t("admin.confirm.rejectManagerRequest", "Reject this manager request?"),
                     () => window.NoorLocatorApi.rejectAdminManagerRequest(id));
             });
         });
@@ -3873,7 +3898,7 @@ function initAdminPage() {
             button.addEventListener("click", async () => {
                 const id = Number(button.getAttribute("data-admin-language-suggestion-approve"));
                 await runAdminAction(
-                    "Approve this center language suggestion?",
+                    t("admin.confirm.approveLanguageSuggestion", "Approve this center language suggestion?"),
                     () => window.NoorLocatorApi.approveAdminCenterLanguageSuggestion(id));
             });
         });
@@ -3882,7 +3907,7 @@ function initAdminPage() {
             button.addEventListener("click", async () => {
                 const id = Number(button.getAttribute("data-admin-language-suggestion-reject"));
                 await runAdminAction(
-                    "Reject this center language suggestion?",
+                    t("admin.confirm.rejectLanguageSuggestion", "Reject this center language suggestion?"),
                     () => window.NoorLocatorApi.rejectAdminCenterLanguageSuggestion(id));
             });
         });
@@ -3891,7 +3916,7 @@ function initAdminPage() {
             button.addEventListener("click", async () => {
                 const id = Number(button.getAttribute("data-admin-suggestion-review"));
                 await runAdminAction(
-                    "Mark this suggestion as reviewed?",
+                    t("admin.confirm.reviewSuggestion", "Mark this suggestion as reviewed?"),
                     () => window.NoorLocatorApi.reviewAdminSuggestion(id));
             });
         });
@@ -3911,7 +3936,7 @@ function initAdminPage() {
                 const id = Number(button.getAttribute("data-admin-center-delete"));
                 const centerName = button.getAttribute("data-admin-center-name") || "this center";
                 await runAdminAction(
-                    `Delete "${centerName}" and its related center data?`,
+                    t("admin.confirm.deleteCenter", "Delete \"{name}\" and its related center data?", { name: centerName }),
                     async () => {
                         if (state.editingCenterId === id) {
                             resetCenterForm();
@@ -3933,12 +3958,12 @@ function initAdminPage() {
         event.preventDefault();
 
         if (!state.editingCenterId) {
-            setMessage(centerFormMessage, "Choose a center from the list before saving changes.", "error");
+            setMessage(centerFormMessage, t("admin.centerEditor.selectBeforeSave", "Choose a center from the list before saving changes."), "error");
             return;
         }
 
-        setSubmitButtonState(centerForm, true, "Saving changes...");
-        setMessage(centerFormMessage, "Saving center changes...");
+        setSubmitButtonState(centerForm, true, t("actions.saveChanges", "Saving changes..."));
+        setMessage(centerFormMessage, t("admin.centerEditor.saving", "Saving center changes..."));
 
         const values = getTrimmedFormValues(centerForm);
         const payload = {
@@ -3966,7 +3991,7 @@ function initAdminPage() {
             setMessage(centerFormMessage, message, "error");
             showToast(message, "error");
         } finally {
-            setSubmitButtonState(centerForm, false, "Saving changes...");
+            setSubmitButtonState(centerForm, false, t("actions.saveChanges", "Saving changes..."));
         }
     });
 
