@@ -1,15 +1,18 @@
 window.NoorLocatorLayout = (() => {
     const navPanelId = "site-nav-panel";
     const navScrimId = "site-nav-scrim";
+    const accountTriggerId = "site-account-trigger";
+    const accountMenuId = "site-account-menu";
     const mobileNavBreakpoint = 1050;
     const brandLogoPath = "assets/logo_bkg.png";
     const defaultBrandLogoAlt = "NoorLocator logo";
     const aboutPageHref = "about.html";
-    const attribution = "Driven by موكب خدام أهل البيت (عليهم السلام), Copenhagen, Denmark.";
+    const attribution = "Driven by Mowkab Khoddam Ahlulbayt (AS), Copenhagen, Denmark.";
     const defaultTagline = "Connecting you to Shia centers and majalis worldwide";
     let serviceWorkerSetupStarted = false;
     let installPromptSetupStarted = false;
     let navCleanupController = null;
+    let notificationCount = 0;
 
     function t(key, fallback, params = {}) {
         return window.NoorLocatorI18n?.t?.(key, params, fallback) || fallback;
@@ -20,7 +23,7 @@ window.NoorLocatorLayout = (() => {
     }
 
     function getAttribution() {
-        return t("app.attribution", attribution || "Driven by Mowkab Khoddam Ahlulbayt (AS), Copenhagen, Denmark.");
+        return t("app.attribution", attribution);
     }
 
     function getTagline() {
@@ -79,6 +82,246 @@ window.NoorLocatorLayout = (() => {
 
     function setScrollLockState(isLocked) {
         document.body.classList.toggle("nav-scroll-lock", isLocked);
+        document.body.classList.toggle("nav-open", isLocked);
+    }
+
+    function normalizeNotificationCount(count) {
+        const normalizedCount = Number(count);
+        return Number.isFinite(normalizedCount) && normalizedCount > 0
+            ? Math.floor(normalizedCount)
+            : 0;
+    }
+
+    function setNotificationCount(count) {
+        notificationCount = normalizeNotificationCount(count);
+        const badgeValue = notificationCount > 99 ? "99+" : String(notificationCount);
+
+        document.querySelectorAll("[data-notification-count]").forEach(badge => {
+            badge.textContent = badgeValue;
+            badge.hidden = notificationCount <= 0;
+        });
+    }
+
+    function getLanguageOptionsMarkup() {
+        return window.NoorLocatorI18n.getSupportedLanguages()
+            .map(language => {
+                const optionLabel = window.NoorLocatorI18n.getLanguageOptionLabel?.(language.code, {
+                    native: true
+                }) || language.nativeName;
+
+                return `<option value="${escapeHtml(language.code)}">${escapeHtml(optionLabel)}</option>`;
+            })
+            .join("");
+    }
+
+    function renderLanguageSwitcher(options = {}) {
+        const {
+            variant = "public",
+            includeLabel = true
+        } = options;
+
+        return `
+            <label class="site-language-switcher site-language-switcher--${escapeHtml(variant)}">
+                ${includeLabel ? `<span class="site-language-switcher__label">${escapeHtml(t("language.switcher", "Language"))}</span>` : ""}
+                <span class="site-language-switcher__field">
+                    <select class="site-language-switcher__select" data-language-selector aria-label="${escapeHtml(t("language.switcherAria", "Choose language"))}">
+                        ${getLanguageOptionsMarkup()}
+                    </select>
+                    <span class="site-language-switcher__chevron" aria-hidden="true">
+                        <svg viewBox="0 0 16 16" focusable="false">
+                            <path d="M3.25 5.75 8 10.5l4.75-4.75"></path>
+                        </svg>
+                    </span>
+                </span>
+            </label>
+        `;
+    }
+
+    function renderAccountMenu(user, currentPage) {
+        const displayName = window.NoorLocatorAuth.formatUserDisplayName(user);
+        const profileInitial = getProfileInitial(user);
+        const isAccountPage = currentPage === "profile" || currentPage === "notifications";
+
+        return `
+            <div class="site-account" data-account-root>
+                <button
+                    id="${accountTriggerId}"
+                    class="site-account__trigger${isAccountPage ? " is-active" : ""}"
+                    type="button"
+                    aria-expanded="false"
+                    aria-controls="${accountMenuId}"
+                    aria-haspopup="dialog"
+                    data-account-trigger>
+                    <span class="site-account__avatar" aria-hidden="true">${escapeHtml(profileInitial)}</span>
+                    <span class="site-account__trigger-copy">${escapeHtml(displayName)}</span>
+                    <span class="site-account__trigger-badge" data-notification-count hidden>0</span>
+                    <span class="site-account__trigger-chevron" aria-hidden="true">
+                        <svg viewBox="0 0 16 16" focusable="false">
+                            <path d="M3.25 5.75 8 10.5l4.75-4.75"></path>
+                        </svg>
+                    </span>
+                </button>
+                <div
+                    id="${accountMenuId}"
+                    class="site-account__menu"
+                    data-account-menu
+                    aria-labelledby="${accountTriggerId}">
+                    <div class="site-account__menu-summary">
+                        <span class="site-account__menu-avatar" aria-hidden="true">${escapeHtml(profileInitial)}</span>
+                        <div class="site-account__menu-copy">
+                            <p class="site-account__menu-eyebrow">${escapeHtml(t("nav.accountMenu", "Profile and settings"))}</p>
+                            <p class="site-account__menu-title">${escapeHtml(displayName)}</p>
+                            <p class="site-account__menu-subtitle">${escapeHtml(user?.email || "")}</p>
+                        </div>
+                    </div>
+                    <div class="site-account__menu-group">
+                        <a class="site-account__menu-link${currentPage === "profile" ? " is-active" : ""}" href="profile.html" data-account-close-on-activate>
+                            <span class="site-account__menu-link-copy">${escapeHtml(t("nav.profile", "Profile"))}</span>
+                        </a>
+                        <a class="site-account__menu-link${currentPage === "notifications" ? " is-active" : ""}" href="notifications.html" data-account-close-on-activate>
+                            <span class="site-account__menu-link-copy">${escapeHtml(t("nav.notifications", "Notifications"))}</span>
+                            <span class="site-account__menu-link-badge" data-notification-count hidden>0</span>
+                        </a>
+                    </div>
+                    <div class="site-account__menu-section">
+                        <p class="site-account__section-label">${escapeHtml(t("language.switcher", "Language"))}</p>
+                        ${renderLanguageSwitcher({ variant: "account", includeLabel: false })}
+                    </div>
+                    <button
+                        class="site-account__menu-button"
+                        type="button"
+                        data-account-close-on-activate
+                        data-logout-action
+                        data-logout-redirect="login.html?loggedOut=1">
+                        ${escapeHtml(t("actions.logout", "Logout"))}
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    function bindAccountMenuBehavior(mount, signal) {
+        const accountRoot = mount.querySelector("[data-account-root]");
+        const trigger = mount.querySelector("[data-account-trigger]");
+        const menu = mount.querySelector("[data-account-menu]");
+        if (!accountRoot || !trigger || !menu) {
+            return;
+        }
+
+        const focusableSelector = [
+            "a[href]",
+            "button:not([disabled])",
+            "select:not([disabled])",
+            "[tabindex]:not([tabindex='-1'])"
+        ].join(", ");
+
+        const isDesktopMenuOpen = () => accountRoot.classList.contains("is-open");
+
+        const syncMenuState = (expanded) => {
+            if (isCompactViewport()) {
+                accountRoot.classList.remove("is-open");
+                trigger.setAttribute("aria-expanded", "false");
+                menu.inert = false;
+                menu.setAttribute("aria-hidden", "false");
+                return;
+            }
+
+            const isOpen = Boolean(expanded);
+            accountRoot.classList.toggle("is-open", isOpen);
+            trigger.setAttribute("aria-expanded", String(isOpen));
+            menu.inert = !isOpen;
+            menu.setAttribute("aria-hidden", String(!isOpen));
+        };
+
+        const closeDesktopMenu = (options = {}) => {
+            if (isCompactViewport()) {
+                return;
+            }
+
+            syncMenuState(false);
+            if (options.focusTrigger === true) {
+                trigger.focus();
+            }
+        };
+
+        syncMenuState(false);
+
+        trigger.addEventListener("click", event => {
+            if (isCompactViewport()) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            syncMenuState(!isDesktopMenuOpen());
+        }, { signal });
+
+        trigger.addEventListener("keydown", event => {
+            if (isCompactViewport() || event.key !== "ArrowDown") {
+                return;
+            }
+
+            event.preventDefault();
+            syncMenuState(true);
+            const firstInteractiveControl = menu.querySelector(focusableSelector);
+            firstInteractiveControl?.focus();
+        }, { signal });
+
+        document.addEventListener("pointerdown", event => {
+            if (isCompactViewport() || !isDesktopMenuOpen()) {
+                return;
+            }
+
+            const target = event.target;
+            if (target instanceof Node && accountRoot.contains(target)) {
+                return;
+            }
+
+            closeDesktopMenu();
+        }, { signal });
+
+        document.addEventListener("focusin", event => {
+            if (isCompactViewport() || !isDesktopMenuOpen()) {
+                return;
+            }
+
+            const target = event.target;
+            if (target instanceof Node && accountRoot.contains(target)) {
+                return;
+            }
+
+            closeDesktopMenu();
+        }, { signal });
+
+        document.addEventListener("keydown", event => {
+            if (event.key === "Escape" && isDesktopMenuOpen()) {
+                event.preventDefault();
+                closeDesktopMenu({ focusTrigger: true });
+            }
+        }, { signal });
+
+        accountRoot.querySelectorAll("[data-account-close-on-activate]").forEach(element => {
+            element.addEventListener("click", () => {
+                closeDesktopMenu();
+            }, { signal });
+        });
+
+        menu.querySelector("[data-language-selector]")?.addEventListener("change", () => {
+            closeDesktopMenu();
+        }, { signal });
+
+        window.addEventListener("resize", () => {
+            if (isCompactViewport()) {
+                syncMenuState(false);
+                return;
+            }
+
+            syncMenuState(isDesktopMenuOpen());
+        }, { signal });
+
+        window.addEventListener("pageshow", () => {
+            syncMenuState(false);
+        }, { signal });
     }
 
     function bindNavigationBehavior(mount) {
@@ -160,7 +403,7 @@ window.NoorLocatorLayout = (() => {
         }, { signal });
 
         document.addEventListener("keydown", event => {
-            if (event.key === "Escape") {
+            if (event.key === "Escape" && isCompactViewport()) {
                 closeMenu({ focusToggle: true });
             }
         }, { signal });
@@ -187,6 +430,8 @@ window.NoorLocatorLayout = (() => {
                 closeMenu();
             }, { signal });
         });
+
+        bindAccountMenuBehavior(mount, signal);
     }
 
     function renderHeader() {
@@ -201,9 +446,6 @@ window.NoorLocatorLayout = (() => {
         const navigation = buildNavigation(user);
         const navMarkup = navigation
             .map(item => renderNavigationItem(item, currentPage))
-            .join("");
-        const languageOptions = window.NoorLocatorI18n.getSupportedLanguages()
-            .map(language => `<option value="${escapeHtml(language.code)}">${escapeHtml(language.nativeName)}</option>`)
             .join("");
 
         mount.innerHTML = `
@@ -229,15 +471,12 @@ window.NoorLocatorLayout = (() => {
                         <span class="site-nav-toggle__line"></span>
                     </button>
                     <div id="${navPanelId}" class="site-header__panel" data-nav-panel>
-                        <label class="site-language-switcher">
-                            <span class="site-language-switcher__label">${escapeHtml(t("language.switcher", "Language"))}</span>
-                            <select class="site-language-switcher__select" data-language-selector aria-label="${escapeHtml(t("language.switcherAria", "Choose language"))}">
-                                ${languageOptions}
-                            </select>
-                        </label>
                         <nav class="site-nav" aria-label="${escapeHtml(t("nav.primaryAria", "Primary navigation"))}">
                             ${navMarkup}
                         </nav>
+                        ${user
+                            ? renderAccountMenu(user, currentPage)
+                            : renderLanguageSwitcher({ variant: "public" })}
                     </div>
                     <button id="${navScrimId}" class="site-nav-scrim" type="button" hidden tabindex="-1" aria-label="${escapeHtml(t("nav.closeMenu", "Close navigation menu"))}" data-nav-scrim></button>
                 </div>
@@ -246,6 +485,8 @@ window.NoorLocatorLayout = (() => {
 
         bindNavigationBehavior(mount);
         window.NoorLocatorI18n.bindLanguageSelectors(mount);
+        window.NoorLocatorAuth?.bindLogoutControls?.(mount);
+        setNotificationCount(notificationCount);
     }
 
     function renderFooter() {
@@ -378,13 +619,6 @@ window.NoorLocatorLayout = (() => {
                 if (user.role === "Admin") {
                     items.push({ href: "admin.html", label: t("nav.admin", "Admin"), page: "admin" });
                 }
-
-                items.push({
-                    href: "notifications.html",
-                    label: t("nav.notifications", "Notifications"),
-                    page: "notifications",
-                    variant: "notification"
-                });
             } else {
                 items.push({
                     href: window.NoorLocatorAuth.getVerificationRoute(user),
@@ -392,14 +626,6 @@ window.NoorLocatorLayout = (() => {
                     page: "verify-email"
                 });
             }
-
-            items.push({
-                href: "profile.html",
-                label: window.NoorLocatorAuth.formatUserDisplayName(user),
-                page: "profile",
-                variant: "profile",
-                initial: getProfileInitial(user)
-            });
 
             return items;
         }
@@ -411,35 +637,8 @@ window.NoorLocatorLayout = (() => {
 
     function renderNavigationItem(item, currentPage) {
         const isActive = item.page === currentPage;
-        const className = `site-nav__link${isActive ? " is-active" : ""}${item.variant === "profile" ? " site-nav__link--profile" : ""}${item.variant === "notification" ? " site-nav__link--notification" : ""}`;
+        const className = `site-nav__link${isActive ? " is-active" : ""}`;
         const ariaCurrent = isActive ? ' aria-current="page"' : "";
-
-        if (item.variant === "profile") {
-            const profileLabel = escapeHtml(item.label);
-            const profileInitial = escapeHtml(item.initial);
-
-            return `
-                <a class="${className}" href="${item.href}" data-profile-nav${ariaCurrent} aria-label="${escapeHtml(t("nav.profileAria", "Open profile for {name}", { name: item.label }))}">
-                    <span class="site-nav__profile-mark" aria-hidden="true">${profileInitial}</span>
-                    <span class="site-nav__profile-copy">${profileLabel}</span>
-                </a>
-            `;
-        }
-
-        if (item.variant === "notification") {
-            return `
-                <a class="${className}" href="${item.href}" data-notification-nav${ariaCurrent} aria-label="${escapeHtml(t("nav.notificationsAria", "Open notifications"))}">
-                    <span class="site-nav__notification-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" focusable="false">
-                            <path d="M12 22a2.5 2.5 0 0 0 2.29-1.5h-4.58A2.5 2.5 0 0 0 12 22Zm7-4H5a1 1 0 0 1-.78-1.63l1.28-1.59V10a6.5 6.5 0 1 1 13 0v4.78l1.28 1.59A1 1 0 0 1 19 18Z"></path>
-                        </svg>
-                    </span>
-                    <span class="site-nav__notification-copy">${escapeHtml(t("nav.notifications", "Notifications"))}</span>
-                    <span class="site-nav__notification-badge" data-notification-count hidden>0</span>
-                </a>
-            `;
-        }
-
         return `<a class="${className}" href="${item.href}"${ariaCurrent}>${escapeHtml(item.label)}</a>`;
     }
 
@@ -467,7 +666,11 @@ window.NoorLocatorLayout = (() => {
         },
         refreshAuthUi() {
             renderShell();
-        }
+        },
+        getNotificationCount() {
+            return notificationCount;
+        },
+        setNotificationCount
     };
 })();
 

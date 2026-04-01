@@ -256,7 +256,7 @@ The demo content below is development-oriented seed data. Production defaults ke
 - Users can explicitly follow a center through `POST /api/centers/{id}/subscribe` and stop following with `DELETE /api/centers/{id}/subscribe`.
 - Publishing a new majlis or a published event announcement fans out to verified users who visited or followed that center.
 - Delivery respects user-level preferences and center-level follow/subscription preferences.
-- In-app notifications are stored in the `Notifications` table and surfaced through the navbar bell and `notifications.html`.
+- In-app notifications are stored in the `Notifications` table and surfaced through the desktop profile dropdown, the mobile drawer account section, and `notifications.html`.
 - Email notifications are sent only when the destination email is verified and email delivery is enabled for that scenario.
 
 ### Notification Preferences
@@ -268,7 +268,7 @@ The demo content below is development-oriented seed data. Production defaults ke
   - majlis notifications
   - event notifications
   - center update notifications
-- The profile page is the single place where users manage logout, verification status, and notification preferences.
+- The profile page remains the settings surface for verification status, notification preferences, and preferred language, while logout lives in the shared profile navigation UI.
 
 ## Localization And RTL
 
@@ -292,9 +292,19 @@ The demo content below is development-oriented seed data. Production defaults ke
 
 ### Language Switcher And Preferred Language
 
-- The shared navbar renders the language switcher on both public and authenticated pages.
+- Signed-out users get the language selector directly in the desktop navbar and inside the hamburger drawer on mobile.
+- Signed-in users switch language from the desktop profile dropdown, the mobile drawer account section, or the preferred-language form on `profile.html`.
 - Changing the language updates the page shell immediately and persists the selection across reloads.
 - When a user is signed in, `PUT /api/profile/me/preferred-language` stores the preferred UI language on the user record.
+- `frontend/js/i18n.js` also defines the selector flag mapping:
+  - `ar` -> Iraq
+  - `fa` -> Iran
+  - `da` -> Denmark
+  - `de` -> Germany
+  - `es` -> Spain
+  - `sv` -> Sweden
+  - `pt` -> Portugal
+  - `en` -> UK
 - On later visits, NoorLocator resolves the language in this order:
   - signed-in user preferred language
   - saved local browser selection
@@ -499,7 +509,7 @@ See `VERIFICATION_REPORT.md` for the final verification summary.
 - There is no separate frontend dev server required for normal local use.
 - The API serves the `frontend/` directory as static assets.
 - Protected UI pages are hidden behind a shared auth bootstrap until `/api/auth/me` confirms the active session.
-- Logout is exposed from `profile.html` only; the shared navbar uses a combined profile entry and a notification bell for verified users.
+- Authenticated desktop navigation uses a profile indicator dropdown for profile, notifications, language, and logout, while mobile uses the same actions inside the hamburger drawer account section.
 - Every authenticated role can open `profile.html` to edit only their own display name and email while keeping role and password fields protected.
 - Verified users see trusted workspace links plus notifications, while unverified users are directed to `verify-email.html` until ownership is confirmed.
 - Frontend branding is standardized on `frontend/assets/logo_bkg.png`, with `frontend/js/layout.js` acting as the shared source for navbar, footer, favicon, and page-level logo hydration.
@@ -736,7 +746,7 @@ Phase 10 logout verification was completed against the live MySQL-backed app and
 - `powershell -ExecutionPolicy Bypass -File .\\scripts\\verify-e2e.ps1 -StartApp -ConnectionString \"Server=127.0.0.1;Port=3306;Database=Noorlocator;User=root;Password=...;\"`
 - Headless Edge browser verification against the live app confirmed:
   - login succeeds for user, manager, and admin flows
-  - logout is available from the shared profile page and returns the UI to the logged-out state
+  - logout is available from the shared profile navigation UI and returns the UI to the logged-out state
   - logout clears auth storage and updates the navbar to the logged-out state
   - protected API requests return `401` when replaying the pre-logout token
   - direct navigation, page refresh, and browser back do not restore authenticated workspace access after logout
@@ -783,7 +793,7 @@ Phase 13 authentication-and-notification verification was completed against the 
   - forgot-password and reset-password work end to end, and the old password stops working after reset
   - reset-password sends a password-changed confirmation email
   - visiting/following a center leads to majlis and event notifications after privileged publishing
-  - the in-app notification bell, notifications page, and mark-read flow work
+  - the in-app notification dropdown access, notifications page, and mark-read flow work
   - notification preferences persist from the profile page
 - Live browser verification against `http://127.0.0.1:5213` confirmed:
   - register, resend verification, verify-email, login, follow-center, notification UI, logout, forgot-password, and reset-password all worked in the real frontend

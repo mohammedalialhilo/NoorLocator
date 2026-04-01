@@ -453,8 +453,14 @@ function setSubmitButtonState(form, isBusy, busyLabel) {
 }
 
 function updateNotificationBellCount(count) {
+    const normalizedCount = Number(count || 0);
+
+    if (window.NoorLocatorLayout?.setNotificationCount) {
+        window.NoorLocatorLayout.setNotificationCount(normalizedCount);
+        return;
+    }
+
     document.querySelectorAll("[data-notification-count]").forEach(badge => {
-        const normalizedCount = Number(count || 0);
         badge.textContent = normalizedCount > 99 ? "99+" : String(normalizedCount);
         badge.hidden = normalizedCount <= 0;
     });
@@ -1807,7 +1813,9 @@ function initProfilePage() {
                 populateSelectOptions(preferredLanguageSelect, window.NoorLocatorI18n.getSupportedLanguages(), {
                     placeholder: t("profile.language.placeholder", "Choose language"),
                     getValue: language => language.code,
-                    getLabel: language => language.nativeName
+                    getLabel: language => window.NoorLocatorI18n.getLanguageOptionLabel?.(language.code, {
+                        native: true
+                    }) || language.nativeName
                 });
             }
 

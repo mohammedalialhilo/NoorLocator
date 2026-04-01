@@ -252,7 +252,7 @@ Primary entities:
 - `GET /api/notifications`
   Returns the authenticated verified user's in-app notifications.
 - `GET /api/notifications/unread-count`
-  Returns the unread notification count used by the navbar bell.
+  Returns the unread notification count used by the shared profile-navigation badges.
 - `PUT /api/notifications/{id}/read`
   Marks a single notification as read.
 - `PUT /api/notifications/read-all`
@@ -361,13 +361,16 @@ Swagger is the live reference for DTO shapes and status codes.
 - store auth state through the shared `frontend/js/auth.js` helper
 - render role-aware navigation
 - render verification-aware navigation and block trusted workspace links for unverified accounts
+- keep the logged-out language selector in the shared navbar shell
+- route signed-in account actions through the shared profile navigation surface instead of detached top-level controls
 - verify protected pages before rendering them
 - expose the shared `profile.html` page to every authenticated role
 - expose `verify-email.html`, `forgot-password.html`, `reset-password.html`, and `notifications.html` through the same shared shell
 - refresh stored session user data after profile edits so navbar and workspace labels update immediately
 - refresh unread notification counts after auth changes and notification state changes
 - clear auth state on logout
-- keep logout entry points on `profile.html` only
+- keep desktop account actions behind the `>1050px` profile-indicator dropdown
+- keep the same profile, notifications, language, and logout actions available inside the mobile drawer account section at `<=1050px`
 - upload manager center images through the shared multipart upload helper in `frontend/js/api.js`
 - show upload progress, gallery refreshes, and clear validation errors for image uploads
 - show loading states, empty states, and friendly errors
@@ -394,8 +397,24 @@ Swagger is the live reference for DTO shapes and status codes.
   - saved browser selection in `localStorage`
   - supported browser language
   - English fallback
+- signed-out users access the language switcher from the shared navbar:
+  - inline in the desktop navbar for widths above `1050px`
+  - inside the hamburger drawer on widths at or below `1050px`
+- signed-in users access language controls from profile-related UI:
+  - the shared profile dropdown on desktop
+  - the shared profile/account section inside the mobile drawer
+  - the preferred-language form on `profile.html`
 - when users save a preferred language from `profile.html`, the frontend calls `PUT /api/profile/me/preferred-language`
 - `SupportedLanguageCatalog` in `NoorLocator.Application/Common/Localization/SupportedLanguageCatalog.cs` is the backend source of truth for allowed preferred-language codes
+- the shared frontend language metadata in `frontend/js/i18n.js` also defines the visual flag mapping used in selectors:
+  - `ar` -> Iraq flag
+  - `fa` -> Iran flag
+  - `da` -> Denmark flag
+  - `de` -> Germany flag
+  - `es` -> Spain flag
+  - `sv` -> Sweden flag
+  - `pt` -> Portugal flag
+  - `en` -> UK flag
 - Arabic and Farsi are the RTL locales
 - when RTL is active, `frontend/js/i18n.js` updates `document.documentElement.lang`, `document.documentElement.dir`, and the shared body RTL class
 - `frontend/css/style.css` uses logical properties and RTL-aware rules so the navbar, hamburger drawer, cards, badges, forms, filters, and notifications keep the same layout model in both directions
@@ -429,6 +448,15 @@ Swagger is the live reference for DTO shapes and status codes.
   - `scroll-margin-top` on section anchors so sticky-header navigation remains usable on smaller screens
   - `prefers-reduced-motion` support so the menu and cards remain comfortable for reduced-motion users
 - the hamburger menu is owned by `frontend/js/layout.js` and `frontend/css/style.css`
+- desktop navigation rules above `1050px`:
+  - primary links stay visible in the navbar
+  - authenticated users open profile, notifications, language, and logout from the profile indicator dropdown
+  - the unread notification badge is rendered on the profile indicator and the notifications entry inside the dropdown
+- mobile navigation rules at or below `1050px`:
+  - the hamburger drawer is the single navigation surface
+  - signed-out users keep the language selector inside the drawer
+  - signed-in users get a dedicated account section inside the drawer with profile, notifications, language, and logout
+- standalone authenticated navbar controls for language and notifications are intentionally removed on desktop so the profile indicator is the single source of truth for personal actions
 - on screens at or below `1050px`, `layout.js`:
   - renders the toggle button and drawer panel
   - opens and closes the drawer by toggling `aria-expanded`, `.is-open`, `.is-visible`, and scroll-lock state only
@@ -532,7 +560,7 @@ Swagger is the live reference for DTO shapes and status codes.
 - after an email change, the account becomes unverified again and a new verification email is sent
 - after a successful save, the frontend updates the cached session user through `updateSessionUser()` so navbar and dashboard labels refresh without forcing logout
 - after a preferred-language save, the frontend updates the cached user and reapplies the shared shell in the selected locale
-- the profile page is the only place where logout is exposed in the authenticated UI
+- the profile page remains the authenticated settings surface for profile edits, notification preferences, and preferred language, while logout now lives in the shared profile navigation menu
 
 ### How Protected Pages Are Verified
 
@@ -554,14 +582,16 @@ Swagger is the live reference for DTO shapes and status codes.
   - center-level follow preferences in `UserCenterSubscription`
   - verified-email status for email delivery
 - the frontend surfaces notifications through:
-  - the shared navbar bell with unread count
+  - the shared profile indicator unread badge and profile-dropdown notifications entry on desktop
+  - the shared account section inside the hamburger drawer on mobile
   - `notifications.html`
   - profile notification preference controls
 - `PUT /api/notifications/{id}/read` and `PUT /api/notifications/read-all` keep the unread badge and notifications page in sync
 
 ### How Logout Works
 
-- `profile.html` is the single logout entry point in the authenticated UI
+- desktop logout lives in the shared profile dropdown for widths above `1050px`
+- mobile logout lives in the shared account section inside the hamburger drawer
 - the frontend calls the shared `logout()` helper
 - the frontend calls `POST /api/auth/logout`
 - the API revokes the active `RefreshToken` session for the current `sid`
@@ -690,7 +720,7 @@ Swagger is the live reference for DTO shapes and status codes.
     - manager and admin login API calls succeed before protected browser workflows are exercised
     - the bundled frontend works against the production-style hosted API configuration without hardcoded localhost URLs
     - the shared `frontend/assets/logo_bkg.png` asset renders in public, auth, and protected pages without broken image links
-    - register, resend-verification, verify-email, forgot-password, reset-password, profile notification preferences, and notification bell/page flows work in the real frontend
+    - register, resend-verification, verify-email, forgot-password, reset-password, profile notification preferences, and notification dropdown/page flows work in the real frontend
     - the manager gallery UI shows clear errors for invalid file types and oversized images
   - valid manager uploads complete without the old API-reachability failure and refresh the gallery
   - the public center details page renders a hero image and gallery from uploaded media

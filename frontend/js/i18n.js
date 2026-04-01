@@ -3,14 +3,14 @@ window.NoorLocatorI18n = (() => {
     const messageNamespace = "_messages";
     const selectorAttribute = "data-language-selector";
     const supportedLanguages = [
-        { code: "ar", nativeName: "\u0627\u0644\u0639\u0631\u0628\u064a\u0629", englishName: "Arabic", dir: "rtl" },
-        { code: "fa", nativeName: "\u0641\u0627\u0631\u0633\u06cc", englishName: "Farsi", dir: "rtl" },
-        { code: "da", nativeName: "Dansk", englishName: "Danish", dir: "ltr" },
-        { code: "de", nativeName: "Deutsch", englishName: "German", dir: "ltr" },
-        { code: "es", nativeName: "Espa\u00f1ol", englishName: "Spanish", dir: "ltr" },
-        { code: "sv", nativeName: "Svenska", englishName: "Swedish", dir: "ltr" },
-        { code: "pt", nativeName: "Portugu\u00eas", englishName: "Portuguese", dir: "ltr" },
-        { code: "en", nativeName: "English", englishName: "English", dir: "ltr" }
+        { code: "ar", nativeName: "\u0627\u0644\u0639\u0631\u0628\u064a\u0629", englishName: "Arabic", dir: "rtl", flag: "\uD83C\uDDEE\uD83C\uDDF6" },
+        { code: "fa", nativeName: "\u0641\u0627\u0631\u0633\u06CC", englishName: "Farsi", dir: "rtl", flag: "\uD83C\uDDEE\uD83C\uDDF7" },
+        { code: "da", nativeName: "Dansk", englishName: "Danish", dir: "ltr", flag: "\uD83C\uDDE9\uD83C\uDDF0" },
+        { code: "de", nativeName: "Deutsch", englishName: "German", dir: "ltr", flag: "\uD83C\uDDE9\uD83C\uDDEA" },
+        { code: "es", nativeName: "Espa\u00F1ol", englishName: "Spanish", dir: "ltr", flag: "\uD83C\uDDEA\uD83C\uDDF8" },
+        { code: "sv", nativeName: "Svenska", englishName: "Swedish", dir: "ltr", flag: "\uD83C\uDDF8\uD83C\uDDEA" },
+        { code: "pt", nativeName: "Portugu\u00EAs", englishName: "Portuguese", dir: "ltr", flag: "\uD83C\uDDF5\uD83C\uDDF9" },
+        { code: "en", nativeName: "English", englishName: "English", dir: "ltr", flag: "\uD83C\uDDEC\uD83C\uDDE7" }
     ];
     const supportedLanguageMap = new Map(supportedLanguages.map(language => [language.code, language]));
 
@@ -206,6 +206,11 @@ window.NoorLocatorI18n = (() => {
         return supportedLanguages.map(language => ({ ...language }));
     }
 
+    function getLanguageMetadata(code) {
+        const language = supportedLanguageMap.get(normalize(code));
+        return language ? { ...language } : null;
+    }
+
     function getLanguageLabel(code, options = {}) {
         const normalized = normalize(code);
         const language = supportedLanguageMap.get(normalized);
@@ -223,6 +228,21 @@ window.NoorLocatorI18n = (() => {
         } catch {
             return language.englishName;
         }
+    }
+
+    function getLanguageOptionLabel(code, options = {}) {
+        const language = supportedLanguageMap.get(normalize(code));
+        if (!language) {
+            return normalize(code);
+        }
+
+        const label = options.native === false
+            ? getLanguageLabel(code, options)
+            : language.nativeName;
+
+        return options.includeFlag === false || !language.flag
+            ? label
+            : `${language.flag} ${label}`;
     }
 
     async function useLanguage(code) {
@@ -323,7 +343,9 @@ window.NoorLocatorI18n = (() => {
         applyTranslations,
         bindLanguageSelectors,
         getSupportedLanguages,
+        getLanguageMetadata,
         getLanguageLabel,
+        getLanguageOptionLabel,
         getLocaleCode,
         isRtl,
         setLanguage
